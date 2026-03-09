@@ -1,0 +1,434 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- edited with XMLSpy v2016 rel. 2 (x64) (http://www.altova.com) by Kevin Hsu (Siemens Industry, Inc.) -->
+<xs:schema xmlns:m="http://pemc/soa/RawBidSet.xsd" xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="http://pemc/soa/RawBidSet.xsd" elementFormDefault="qualified" attributeFormDefault="unqualified">
+	<xs:element name="RawBidSet" type="m:RawBidSet"/>
+	<xs:complexType name="RawBidSet">
+		<xs:sequence>
+			<xs:element name="MessageHeader" type="m:MessageHeader" minOccurs="0"/>
+			<xs:element name="MessagePayload" type="m:MessagePayload"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="MessageHeader">
+		<xs:annotation>
+			<xs:documentation>Message header containing descriptive information about the message.</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="TimeDate" type="xs:dateTime">
+				<xs:annotation>
+					<xs:documentation>Application level relevant time and date for when this  instance of the message was produced.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="Source" type="xs:string">
+				<xs:annotation>
+					<xs:documentation>Source system that publishes the message.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="MessagePayload">
+		<xs:sequence>
+			<xs:element name="GeneratingBid" type="m:GeneratingBid" minOccurs="0" maxOccurs="unbounded"/>
+			<xs:element name="LoadBid" type="m:LoadBid" minOccurs="0" maxOccurs="unbounded"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="GeneratingBid">
+		<xs:sequence>
+			<xs:element name="description" type="m:description" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Description of the object or instance.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="name" type="m:name" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Unique name among objects owned by the same parent.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="mrid" type="xs:string" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>MRID stands for master resource identifier which should be globally unique.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="startTime" type="xs:dateTime" minOccurs="1">
+				<xs:annotation>
+					<xs:documentation>Start time and date for which bid applies.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="stopTime" type="xs:dateTime" minOccurs="1">
+				<xs:annotation>
+					<xs:documentation>Stop time and date for which bid is applicable.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="dayType" type="m:DayType" minOccurs="0" maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>The day type, ALL, HOLIDAY, MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY or SUNDAY if the bid is a Standing Bid.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="RegisteredGenerator" type="m:RegisteredGeneratorNmReq" minOccurs="1" maxOccurs="1"/>
+			<xs:element name="MarketParticipant" type="m:MarketParticipantNmReq" minOccurs="1" maxOccurs="1"/>
+			<xs:element name="ProductBid" type="m:ProductBid_G" minOccurs="1" maxOccurs="unbounded">
+				<xs:annotation>
+					<xs:documentation>Component of a bid that pertains to one market product.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="RampRateCurve" type="m:RampRateCurve" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="ReserveRampRate" type="m:ReserveRampRate" minOccurs="0" maxOccurs="1"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:simpleType name="description">
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="32"/>
+			<xs:minLength value="1"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="noncompliance">
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="256"/>
+			<xs:minLength value="0"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="name">
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="32"/>
+			<xs:minLength value="1"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="DayType">
+		<xs:annotation>
+			<xs:documentation>day type</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="ALL"/>
+			<xs:enumeration value="HOLIDAY"/>
+			<xs:enumeration value="MONDAY"/>
+			<xs:enumeration value="TUESDAY"/>
+			<xs:enumeration value="WEDNESDAY"/>
+			<xs:enumeration value="THURSDAY"/>
+			<xs:enumeration value="FRIDAY"/>
+			<xs:enumeration value="SATURDAY"/>
+			<xs:enumeration value="SUNDAY"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="YesNo">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="YES"/>
+			<xs:enumeration value="NO"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:complexType name="RegisteredGeneratorNmReq">
+		<xs:sequence>
+			<xs:element name="mrid" type="m:mrid" minOccurs="1">
+				<xs:annotation>
+					<xs:documentation>MRID stands for master resource identifier which should be globally unique.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:simpleType name="mrid">
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="32"/>
+			<xs:minLength value="1"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:complexType name="MarketParticipantNmReq">
+		<xs:sequence>
+			<xs:element name="mrid" type="m:mrid" minOccurs="1">
+				<xs:annotation>
+					<xs:documentation>MRID stands for master resource identifier which should be globally unique.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="ProductBid_G">
+		<xs:sequence>
+			<xs:element name="description" type="m:description" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Description of the object or instance.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="MarketProduct" type="m:RawBidSetMarketProduct" minOccurs="0" maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>MarketProduct provides the details about the market product type</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="BidSchedule" type="m:BidSchedule" minOccurs="0" maxOccurs="24">
+				<xs:annotation>
+					<xs:documentation>Defines bid schedules to allow a product bid to use specified bid price curves for different time intervals.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="Nomination" type="m:NominationRawBid" minOccurs="0" maxOccurs="24">
+				<xs:annotation>
+					<xs:documentation>Defines values that can be changed hourly within a bid.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="RawBidSetMarketProduct">
+		<xs:sequence>
+			<xs:element name="description" type="m:description" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Description of the object or instance.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="marketProductType" type="m:marketProductType" minOccurs="1">
+				<xs:annotation>
+					<xs:documentation>Market product type includes: EN (Energy) RU (Regulation Raise Reserve) RD (Regulation Lower Reserve) FR (Fast Contingency Raise Reserve) FL (Fast Contingency Lower Reserve) SR (Slow Contingency Raise Reserve) SL (Slow Contingency Lower Reserve) DR (Delayed Contingency Raise Reserve) DL (Delayed Contingency Lower Reserve)</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:simpleType name="marketProductType">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="EN"/>
+			<xs:enumeration value="RU"/>
+			<xs:enumeration value="RD"/>
+			<xs:enumeration value="FR"/>
+			<xs:enumeration value="FL"/>
+			<xs:enumeration value="SR"/>
+			<xs:enumeration value="SL"/>
+			<xs:enumeration value="DR"/>
+			<xs:enumeration value="DL"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:complexType name="NominationRawBid">
+		<xs:sequence>
+			<xs:element name="timeIntervalStart" type="xs:dateTime" minOccurs="1">
+				<xs:annotation>
+					<xs:documentation>Start of the time interval in which bid is valid (yyyy-mm-dd hh24: mi: ss).</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="timeIntervalEnd" type="xs:dateTime" minOccurs="1">
+				<xs:annotation>
+					<xs:documentation>End of the time interval in which bid is valid (yyyy-mm-dd hh24: mi: ss)</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="hourMW" type="xs:float" minOccurs="0" maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>MW quantity value that applies to the hour</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="minuteMW" type="m:MinuteMW" minOccurs="0" maxOccurs="unbounded">
+				<xs:annotation>
+					<xs:documentation>MW quantity values that applies to minute intervals</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="MinuteMW">
+		<xs:sequence>
+			<xs:element name="minuteOfHour" type="xs:integer" minOccurs="1">
+				<xs:annotation>
+					<xs:documentation>Minute of the hour of the day for which the MW is provided</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="quantity" type="xs:float" minOccurs="1">
+				<xs:annotation>
+					<xs:documentation>MW quantity value</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="BidSchedule">
+		<xs:sequence>
+			<xs:element name="description" type="m:description" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Description of the object or instance.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="timeIntervalStart" type="xs:dateTime" minOccurs="1">
+				<xs:annotation>
+					<xs:documentation>Start of the time interval in which bid is valid (yyyy-mm-dd hh24: mi: ss).</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="timeIntervalEnd" type="xs:dateTime" minOccurs="1">
+				<xs:annotation>
+					<xs:documentation>End of the time interval in which bid is valid (yyyy-mm-dd hh24: mi: ss)</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="noncomplianceReason" type="m:noncompliance" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Noncompliance reason if necessary</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="BidPriceCurve" type="m:BidPriceCurve" minOccurs="0" maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>Relationship between unit operating price in $/hour (Y-axis) and unit output in MW (X-axis).</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="BatteryPSPriceCurve" type="m:BidPriceCurve" minOccurs="0" maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>Relationship between unit operating price in $/hour (Y-axis) and unit output in MW (X-axis).</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="BidPriceCurve">
+		<xs:sequence>
+			<xs:element name="description" type="m:description" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Description of the object or instance.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="mrid" type="m:mrid" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>MRID stands for master resource identifier which should be globally unique.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="CurveSchedData" type="m:RawBidPriceCurveSchedData" minOccurs="1" maxOccurs="20">
+				<xs:annotation>
+					<xs:documentation>Data point values for defining a curve or schedule</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="RawBidPriceCurveSchedData">
+		<xs:sequence>
+			<xs:element name="xAxisData" type="xs:float" minOccurs="1">
+				<xs:annotation>
+					<xs:documentation>The data value of the X-axis variable,  depending on the X-axis units</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="y1AxisData" type="m:y1AxisData" minOccurs="1">
+				<xs:annotation>
+					<xs:documentation>The data value of the  first Y-axis variable, depending on the Y-axis units</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:simpleType name="y1AxisData">
+		<xs:restriction base="xs:float">
+			<xs:pattern value="[\-+]?[\d]+\.?\d?\d?"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:complexType name="RampRateCurve">
+		<xs:sequence>
+			<xs:element name="description" type="m:description" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Description of the object or instance.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="CurveData" type="m:RampRtCurveData" minOccurs="1" maxOccurs="5">
+				<xs:annotation>
+					<xs:documentation>Data point values for defining a curve</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="RampRtCurveData">
+		<xs:sequence>
+			<xs:element name="xAxisData" type="xs:float" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>The Operating MW</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="y1AxisData" type="xs:float" minOccurs="1">
+				<xs:annotation>
+					<xs:documentation>The Ramp Up rate in MW/Minute</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="y2AxisData" type="xs:float" minOccurs="1">
+				<xs:annotation>
+					<xs:documentation>The Ramp Down rate in MW/Minute</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="ReserveRampRate">
+		<xs:sequence>
+			<xs:element name="description" type="m:description" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Description of the object or instance.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="ReserveData" type="m:ReserveData" minOccurs="0" maxOccurs="8">
+				<xs:annotation>
+					<xs:documentation>Set of daily AS Reserve Ramp Rates</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="ReserveData">
+		<xs:sequence>
+			<xs:element name="marketProductType" type="m:marketProductType" minOccurs="1"/>
+			<xs:element name="quantity" type="xs:float" minOccurs="1">
+				<xs:annotation>
+					<xs:documentation>The Reserve Ramp Rate Quantity</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="LoadBid">
+		<xs:sequence>
+			<xs:element name="description" type="m:description" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Description of the object or instance.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="name" type="m:name" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Unique name among objects owned by the same parent.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="mrid" type="xs:string" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>MRID stands for master resource identifier which should be globally unique.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="startTime" type="xs:dateTime" minOccurs="1">
+				<xs:annotation>
+					<xs:documentation>Start time and date for which bid applies.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="stopTime" type="xs:dateTime" minOccurs="1">
+				<xs:annotation>
+					<xs:documentation>Stop time and date for which bid is applicable.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="dayType" type="m:DayType" minOccurs="0" maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>The day type, ALL, HOLIDAY, or WORKDAY if the bid is a Standing Bid.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="RegisteredLoad" type="m:RegisteredLoadNmReq" minOccurs="1" maxOccurs="1"/>
+			<xs:element name="MarketParticipant" type="m:MarketParticipantNmReq" minOccurs="1" maxOccurs="1"/>
+			<xs:element name="ProductBid" type="m:ProductBid_L" minOccurs="1" maxOccurs="unbounded">
+				<xs:annotation>
+					<xs:documentation>Component of a bid that pertains to one market product.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="RampRateCurve" type="m:RampRateCurve" minOccurs="0" maxOccurs="1"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="RegisteredLoadNmReq">
+		<xs:sequence>
+			<xs:element name="mrid" type="m:mrid" minOccurs="1">
+				<xs:annotation>
+					<xs:documentation>MRID stands for master resource identifier which should be globally unique.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="ProductBid_L">
+		<xs:sequence>
+			<xs:element name="description" type="m:description" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Description of the object or instance.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="MarketProduct" type="m:RawBidSetMarketProduct" minOccurs="0" maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>MarketProduct provides the details about the market product type</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="BidSchedule" type="m:BidSchedule" minOccurs="0" maxOccurs="24">
+				<xs:annotation>
+					<xs:documentation>Defines bid schedules to allow a product bid to use specified bid price curves for different time intervals.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="Nomination" type="m:NominationRawBid" minOccurs="0" maxOccurs="24">
+				<xs:annotation>
+					<xs:documentation>Defines values that can be changed hourly within a bid.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+</xs:schema>

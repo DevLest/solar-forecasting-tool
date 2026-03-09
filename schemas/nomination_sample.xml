@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<m:RawBidSet xmlns:m="http://pemc/soa/RawBidSet.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://pemc/soa/RawBidSet.xsd RawBidSet.xsd">
+ <m:MessageHeader>
+  <m:TimeDate>CREATED_DATE</m:TimeDate>
+  <m:Source>Default</m:Source>
+ </m:MessageHeader>
+ <m:MessagePayload>
+  <m:GeneratingBid>
+   <m:name>RESOURCE_ID</m:name>
+   <m:startTime>START_TIME_UTC</m:startTime>
+   <m:stopTime>END_TIME_UTC</m:stopTime>
+   <m:RegisteredGenerator>
+    <m:mrid>RESOURCE_ID</m:mrid>
+   </m:RegisteredGenerator>
+   <m:MarketParticipant>
+    <m:mrid>TP_USER</m:mrid>
+   </m:MarketParticipant>
+   <m:ProductBid>
+    <m:Nomination>
+     <m:timeIntervalStart>INTERVAL_START_TIME_UTC</m:timeIntervalStart>
+     <m:timeIntervalEnd>INTERVAL_END_TIME_UTC</m:timeIntervalEnd>
+     <m:minuteMW>
+      <m:minuteOfHour>MINUTE</m:minuteOfHour>
+      <m:quantity>QUANTITY</m:quantity>
+     </m:minuteMW>
+    </m:Nomination>
+   </m:ProductBid>
+  </m:GeneratingBid>
+ </m:MessagePayload>
+</m:RawBidSet>

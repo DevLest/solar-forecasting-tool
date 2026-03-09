@@ -1,0 +1,27 @@
+How to run the Day Ahead Nomination app
+========================================
+
+Option 1 – Double‑click the batch file (easiest)
+------------------------------------------------
+Double‑click:  Run Day Ahead Nomination.bat
+
+This tries to start Python and open the app. If you see "Python was not found", use Option 2.
+
+Option 2 – Install or fix Python, then run
+-------------------------------------------
+1. Install Python 3 from https://www.python.org/downloads/
+   - In the installer, check "Add Python to PATH", then finish setup.
+
+2. Run the app in one of these ways:
+   - Double‑click  Run Day Ahead Nomination.bat
+   - Or open Command Prompt in this folder and run:
+       py main_nomination.py
+     or (if that fails):
+       python main_nomination.py
+
+"Choose an app to use" when double‑clicking .py
+-----------------------------------------------
+Windows shows this when no program is set to open .py files. You don’t need to open .py files directly.
+
+- Use  Run Day Ahead Nomination.bat  instead (Option 1).
+- Or, if you want .py to open with Python: right‑click main_nomination.py → Open with → Choose another app → Python → check "Always use this app".
