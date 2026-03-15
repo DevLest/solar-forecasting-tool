@@ -1583,8 +1583,12 @@
 
     document.getElementById('btn-weather').addEventListener('click', function() {
       var btn = this;
+      var originalText = btn.textContent;
       btn.disabled = true;
-      var d = new Date().toISOString().slice(0, 10);
+      btn.textContent = 'Loading…';
+      btn.classList.add('opacity-75', 'cursor-not-allowed');
+      var dateInput = document.getElementById('forecast-ref-date');
+      var d = (dateInput && dateInput.value) ? dateInput.value : new Date().toISOString().slice(0, 10);
       fetch('/api/weather-forecast', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1612,7 +1616,11 @@
         .catch(function(err) {
           alert('Cannot reach /api/weather-forecast. Start the dashboard with: python run_dashboard.py');
         })
-        .finally(function() { btn.disabled = false; });
+        .finally(function() {
+          btn.disabled = false;
+          btn.textContent = originalText;
+          btn.classList.remove('opacity-75', 'cursor-not-allowed');
+        });
     });
 
     ['link-privacy', 'link-status', 'link-support'].forEach(id => {
