@@ -784,9 +784,9 @@
       var percentInp = document.getElementById('percent-value');
       var pct = percentInp ? parseFloat(percentInp.value) : 100;
       if (isNaN(pct) || pct <= 0) pct = 100;
-      var low = dayAheadHourly.map(function(v) { return clampMw(v * (pct * 0.1) / 100); });
-      var mid = dayAheadHourly.map(function(v) { return clampMw(v * (pct * 0.5) / 100); });
-      var high = dayAheadHourly.map(function(v) { return clampMw(v * (pct * 0.9) / 100); });
+      var low = dayAheadHourly.map(function(v) { return clampMw(v * (pct * 0.9) / 100); });
+      var mid = dayAheadHourly.map(function(v) { return clampMw(v * (pct * 1.0) / 100); });
+      var high = dayAheadHourly.map(function(v) { return clampMw(v * (pct * 1.1) / 100); });
       return { low: low, mid: mid, high: high };
     }
 
@@ -825,7 +825,7 @@
     }
 
     /** Multipliers for Low/Mid/High: P10 = percent×0.1, P50 = percent×0.5, P90 = percent×0.9. */
-    var MODE_MULTIPLIER = { low: 0.1, mid: 0.5, high: 0.9, custom: 1.0 };
+    var MODE_MULTIPLIER = { low: 0.9, mid: 1.0, high: 1.1, custom: 1.0 };
 
     /** Fill RTD from Day Ahead using: (percentage × mode multiplier). P10=×0.1, P50=×0.5, P90=×0.9. Custom: do not overwrite RTD inputs. */
     function applyPercentageToRtd() {
