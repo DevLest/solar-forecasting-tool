@@ -12,7 +12,7 @@ import sys
 import urllib.error
 import urllib.request
 import webbrowser
-from datetime import date
+from datetime import date, datetime
 
 PORT = 8765
 DASHBOARD_FILE = "dashboard.html"
@@ -21,6 +21,8 @@ KEY_FILE = os.path.join(SCRIPT_DIR, "openai_api_key.txt")
 ACCUWEATHER_KEY_FILE = os.path.join(SCRIPT_DIR, "accuweather_api_key.txt")
 DATA_DIR = os.path.join(SCRIPT_DIR, "data")
 CACHE_PREFIX = "weather_forecast_"
+HISTORICAL_EXPORTS_FILE = os.path.join(DATA_DIR, "historical_exports.json")
+MAX_HISTORY_DAYS = 7
 
 # Plant limit — system rejects / caps above this (MW)
 PLANT_MAX_MW = 50.0
@@ -387,6 +389,72 @@ def get_weather_forecast(target_date: str, force_refresh: bool = False) -> dict:
     return result
 
 
+def load_historical_exports() -> list:
+    """Load historical exports from JSON file. Returns list of records (newest last)."""
+    if not os.path.isfile(HISTORICAL_EXPORTS_FILE):
+        return []
+    try:
+        with open(HISTORICAL_EXPORTS_FILE, encoding="utf-8") as f:
+            data = json.load(f)
+        return data if isinstance(data, list) else []
+    except (json.JSONDecodeError, OSError):
+        return []
+
+
+def _forecast_date_key(record: dict):
+    """Return YYYY-MM-DD for this record, or None. One export per forecast date."""
+    iso = record.get("forecastRefDateIso") or record.get("forecastRefDateIso")
+    if iso and isinstance(iso, str) and len(iso) >= 10:
+        return iso[:10]
+    # Try parsing forecastRefDate (e.g. "March 15, 2026")
+    ref = record.get("forecastRefDate")
+    if not ref:
+        return None
+    try:
+        from datetime import datetime as dt
+        d = dt.strptime(str(ref).strip(), "%B %d, %Y")
+        return d.strftime("%Y-%m-%d")
+    except (ValueError, TypeError):
+        pass
+    return None
+
+
+def save_historical_export(record: dict) -> list:
+    """
+    Replace existing export for the same forecast date, then add this record. Trim to last MAX_HISTORY_DAYS.
+    Only one export per forecast date. record should include 'exportedAt' and 'forecastRefDateIso' (YYYY-MM-DD).
+    """
+    from datetime import timedelta
+
+    date_key = _forecast_date_key(record)
+    records = load_historical_exports()
+    if date_key:
+        records = [r for r in records if _forecast_date_key(r) != date_key]
+    records.append(record)
+
+    cutoff = datetime.utcnow() - timedelta(days=MAX_HISTORY_DAYS)
+
+    def keep(r):
+        t = r.get("exportedAt") or r.get("savedAt") or ""
+        if not t:
+            return True
+        try:
+            d = datetime.fromisoformat(t.replace("Z", "+00:00"))
+            if d.tzinfo:
+                d = (d - d.utcoffset()).replace(tzinfo=None)
+            return d >= cutoff
+        except (ValueError, TypeError):
+            return True
+
+    records = [r for r in records if keep(r)]
+    records.sort(key=lambda r: (r.get("exportedAt") or r.get("savedAt") or ""))
+
+    os.makedirs(DATA_DIR, exist_ok=True)
+    with open(HISTORICAL_EXPORTS_FILE, "w", encoding="utf-8") as f:
+        json.dump(records, f, indent=2, ensure_ascii=False)
+    return records
+
+
 class DashboardHandler(http.server.SimpleHTTPRequestHandler):
     def end_headers(self):
         self.send_header("Cache-Control", "no-store, no-cache, must-revalidate")
@@ -396,14 +464,41 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
         super().end_headers()
 
     def do_OPTIONS(self):
-        if self.path.startswith("/api/weather-forecast"):
+        if self.path.startswith("/api/"):
             self.send_response(204)
             self.end_headers()
         else:
             super().do_OPTIONS()
 
     def do_POST(self):
-        if self.path.split("?")[0] != "/api/weather-forecast":
+        path = self.path.split("?")[0]
+        if path == "/api/save-export":
+            length = int(self.headers.get("Content-Length", 0) or 0)
+            raw = self.rfile.read(length).decode("utf-8") if length else "{}"
+            try:
+                data = json.loads(raw) if raw else {}
+            except json.JSONDecodeError:
+                data = {}
+            if not data.get("exportedAt"):
+                data["exportedAt"] = datetime.now().isoformat()
+            try:
+                records = save_historical_export(data)
+                body = json.dumps({"ok": True, "count": len(records)}).encode("utf-8")
+            except Exception as e:
+                body = json.dumps({"ok": False, "error": str(e)}).encode("utf-8")
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+                return
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
+        if path != "/api/weather-forecast":
             self.send_error(404)
             return
         length = int(self.headers.get("Content-Length", 0) or 0)
@@ -423,6 +518,19 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_GET(self):
+        path = self.path.split("?")[0]
+        if path == "/api/historical-exports":
+            try:
+                records = load_historical_exports()
+                body = json.dumps(records, indent=2).encode("utf-8")
+            except Exception as e:
+                body = json.dumps({"error": str(e)}).encode("utf-8")
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
         if self.path == "/" or self.path == "" or self.path == "/index.html":
             self.path = "/" + DASHBOARD_FILE
         return http.server.SimpleHTTPRequestHandler.do_GET(self)
@@ -439,6 +547,7 @@ def main():
         url = f"http://127.0.0.1:{PORT}/"
         print(f"Serving dashboard at {url}")
         print(f"Plant cap: {int(PLANT_MAX_MW)} MW | Weather: 1 OpenAI call/day/date (cached in data/)")
+        print(f"Export history: up to {MAX_HISTORY_DAYS} days saved to {HISTORICAL_EXPORTS_FILE}")
         if get_openai_key():
             print("OpenAI: API key loaded.")
         else:

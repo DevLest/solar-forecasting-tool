@@ -37,7 +37,15 @@
       border: 1px solid #334155;
     }
     .matrix-table tr:nth-child(even) { background-color: rgba(51, 65, 85, 0.3); }
+    .matrix-table-vre td, .matrix-table-vre th {
+      padding: 0.4rem 0.6rem;
+      font-size: 0.8125rem;
+    }
+    .matrix-table-vre .text-brand-accent { color: #10b981; }
     .legend-dash { border-style: dashed; }
+    #confirmation-modal[open] { display: flex; }
+    #confirmation-modal { display: none; align-items: center; justify-content: center; position: fixed; inset: 0; z-index: 100; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(4px); }
+    #confirmation-modal .modal-panel { background: #1e293b; border: 1px solid #334155; border-radius: 1rem; max-width: 28rem; width: 90%; max-height: 90vh; overflow: auto; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); }
   </style>
 </head>
 <body class="bg-brand-dark text-brand-text font-sans antialiased min-h-screen flex flex-col">
@@ -45,17 +53,25 @@
     <div class="flex items-center space-x-4">
       <div class="p-2 bg-brand-accent rounded-lg">
         <svg class="h-6 w-6 text-brand-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m12.728 0l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707-.707M6.343 6.343l-.707-.707" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+          <path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m12.728 0l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707-.707M6.343 6.343l-.707-.707" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
         </svg>
       </div>
       <div>
-        <h1 class="text-3xl font-bold tracking-widest text-brand-accent uppercase">ARECO 65MW SOLAR</h1>
+        <h1 class="text-4xl font-bold tracking-widest text-brand-accent uppercase">ARECO 65MW SOLAR</h1>
         <p class="text-xs text-brand-muted tracking-widest uppercase">WESM Nomination Dashboard</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-6">
+      <div id="navbar-current-time" class="text-2xl font-bold font-mono text-brand-accent tabular-nums" title="Current time"></div>
+      <div class="flex items-baseline gap-2 border-l border-brand-border pl-6">
+        <span class="text-xs text-brand-muted uppercase tracking-wider">RTD Nomination</span>
+        <span id="navbar-rtd-mw" class="text-xl font-bold font-mono text-brand-accent tabular-nums">—</span>
+        <span class="text-xs text-brand-muted">MW</span>
       </div>
     </div>
   </header>
 
-  <main class="flex-grow p-6 space-y-6 max-w-[1600px] mx-auto w-full">
+  <main class="flex-grow p-6 space-y-3 max-w-[1600px] mx-auto w-full">
     <div class="grid grid-cols-12 gap-6">
       <section class="col-span-12 lg:col-span-3 self-start bg-brand-card rounded-xl border border-brand-border p-4 shadow-xl overflow-hidden flex flex-col min-h-0 h-[33.5rem]">
         <h3 class="text-sm font-semibold mb-2 text-brand-muted uppercase tracking-wider">Interval Data</h3>
@@ -124,7 +140,7 @@
           </div>
           <div class="text-right">
             <div class="text-xs text-brand-muted uppercase">Forecast Ref</div>
-            <div id="forecast-ref-date" class="text-sm font-semibold">March 15, 2026</div>
+            <input type="date" id="forecast-ref-date" class="text-sm font-semibold bg-brand-dark border border-brand-border rounded px-2 py-1 text-right [color-scheme:dark]" value="2026-03-15" title="Forecast date for this nomination. Past dates are not selectable."/>
           </div>
         </section>
 
@@ -197,59 +213,82 @@
       </section>
     </div>
 
-    <section class="bg-brand-card rounded-xl border border-brand-border overflow-hidden shadow-xl">
-      <div class="px-6 py-4 border-b border-brand-border">
-        <h3 class="text-sm font-bold uppercase tracking-widest text-brand-muted">Resource Nomination History</h3>
-      </div>
-      <div class="overflow-x-auto">
-        <table class="w-full text-xs text-left">
-          <thead class="bg-brand-dark/50 text-brand-muted border-b border-brand-border">
-            <tr>
-              <th class="px-6 py-3 font-semibold uppercase">Start</th>
-              <th class="px-6 py-3 font-semibold uppercase">Type</th>
-              <th class="px-6 py-3 font-semibold uppercase">Resource</th>
-              <th class="px-6 py-3 font-semibold uppercase">Market Participant</th>
-              <th class="px-6 py-3 font-semibold uppercase">Trading Participant</th>
-              <th class="px-6 py-3 font-semibold uppercase">Submitted</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-brand-border/30">
-            <tr class="hover:bg-brand-border/10"><td class="px-6 py-3 text-brand-accent">03/10/2026</td><td class="px-6 py-3">Generator</td><td class="px-6 py-3">06VISTASOL_G01</td><td class="px-6 py-3">ARECO_01</td><td class="px-6 py-3">ARECO</td><td class="px-6 py-3 text-brand-muted">03/10/2026 16:38:40</td></tr>
-            <tr class="hover:bg-brand-border/10"><td class="px-6 py-3 text-brand-accent">03/17/2026</td><td class="px-6 py-3">Generator</td><td class="px-6 py-3">06VISTASOL_G01</td><td class="px-6 py-3">ARECO_01</td><td class="px-6 py-3">ARECO</td><td class="px-6 py-3 text-brand-muted">03/10/2026 03:16:58</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <section class="bg-brand-card rounded-xl border border-brand-border p-6 shadow-xl">
-      <div class="flex justify-between items-center mb-6 flex-wrap gap-4">
-        <h3 class="text-lg font-bold uppercase tracking-wider">VRE Table</h3>
-        <div class="flex items-center gap-4">
-          <label class="text-[10px] text-brand-muted uppercase">Plant name for export</label>
-          <input type="text" id="vre-plant-name" value="Vista Alegre Solar Power Plant" class="bg-brand-dark border border-brand-border rounded px-3 py-1.5 text-sm w-64" placeholder="e.g. Vista Alegre Solar Power Plant" title="Used in VRE CSV filename: VRE_NOM_{name}_{date}.csv"/>
-          <button type="button" id="btn-export-vre-csv" class="bg-brand-accent hover:bg-brand-accent/80 text-brand-dark px-4 py-2 rounded font-bold text-sm uppercase tracking-tighter">Export CSV</button>
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-3">
+      <section class="lg:col-span-5 bg-brand-card rounded-xl border border-brand-border overflow-hidden shadow-xl">
+        <div class="px-6 py-4 border-b border-brand-border flex justify-between items-center">
+          <h3 class="text-sm font-bold uppercase tracking-widest text-brand-muted">Resource Nomination History</h3>
+          <button type="button" id="btn-refresh-history" class="text-[10px] uppercase font-semibold text-brand-accent hover:text-brand-accent/80 transition-colors">Refresh</button>
         </div>
+        <p class="text-[9px] text-brand-muted px-6 py-1">Click a row to load that export into the dashboard (intervals, %, forecast date, etc.).</p>
+        <div class="overflow-x-auto max-h-52 overflow-y-auto">
+          <table class="w-full text-xs text-left">
+            <thead class="bg-brand-dark/50 text-brand-muted border-b border-brand-border sticky top-0">
+              <tr>
+                <th class="px-4 py-2 font-semibold uppercase">Exported</th>
+                <th class="px-4 py-2 font-semibold uppercase">Forecast date</th>
+                <th class="px-4 py-2 font-semibold uppercase">Intervals</th>
+                <th class="px-4 py-2 font-semibold uppercase">RTD %</th>
+                <th class="px-4 py-2 font-semibold uppercase">Mode</th>
+              </tr>
+            </thead>
+            <tbody id="history-tbody" class="divide-y divide-brand-border/30">
+              <tr><td colspan="5" class="px-4 py-4 text-brand-muted text-center">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="lg:col-span-7 bg-brand-card rounded-xl border border-brand-border p-6 shadow-xl">
+        <div class="flex justify-between items-center mb-4 flex-wrap gap-4">
+          <h3 class="text-xl font-bold uppercase tracking-wider text-brand-accent">VRE Table</h3>
+          <div class="flex items-center gap-4">
+            <label class="text-[10px] text-brand-muted uppercase">Plant name for export</label>
+            <input type="text" id="vre-plant-name" value="Vista Alegre Solar Power Plant" class="bg-brand-dark border border-brand-border rounded px-3 py-1.5 text-sm w-64" placeholder="e.g. Vista Alegre Solar Power Plant" title="Used in VRE CSV filename: VRE_NOM_{name}_{date}.csv"/>
+            <button type="button" id="btn-export-vre-csv" class="bg-brand-accent hover:bg-brand-accent/80 text-brand-dark px-4 py-2 rounded font-bold text-sm uppercase tracking-tighter">Export CSV</button>
+          </div>
+        </div>
+        <p class="text-[10px] text-brand-muted mb-3">VRE_NOM = average per hour from Day Ahead data. Hours 1–24.</p>
+        <div class="overflow-x-auto">
+          <table class="w-full border-collapse matrix-table matrix-table-vre text-sm" id="vre-table">
+            <thead>
+              <tr class="bg-brand-dark/50">
+                <th class="text-brand-muted py-2">PLT_CODE</th>
+                <th class="text-brand-muted py-2">DELIVERY_DATE</th>
+                <th class="text-brand-muted py-2">DELIVERY_HOUR</th>
+                <th class="text-brand-muted py-2">UNIT_NO</th>
+                <th class="text-brand-muted py-2">VRE_NOM</th>
+                <th class="text-brand-muted py-2">DEPENDABLE_CAPACITY</th>
+              </tr>
+            </thead>
+            <tbody id="vre-tbody">
+              <!-- filled by JS from Day Ahead hourly averages -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <section class="bg-brand-card rounded-xl border border-brand-border overflow-hidden shadow-xl" id="analytics-section">
+      <div class="px-6 py-4 border-b border-brand-border">
+        <h3 class="text-sm font-bold uppercase tracking-widest text-brand-muted">Analytics from history</h3>
+        <p class="text-[9px] text-brand-muted mt-1">Derived from saved exports (server). Refresh history to update.</p>
       </div>
-      <p class="text-[10px] text-brand-muted mb-4">VRE_NOM = average per hour from Day Ahead data. Hours 1–24.</p>
-      <div class="overflow-x-auto">
-        <table class="w-full border-collapse matrix-table" id="vre-table">
-          <thead>
-            <tr class="bg-brand-dark/50">
-              <th class="text-brand-muted">PLT_CODE</th>
-              <th class="text-brand-muted">DELIVERY_DATE</th>
-              <th class="text-brand-muted">DELIVERY_HOUR</th>
-              <th class="text-brand-muted">UNIT_NO</th>
-              <th class="text-brand-muted">VRE_NOM</th>
-              <th class="text-brand-muted">DEPENDABLE_CAPACITY</th>
-            </tr>
-          </thead>
-          <tbody id="vre-tbody">
-            <!-- filled by JS from Day Ahead hourly averages -->
-          </tbody>
-        </table>
+      <div id="analytics-cards" class="p-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+        <!-- filled by JS -->
       </div>
     </section>
   </main>
+
+  <div id="confirmation-modal" role="dialog" aria-modal="true" aria-labelledby="confirmation-modal-title">
+    <div class="modal-panel p-6">
+      <h2 id="confirmation-modal-title" class="text-sm font-bold uppercase tracking-wider text-brand-muted mb-3"></h2>
+      <div id="confirmation-modal-body" class="text-sm text-brand-text mb-6 whitespace-pre-wrap"></div>
+      <div class="flex justify-end gap-3">
+        <button type="button" id="confirmation-modal-cancel" class="px-4 py-2 rounded-lg border border-brand-border text-brand-muted hover:bg-brand-border/20 text-sm font-medium">Cancel</button>
+        <button type="button" id="confirmation-modal-confirm" class="px-4 py-2 rounded-lg bg-brand-accent text-brand-dark font-semibold text-sm hover:bg-brand-accent/90">Confirm</button>
+      </div>
+    </div>
+  </div>
 
   <footer class="border-t border-brand-border p-6 text-center text-[10px] text-brand-muted uppercase tracking-[0.2em] space-y-4">
     <div>© 2024 ARECO Solar Management Systems. Data updated in real-time.</div>
@@ -261,6 +300,55 @@
   </footer>
 
   <script>
+    (function confirmationModal() {
+      var overlay = document.getElementById('confirmation-modal');
+      var titleEl = document.getElementById('confirmation-modal-title');
+      var bodyEl = document.getElementById('confirmation-modal-body');
+      var cancelBtn = document.getElementById('confirmation-modal-cancel');
+      var confirmBtn = document.getElementById('confirmation-modal-confirm');
+      var currentOpts = {};
+
+      function closeModal() {
+        if (overlay) overlay.removeAttribute('open');
+        if (overlay) overlay.style.display = 'none';
+        currentOpts = {};
+      }
+
+      function openModal() {
+        if (overlay) overlay.setAttribute('open', '');
+        if (overlay) overlay.style.display = 'flex';
+      }
+
+      window.showConfirmationModal = function(opts) {
+        opts = opts || {};
+        currentOpts = opts;
+        if (titleEl) titleEl.textContent = opts.title || 'Confirm';
+        if (bodyEl) {
+          if (typeof opts.body === 'string' && opts.body.indexOf('<') >= 0) bodyEl.innerHTML = opts.body;
+          else bodyEl.textContent = opts.body != null ? opts.body : '';
+        }
+        if (confirmBtn) {
+          confirmBtn.textContent = opts.confirmLabel != null ? opts.confirmLabel : 'Confirm';
+          confirmBtn.style.display = '';
+        }
+        if (cancelBtn) {
+          cancelBtn.style.display = opts.hideCancel ? 'none' : '';
+          cancelBtn.textContent = opts.cancelLabel != null ? opts.cancelLabel : 'Cancel';
+        }
+        openModal();
+      };
+
+      function onConfirm() {
+        if (typeof currentOpts.onConfirm === 'function') currentOpts.onConfirm();
+        closeModal();
+      }
+      function onCancel() { closeModal(); }
+
+      if (confirmBtn) confirmBtn.addEventListener('click', onConfirm);
+      if (cancelBtn) cancelBtn.addEventListener('click', onCancel);
+      if (overlay) overlay.addEventListener('click', function(e) { if (e.target === overlay) onCancel(); });
+    })();
+
     const STORAGE_KEY = 'areco_forecast_import';
     const LIVE_STREAM_STORAGE_KEY = 'areco_live_stream_url';
     const DEFAULT_LIVE_STREAM_URL = 'https://vdo.ninja/?view=2vNAR9X';
@@ -282,6 +370,7 @@
     var intervalsData = [];
     var selectedInterval = null;
     var rtdData = Array(25).fill(0);
+    var historicalExportsList = [];
 
     function idbOpen() {
       return new Promise(function(resolve, reject) {
@@ -316,6 +405,31 @@
       }).catch(function() { return null; });
     }
 
+    /** Read forecast ref date from the date picker (YYYY-MM-DD). */
+    function getForecastRefDateString() {
+      var el = document.getElementById('forecast-ref-date');
+      return el ? (el.value || '').trim() : '';
+    }
+
+    /** Parse any date string to YYYY-MM-DD for the date input (handles legacy "Month dd, YYYY" from storage). */
+    function toIsoDateString(str) {
+      if (!str || typeof str !== 'string') return '';
+      var s = str.trim();
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+      var d = new Date(s);
+      if (isNaN(d.getTime())) return '';
+      var y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, '0'), day = String(d.getDate()).padStart(2, '0');
+      return y + '-' + m + '-' + day;
+    }
+
+    /** Format date for display as "Month dd, YYYY" (e.g. March 16, 2026). */
+    function formatDateForDisplay(isoOrAny) {
+      if (!isoOrAny || typeof isoOrAny !== 'string') return '';
+      var d = new Date(isoOrAny.trim());
+      if (isNaN(d.getTime())) return isoOrAny;
+      return d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    }
+
     function showPersistHint() {
       var el = document.getElementById('persist-hint');
       if (!el) return;
@@ -334,14 +448,22 @@
     }
 
     function findPredictedPowerColumn(headers) {
-      const key = headers.findIndex(function(h) {
-        const s = String(h || '').toLowerCase();
-        return s.indexOf('predicted') >= 0 && (s.indexOf('power') >= 0 || s.indexOf('mw') >= 0) ||
-          s === 'power' || s === 'mw' || s === 'power (mw)' || s === 'predicted power';
+      const lower = headers.map(function(h) { return String(h || '').toLowerCase().trim(); });
+      // Prefer column that explicitly says predicted power / day-ahead (Column B in typical files)
+      const preferred = lower.findIndex(function(s) {
+        return (s.indexOf('predicted') >= 0 && (s.indexOf('power') >= 0 || s.indexOf('mw') >= 0)) ||
+          (s.indexOf('day') >= 0 && s.indexOf('ahead') >= 0) ||
+          s === 'power' || s === 'mw' || s === 'power (mw)' || s === 'predicted power' || s === 'day ahead (mw)';
       });
-      return key >= 0 ? key : headers.findIndex(function(h) {
-        return /power|mw|forecast/i.test(String(h || ''));
-      });
+      if (preferred >= 0) return preferred;
+      // Among power/mw/forecast columns, prefer one that suggests "predicted" or "day ahead"
+      const powerLike = lower.map(function(s, i) { return /power|mw|forecast/i.test(s) ? i : -1; }).filter(function(i) { return i >= 0; });
+      for (let j = 0; j < powerLike.length; j++) {
+        const idx = powerLike[j];
+        const s = lower[idx];
+        if (s.indexOf('predicted') >= 0 || (s.indexOf('day') >= 0 && s.indexOf('ahead') >= 0) || s.indexOf('short term') >= 0) return idx;
+      }
+      return powerLike.length ? powerLike[0] : headers.findIndex(function(h) { return /power|mw|forecast/i.test(String(h || '')); });
     }
 
     function findTimeColumn(headers, powerCol) {
@@ -376,6 +498,34 @@
         if (anyTime) hour = parseInt(anyTime[1], 10);
       }
       return (hour >= 0 && hour <= 24) ? hour : NaN;
+    }
+
+    /** Try to parse a date from a filename (e.g. VRE_NOM_Plant_2026-03-16.csv or report_20260316.csv). Returns Date or null. */
+    function parseDateFromFilename(filename) {
+      if (!filename || typeof filename !== 'string') return null;
+      var s = filename.replace(/\.[^.]*$/, ''); // strip extension
+      // YYYY-MM-DD or YYYY_MM_DD
+      var iso = s.match(/(\d{4})[-_](\d{2})[-_](\d{2})/);
+      if (iso) {
+        var d = new Date(parseInt(iso[1], 10), parseInt(iso[2], 10) - 1, parseInt(iso[3], 10));
+        if (!isNaN(d.getTime())) return d;
+      }
+      // YYYYMMDD (8 digits)
+      var compact = s.match(/(\d{4})(\d{2})(\d{2})/);
+      if (compact) {
+        var d2 = new Date(parseInt(compact[1], 10), parseInt(compact[2], 10) - 1, parseInt(compact[3], 10));
+        if (!isNaN(d2.getTime())) return d2;
+      }
+      // DD-MM-YYYY or DD_MM_YYYY (day first when 01-31)
+      var dmy = s.match(/(\d{1,2})[-_](\d{1,2})[-_](\d{4})/);
+      if (dmy) {
+        var day = parseInt(dmy[1], 10), month = parseInt(dmy[2], 10) - 1, year = parseInt(dmy[3], 10);
+        if (day >= 1 && day <= 31 && month >= 0 && month <= 11) {
+          var d3 = new Date(year, month, day);
+          if (!isNaN(d3.getTime())) return d3;
+        }
+      }
+      return null;
     }
 
     /** Get interval label (HH:MM) from datetime. Uses only explicit time, never date. */
@@ -439,10 +589,15 @@
         let hour = NaN;
         if (timeVal instanceof Date) {
           hour = timeVal.getHours();
-          timeLabel = timeVal.toISOString ? timeVal.toISOString().slice(0, 16) : String(timeVal);
+          var min = timeVal.getMinutes();
+          timeLabel = (hour < 10 ? '0' + hour : '' + hour) + ':' + (min < 10 ? '0' + min : '' + min);
         } else if (typeof timeVal === 'number' && timeVal > 1) {
           var d = new Date((timeVal - 25569) * 86400 * 1000);
-          if (!isNaN(d.getTime())) { hour = d.getHours(); timeLabel = d.toISOString ? d.toISOString().slice(0, 16) : String(timeVal); }
+          if (!isNaN(d.getTime())) {
+            hour = d.getHours();
+            var min = d.getMinutes();
+            timeLabel = (hour < 10 ? '0' + hour : '' + hour) + ':' + (min < 10 ? '0' + min : '' + min);
+          }
         }
         if (isNaN(hour)) {
           timeLabel = String(timeVal || '');
@@ -501,7 +656,10 @@
       var ws = document.getElementById('weather-summary');
       if (ws && weatherSummaryText) ws.textContent = weatherSummaryText;
       if (payload.forecastRefDate && document.getElementById('forecast-ref-date')) {
-        document.getElementById('forecast-ref-date').textContent = payload.forecastRefDate;
+        var dateInput = document.getElementById('forecast-ref-date');
+        var iso = toIsoDateString(payload.forecastRefDate) || payload.forecastRefDate;
+        var today = dateInput.getAttribute('min') || (new Date().getFullYear() + '-' + String(new Date().getMonth() + 1).padStart(2, '0') + '-' + String(new Date().getDate()).padStart(2, '0'));
+        if (iso) dateInput.value = iso < today ? today : iso;
       }
       var percentInp = document.getElementById('percent-value');
       if (percentInp && payload.rtdPercent != null) {
@@ -687,6 +845,7 @@
       intervalsData = getIntervalsFromTable();
       saveForecastLocally({ intervals: intervalsData });
       updateRtdChartSeries();
+      if (window.updateNavbarTimeAndInterval) window.updateNavbarTimeAndInterval();
     }
 
     function applyIntervalFilter() {
@@ -719,12 +878,14 @@
             saveForecastLocally({ intervals: intervalsData });
             updateRtdChartSeries();
             renderVreTable();
+            if (window.updateNavbarTimeAndInterval) window.updateNavbarTimeAndInterval();
           });
           rtdIn.addEventListener('input', function() {
             var v = parseFloat(this.value);
             if (!isNaN(v) && (v < 0 || v > PLANT_MAX_MW)) return;
             intervalsData = getIntervalsFromTable();
             updateRtdChartSeries();
+            if (window.updateNavbarTimeAndInterval) window.updateNavbarTimeAndInterval();
           });
         }
       });
@@ -734,6 +895,7 @@
       updateRtdChartSeries();
       renderVreTable();
       applyIntervalFilter();
+      if (window.updateNavbarTimeAndInterval) window.updateNavbarTimeAndInterval();
     }
 
     function buildPersistPayload(extra) {
@@ -746,7 +908,7 @@
       var vrePlantEl = document.getElementById('vre-plant-name');
       var plantNameForVre = (vrePlantEl && vrePlantEl.value && vrePlantEl.value.trim()) ? vrePlantEl.value.trim() : '';
       return {
-        forecastRefDate: extra.forecastRefDate || document.getElementById('forecast-ref-date').textContent,
+        forecastRefDate: extra.forecastRefDate || getForecastRefDateString(),
         nomination: extra.nomination || nomData.slice(),
         intervals: intervals,
         rtdPercent: extra.rtdPercent != null ? extra.rtdPercent : percentVal,
@@ -869,8 +1031,8 @@
     }
 
     function getVreDeliveryDate() {
-      var refEl = document.getElementById('forecast-ref-date');
-      var d = refEl && refEl.textContent ? new Date(refEl.textContent.trim()) : new Date();
+      var refStr = getForecastRefDateString();
+      var d = refStr ? new Date(refStr) : new Date();
       if (isNaN(d.getTime())) d = new Date();
       var m = String(d.getMonth() + 1).padStart(2, '0');
       var day = String(d.getDate()).padStart(2, '0');
@@ -884,7 +1046,7 @@
       var vreRows = getVreHourlyAverages();
       var deliveryDate = getVreDeliveryDate();
       tbody.innerHTML = vreRows.map(function(r) {
-        return '<tr><td>' + PLT_CODE_VRE + '</td><td>' + deliveryDate + '</td><td>' + r.deliveryHour + '</td><td>1</td><td>' + r.vreNom + '</td><td>' + DEPENDABLE_CAPACITY_MW + '</td></tr>';
+        return '<tr><td class="font-mono">' + PLT_CODE_VRE + '</td><td>' + deliveryDate + '</td><td class="font-mono">' + r.deliveryHour + '</td><td>1</td><td class="font-mono text-brand-accent font-semibold">' + r.vreNom + '</td><td class="font-mono">' + DEPENDABLE_CAPACITY_MW + '</td></tr>';
       }).join('');
     }
 
@@ -899,7 +1061,7 @@
       return lines.join('\r\n');
     }
 
-    /** Build lookup (hour, minute) -> MW from table/intervals; used for export. Export always 00:00–23:59. */
+    /** Build lookup (hour, minute) -> MW from table/intervals; used for export. Export always 00:00–23:59. Uses RTD when set, else Day Ahead so export is not all zeros after import. */
     function getRtdLookupForExport() {
       var intervals = getIntervalsFromTable().length ? getIntervalsFromTable() : intervalsData;
       var map = {};
@@ -910,15 +1072,16 @@
         var minute = parts.length > 1 ? parseInt(parts[1], 10) : 0;
         if (isNaN(hour) || hour < 0 || hour > 23) return;
         if (isNaN(minute)) minute = 0;
-        map[hour + ',' + minute] = clampMw(Number(row.rtd) || 0);
+        var rtd = Number(row.rtd) || 0;
+        var dayAhead = Number(row.dayAhead) || 0;
+        map[hour + ',' + minute] = clampMw(rtd > 0 ? rtd : dayAhead);
       });
       return map;
     }
 
     function buildRawBidSetXml() {
       var rtdLookup = getRtdLookupForExport();
-      var refDateEl = document.getElementById('forecast-ref-date');
-      var refDateStr = refDateEl ? refDateEl.textContent.trim() : '';
+      var refDateStr = getForecastRefDateString();
       var bidDate = refDateStr ? new Date(refDateStr) : new Date();
       if (isNaN(bidDate.getTime())) bidDate = new Date();
       var y = bidDate.getFullYear(), m = String(bidDate.getMonth() + 1).padStart(2, '0'), d = String(bidDate.getDate()).padStart(2, '0');
@@ -966,45 +1129,275 @@
       return sb.join('\n');
     }
 
-    document.getElementById('btn-export').addEventListener('click', function() {
-      var xml = buildRawBidSetXml();
-      var blob = new Blob([xml], { type: 'application/xml;charset=utf-8' });
-      var a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      var refEl = document.getElementById('forecast-ref-date');
-      var d = refEl && refEl.textContent ? new Date(refEl.textContent.trim()) : new Date();
+    /** Build snapshot for historical export (saved to server JSON, one per forecast date). */
+    function buildExportSnapshot() {
+      var full = buildPersistPayload({});
+      full.exportedAt = new Date().toISOString();
+      full.vreHourly = getVreHourlyAverages();
+      var refStr = getForecastRefDateString();
+      var d = refStr ? new Date(refStr) : new Date();
+      if (!isNaN(d.getTime())) {
+        var y = d.getFullYear();
+        var m = String(d.getMonth() + 1).padStart(2, '0');
+        var day = String(d.getDate()).padStart(2, '0');
+        full.forecastRefDateIso = y + '-' + m + '-' + day;
+        full.forecastRefDate = formatDateForDisplay(refStr);
+      }
+      return full;
+    }
+
+    function saveExportToHistory(snapshot, onDone) {
+      if (!snapshot) snapshot = buildExportSnapshot();
+      fetch('/api/save-export', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(snapshot)
+      }).then(function(r) { return r.json(); }).then(function(res) {
+        if (res && res.ok) {
+          var key = snapshot.forecastRefDateIso;
+          if (key) historicalExportsList = historicalExportsList.filter(function(r) { return r.forecastRefDateIso !== key; });
+          historicalExportsList.unshift(snapshot);
+          renderHistoryTable(historicalExportsList);
+          renderAnalytics();
+        }
+        if (typeof onDone === 'function') onDone();
+      }).catch(function() { if (typeof onDone === 'function') onDone(); });
+    }
+
+    function formatHistoryExportedAt(iso) {
+      if (!iso) return '—';
+      try {
+        var d = new Date(iso);
+        if (isNaN(d.getTime())) return iso;
+        return d.toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' });
+      } catch (e) { return iso; }
+    }
+
+    function renderHistoryTable(records) {
+      var tbody = document.getElementById('history-tbody');
+      if (!tbody) return;
+      if (!records || records.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-4 text-brand-muted text-center">No history yet. Use EXPORT or Export CSV to save (when using the server).</td></tr>';
+        return;
+      }
+      var list = records.slice();
+      list.sort(function(a, b) {
+        var ta = a.exportedAt || a.savedAt || '';
+        var tb = b.exportedAt || b.savedAt || '';
+        return tb.localeCompare(ta);
+      });
+      tbody.innerHTML = list.map(function(rec, idx) {
+        var exportedAt = formatHistoryExportedAt(rec.exportedAt || rec.savedAt);
+        var forecastRef = formatDateForDisplay(rec.forecastRefDateIso || rec.forecastRefDate) || '—';
+        var intervalCount = (rec.intervals && rec.intervals.length) ? rec.intervals.length : 0;
+        var rtdPct = rec.rtdPercent != null ? rec.rtdPercent : '—';
+        var mode = (rec.rtdForecastMode || '—').toString();
+        return '<tr class="history-row cursor-pointer hover:bg-brand-border/20 transition-colors" data-history-index="' + idx + '"><td class="px-4 py-2 text-brand-muted">' + exportedAt + '</td><td class="px-4 py-2 text-brand-accent">' + forecastRef + '</td><td class="px-4 py-2">' + intervalCount + '</td><td class="px-4 py-2">' + rtdPct + '</td><td class="px-4 py-2">' + mode + '</td></tr>';
+      }).join('');
+      list.forEach(function(rec, i) {
+        var row = tbody.querySelector('[data-history-index="' + i + '"]');
+        if (row) row._historyRecord = list[i];
+      });
+    }
+
+    function computeHistoryAnalytics(records) {
+      if (!records || records.length === 0) {
+        return { totalExports: 0, uniqueDates: 0, dateRange: '—', avgRtdPct: '—', modeCounts: {}, avgPeakMw: '—', totalDayAheadMwh: '—', last7d: 0, last30d: 0, avgIntervals: '—' };
+      }
+      var now = Date.now();
+      var sevenDays = 7 * 24 * 60 * 60 * 1000;
+      var thirtyDays = 30 * 24 * 60 * 60 * 1000;
+      var dates = {};
+      var rtdSum = 0, rtdCount = 0;
+      var modeCounts = { low: 0, mid: 0, high: 0, custom: 0 };
+      var peakSum = 0, peakCount = 0;
+      var mwhSum = 0, mwhCount = 0;
+      var intervalCountSum = 0;
+      var last7d = 0, last30d = 0;
+      var firstDate = null, lastDate = null;
+      records.forEach(function(r) {
+        var iso = r.forecastRefDateIso || r.forecastRefDate;
+        if (iso) { dates[iso] = true; if (!firstDate || iso < firstDate) firstDate = iso; if (!lastDate || iso > lastDate) lastDate = iso; }
+        if (r.rtdPercent != null && !isNaN(Number(r.rtdPercent))) { rtdSum += Number(r.rtdPercent); rtdCount++; }
+        var mode = (r.rtdForecastMode || 'custom').toLowerCase();
+        if (modeCounts[mode] !== undefined) modeCounts[mode]++; else modeCounts.custom++;
+        var intervals = r.intervals || [];
+        intervalCountSum += intervals.length;
+        var peak = 0, totalMw = 0;
+        intervals.forEach(function(iv) {
+          var mw = Number(iv.dayAhead);
+          if (!isNaN(mw)) { if (mw > peak) peak = mw; totalMw += mw * (5 / 60); }
+        });
+        if (intervals.length) { peakSum += peak; peakCount++; mwhSum += totalMw; mwhCount++; }
+        var exportedAt = r.exportedAt || r.savedAt || '';
+        if (exportedAt) {
+          var t = new Date(exportedAt).getTime();
+          if (now - t <= sevenDays) last7d++;
+          if (now - t <= thirtyDays) last30d++;
+        }
+      });
+      var avgRtd = rtdCount ? Math.round(rtdSum / rtdCount) : '—';
+      var avgPeak = peakCount ? (Math.round((peakSum / peakCount) * 100) / 100) : '—';
+      var avgMwh = mwhCount ? (Math.round((mwhSum / mwhCount) * 10) / 10) : '—';
+      var dateRange = (firstDate && lastDate) ? (formatDateForDisplay(firstDate) + ' → ' + formatDateForDisplay(lastDate)) : '—';
+      var avgIntervals = records.length ? Math.round(intervalCountSum / records.length) : '—';
+      return { totalExports: records.length, uniqueDates: Object.keys(dates).length, dateRange: dateRange, avgRtdPct: avgRtd, modeCounts: modeCounts, avgPeakMw: avgPeak, totalDayAheadMwh: avgMwh, last7d: last7d, last30d: last30d, avgIntervals: avgIntervals };
+    }
+
+    function renderAnalyticsCards(analytics) {
+      var container = document.getElementById('analytics-cards');
+      if (!container) return;
+      if (analytics.totalExports === 0) {
+        container.innerHTML = '<p class="col-span-full text-sm text-brand-muted">No history yet. Export or save CSV to build analytics.</p>';
+        return;
+      }
+      var modeStr = Object.keys(analytics.modeCounts).filter(function(m) { return analytics.modeCounts[m] > 0; }).map(function(m) { return m.charAt(0).toUpperCase() + m.slice(1) + ': ' + analytics.modeCounts[m]; }).join(' · ');
+      var cards = [
+        { label: 'Total exports', value: analytics.totalExports, sub: 'saved forecasts', span: '' },
+        { label: 'Unique forecast dates', value: analytics.uniqueDates, sub: '', span: '' },
+        { label: 'Date range', value: analytics.dateRange, sub: '', span: ' lg:col-span-2' },
+        { label: 'Avg RTD %', value: analytics.avgRtdPct, sub: 'across exports', span: '' },
+        { label: 'Avg peak MW', value: analytics.avgPeakMw, sub: 'max per day', span: '' },
+        { label: 'Avg day-ahead (MWh equiv)', value: analytics.totalDayAheadMwh, sub: '5-min intervals', span: '' },
+        { label: 'Exports (last 7 days)', value: analytics.last7d, sub: '', span: '' },
+        { label: 'Exports (last 30 days)', value: analytics.last30d, sub: '', span: '' },
+        { label: 'Avg intervals per export', value: analytics.avgIntervals, sub: '', span: '' },
+        { label: 'Mode usage', value: modeStr, sub: '', span: ' lg:col-span-2' }
+      ];
+      container.innerHTML = cards.map(function(c) {
+        var val = c.value !== undefined && c.value !== null && c.value !== '' ? String(c.value) : '—';
+        var spanClass = c.span || '';
+        return '<div class="bg-brand-dark/60 border border-brand-border rounded-lg px-4 py-3' + spanClass + '"><div class="text-[10px] text-brand-muted uppercase tracking-wider">' + c.label + '</div><div class="text-lg font-bold text-brand-accent mt-1 break-words">' + val + '</div>' + (c.sub ? '<div class="text-[10px] text-brand-muted mt-0.5">' + c.sub + '</div>' : '') + '</div>';
+      }).join('');
+    }
+
+    function renderAnalytics() {
+      renderAnalyticsCards(computeHistoryAnalytics(historicalExportsList));
+    }
+
+    function loadHistory() {
+      fetch('/api/historical-exports').then(function(r) { return r.json(); }).then(function(data) {
+        historicalExportsList = Array.isArray(data) ? data : (data && data.error ? [] : []);
+        renderHistoryTable(historicalExportsList);
+        renderAnalytics();
+      }).catch(function() {
+        historicalExportsList = [];
+        renderHistoryTable([]);
+        renderAnalytics();
+      });
+    }
+
+    function onHistoryRowClick(record, highlightRow) {
+      if (!record) return;
+      restoreFromRecord(record);
+      if (typeof chart !== 'undefined' && chart) {
+        updateRtdChartSeries();
+        chart.update();
+      }
+      renderVreTable();
+      document.querySelectorAll('#history-tbody .history-row').forEach(function(r) {
+        r.classList.remove('bg-brand-accent/20', 'ring-1', 'ring-brand-accent');
+      });
+      if (highlightRow) highlightRow.classList.add('bg-brand-accent/20', 'ring-1', 'ring-brand-accent');
+    }
+
+    var historyTbody = document.getElementById('history-tbody');
+    if (historyTbody) {
+      historyTbody.addEventListener('click', function(e) {
+        var row = e.target.closest('.history-row');
+        if (!row || !row._historyRecord) return;
+        onHistoryRowClick(row._historyRecord, row);
+      });
+    }
+    var btnRefreshHistory = document.getElementById('btn-refresh-history');
+    if (btnRefreshHistory) btnRefreshHistory.addEventListener('click', loadHistory);
+
+    function getExportDetailStrings() {
+      var refStr = getForecastRefDateString();
+      var d = refStr ? new Date(refStr) : new Date();
       if (isNaN(d.getTime())) d = new Date();
       var mm = String(d.getMonth() + 1).padStart(2, '0');
       var dd = String(d.getDate()).padStart(2, '0');
       var yyyy = d.getFullYear();
-      a.download = 'ARECO_' + mm + '_' + dd + '_' + yyyy + '.xml';
-      a.click();
-      URL.revokeObjectURL(a.href);
+      var intervals = getIntervalsFromTable().length ? getIntervalsFromTable() : intervalsData;
+      var forecastDateDisplay = refStr ? formatDateForDisplay(refStr) : (mm + '/' + dd + '/' + yyyy);
+      return { mm: mm, dd: dd, yyyy: yyyy, forecastDate: forecastDateDisplay, intervalCount: (intervals && intervals.length) ? intervals.length : 0 };
+    }
+
+    document.getElementById('btn-export').addEventListener('click', function() {
+      var detail = getExportDetailStrings();
+      var filename = 'ARECO_' + detail.mm + '_' + detail.dd + '_' + detail.yyyy + '.xml';
+      var body = 'Forecast date: ' + detail.forecastDate + '\nIntervals: ' + detail.intervalCount + '\nFile: ' + filename + '\n\nOnly one export per forecast date; this will replace any existing export for this date.';
+      showConfirmationModal({
+        title: 'Export confirmation (XML)',
+        body: body,
+        confirmLabel: 'Confirm & Export',
+        cancelLabel: 'Cancel',
+        onConfirm: function() {
+          var xml = buildRawBidSetXml();
+          var blob = new Blob([xml], { type: 'application/xml;charset=utf-8' });
+          var a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = filename;
+          a.click();
+          URL.revokeObjectURL(a.href);
+          var snapshot = buildExportSnapshot();
+          saveExportToHistory(snapshot, function() {
+            showConfirmationModal({
+              title: 'Export complete',
+              body: 'File downloaded: ' + filename + '\n\nHistory updated for this date (replaced if same date).',
+              confirmLabel: 'OK',
+              hideCancel: true
+            });
+          });
+        }
+      });
     });
 
     document.getElementById('btn-export-vre-csv').addEventListener('click', function() {
       var plantNameEl = document.getElementById('vre-plant-name');
       var plantName = (plantNameEl && plantNameEl.value && plantNameEl.value.trim()) ? plantNameEl.value.trim() : 'Vista Alegre Solar Power Plant';
-      var refEl = document.getElementById('forecast-ref-date');
-      var d = refEl && refEl.textContent ? new Date(refEl.textContent.trim()) : new Date();
-      if (isNaN(d.getTime())) d = new Date();
-      var yyyy = d.getFullYear();
-      var mm = String(d.getMonth() + 1).padStart(2, '0');
-      var dd = String(d.getDate()).padStart(2, '0');
-      var dateStr = yyyy + mm + dd;
+      var detail = getExportDetailStrings();
+      var dateStr = detail.yyyy + detail.mm + detail.dd;
       var safeName = plantName.replace(/[/\\?*:"<>|]/g, '_').trim() || 'Plant';
-      var csv = buildVreCsvContent();
-      var blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
-      var a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = 'VRE_NOM_{' + safeName + '}_' + dateStr + '.csv';
-      a.click();
-      URL.revokeObjectURL(a.href);
+      var filename = 'VRE_NOM_{' + safeName + '}_' + dateStr + '.csv';
+      var body = 'Forecast date: ' + detail.forecastDate + '\nIntervals: ' + detail.intervalCount + '\nPlant: ' + plantName + '\nFile: ' + filename + '\n\nOnly one export per forecast date; this will replace any existing export for this date.';
+      showConfirmationModal({
+        title: 'Export confirmation (VRE CSV)',
+        body: body,
+        confirmLabel: 'Confirm & Export',
+        cancelLabel: 'Cancel',
+        onConfirm: function() {
+          var csv = buildVreCsvContent();
+          var blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+          var a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = filename;
+          a.click();
+          URL.revokeObjectURL(a.href);
+          var snapshot = buildExportSnapshot();
+          saveExportToHistory(snapshot, function() {
+            showConfirmationModal({
+              title: 'Export complete',
+              body: 'File downloaded: ' + filename + '\n\nHistory updated for this date (replaced if same date).',
+              confirmLabel: 'OK',
+              hideCancel: true
+            });
+          });
+        }
+      });
     });
 
     document.getElementById('btn-import').addEventListener('click', function() {
       document.getElementById('forecast-file-input').click();
     });
+
+    var forecastRefDateEl = document.getElementById('forecast-ref-date');
+    if (forecastRefDateEl) {
+      forecastRefDateEl.addEventListener('blur', function() {
+        saveForecastLocally({ forecastRefDate: getForecastRefDateString() });
+      });
+    }
 
     var intervalFilterEl = document.getElementById('interval-hour-filter');
     if (intervalFilterEl) intervalFilterEl.addEventListener('change', applyIntervalFilter);
@@ -1022,7 +1415,12 @@
         if (isCsv) rows = parseCsv(reader.result);
         else if (isExcel && typeof XLSX !== 'undefined') rows = parseXls(reader.result);
         if (!rows.length) {
-          alert('No "predicted power" (or similar) column found, or no valid numeric rows.');
+          showConfirmationModal({
+            title: 'Import failed',
+            body: 'No "predicted power" (or similar) column found, or no valid numeric rows.',
+            confirmLabel: 'OK',
+            hideCancel: true
+          });
           return;
         }
         var plantNameFromFile = file.name.replace(/\.[^.]*$/, '').trim();
@@ -1030,21 +1428,29 @@
           var vrePlantEl = document.getElementById('vre-plant-name');
           if (vrePlantEl) vrePlantEl.value = plantNameFromFile;
         }
+        var dateFromFilename = parseDateFromFilename(file.name);
+        var today = new Date();
+        var forecastRefDateIso = dateFromFilename
+          ? (dateFromFilename.getFullYear() + '-' + String(dateFromFilename.getMonth() + 1).padStart(2, '0') + '-' + String(dateFromFilename.getDate()).padStart(2, '0'))
+          : (today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0'));
         const result = rowsToHourlyAndIntervals(rows);
-        const intervalsWithForecast = result.intervals.filter(function(r) {
-          var da = Number(r.dayAhead);
-          return !isNaN(da) && da > 0;
-        });
+        // Include all intervals (including zero MW) so e.g. 05:05 with 0 displays correctly
         const payload = {
-          forecastRefDate: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+          forecastRefDate: forecastRefDateIso,
           nomination: result.hourly,
-          intervals: intervalsWithForecast,
+          intervals: result.intervals,
           plantNameForVreExport: plantNameFromFile || (document.getElementById('vre-plant-name') && document.getElementById('vre-plant-name').value) || undefined
         };
         saveForecastLocally(payload);
         applyForecastToSystem(payload);
         renderVreTable();
-        alert('Imported ' + rows.length + ' rows. Saved to browser storage (localStorage + IndexedDB). Use Save backup for a JSON file copy.');
+        var dateMsg = dateFromFilename ? ' Date set from filename: ' + formatDateForDisplay(forecastRefDateIso) + '.' : '';
+        showConfirmationModal({
+          title: 'Import complete',
+          body: 'Imported ' + rows.length + ' rows.' + dateMsg + '\n\nForecast Ref is editable—change it if needed, then export. Saved to browser storage (localStorage + IndexedDB).',
+          confirmLabel: 'OK',
+          hideCancel: true
+        });
       };
       if (isCsv) reader.readAsText(file);
       else reader.readAsArrayBuffer(file);
@@ -1081,7 +1487,76 @@
       if (!intervalsData || intervalsData.length === 0) applyForecastToSystem({});
       renderVreTable();
       showPersistHint();
+      loadHistory();
     });
+
+    (function initNavbarTimeAndDateMin() {
+      function todayIso() {
+        var d = new Date();
+        return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+      }
+      var timeEl = document.getElementById('navbar-current-time');
+      var rtdEl = document.getElementById('navbar-rtd-mw');
+      /** Interval string "HH:MM" to minutes since midnight. */
+      function intervalToMinutes(s) {
+        if (!s || typeof s !== 'string') return NaN;
+        var parts = s.trim().split(':');
+        var h = parseInt(parts[0], 10);
+        var m = parts.length > 1 ? parseInt(parts[1], 10) : 0;
+        if (isNaN(h) || h < 0 || h > 23) return NaN;
+        if (isNaN(m)) m = 0;
+        return h * 60 + m;
+      }
+      function updateNavbarTimeAndInterval() {
+        if (timeEl) timeEl.textContent = new Date().toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+        var now = new Date();
+        var currentMins = now.getHours() * 60 + now.getMinutes();
+        var rows = document.querySelectorAll('.interval-data-tbody .interval-row');
+        var entries = [];
+        for (var i = 0; i < rows.length; i++) {
+          var intervalStr = rows[i].getAttribute('data-interval');
+          var intervalMins = intervalToMinutes(intervalStr);
+          if (isNaN(intervalMins)) continue;
+          var rtdInput = rows[i].querySelector('.rtd-input');
+          var raw = rtdInput && rtdInput.value !== '' ? parseFloat(rtdInput.value) : NaN;
+          var rtdVal = (raw != null && !isNaN(raw)) ? raw : 0;
+          entries.push({ mins: intervalMins, row: rows[i], rtd: rtdVal });
+        }
+        entries.sort(function(a, b) { return a.mins - b.mins; });
+        var prev = null;
+        var next = null;
+        for (var j = 0; j < entries.length; j++) {
+          if (entries[j].mins <= currentMins) prev = entries[j];
+          if (entries[j].mins >= currentMins) { next = entries[j]; break; }
+        }
+        var displayVal = null;
+        if (prev && next) {
+          if (prev.mins === next.mins) {
+            displayVal = prev.rtd;
+          } else {
+            var ratio = (currentMins - prev.mins) / (next.mins - prev.mins);
+            ratio = Math.max(0, Math.min(1, ratio));
+            displayVal = prev.rtd * (1 - ratio) + next.rtd * ratio;
+          }
+        } else if (prev) {
+          displayVal = prev.rtd;
+        } else if (next) {
+          displayVal = next.rtd;
+        }
+        if (rtdEl) rtdEl.textContent = displayVal != null ? displayVal.toFixed(3) : '—';
+      }
+      if (timeEl || rtdEl) {
+        updateNavbarTimeAndInterval();
+        setInterval(updateNavbarTimeAndInterval, 1000);
+      }
+      window.updateNavbarTimeAndInterval = updateNavbarTimeAndInterval;
+      var dateInput = document.getElementById('forecast-ref-date');
+      if (dateInput) {
+        dateInput.setAttribute('min', todayIso());
+        var val = (dateInput.value || '').trim();
+        if (val && val < todayIso()) dateInput.value = todayIso();
+      }
+    })();
 
     (function initLiveStreamUrl() {
       var saved = '';

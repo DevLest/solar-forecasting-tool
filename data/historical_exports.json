@@ -1,0 +1,2012 @@
+[
+  {
+    "forecastRefDate": "March 15, 2026",
+    "nomination": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      2.467,
+      15.9,
+      31.942,
+      44.792,
+      50,
+      50,
+      50,
+      50,
+      45.108,
+      33.267,
+      18.208,
+      3.833,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "intervals": [
+      {
+        "interval": "05:05",
+        "dayAhead": 0,
+        "rtd": 0
+      },
+      {
+        "interval": "05:10",
+        "dayAhead": 0,
+        "rtd": 0
+      },
+      {
+        "interval": "05:15",
+        "dayAhead": 0,
+        "rtd": 0
+      },
+      {
+        "interval": "05:20",
+        "dayAhead": 0,
+        "rtd": 0
+      },
+      {
+        "interval": "05:25",
+        "dayAhead": 0,
+        "rtd": 0
+      },
+      {
+        "interval": "05:30",
+        "dayAhead": 0,
+        "rtd": 0
+      },
+      {
+        "interval": "05:35",
+        "dayAhead": 0,
+        "rtd": 0
+      },
+      {
+        "interval": "05:40",
+        "dayAhead": 0,
+        "rtd": 0
+      },
+      {
+        "interval": "05:45",
+        "dayAhead": 0,
+        "rtd": 0
+      },
+      {
+        "interval": "05:50",
+        "dayAhead": 0,
+        "rtd": 0
+      },
+      {
+        "interval": "05:55",
+        "dayAhead": 0,
+        "rtd": 0
+      },
+      {
+        "interval": "06:00",
+        "dayAhead": 0,
+        "rtd": 0
+      },
+      {
+        "interval": "06:05",
+        "dayAhead": 0,
+        "rtd": 0
+      },
+      {
+        "interval": "06:10",
+        "dayAhead": 0,
+        "rtd": 0
+      },
+      {
+        "interval": "06:15",
+        "dayAhead": 0,
+        "rtd": 0
+      },
+      {
+        "interval": "06:20",
+        "dayAhead": 0,
+        "rtd": 0
+      },
+      {
+        "interval": "06:25",
+        "dayAhead": 1.9,
+        "rtd": 0
+      },
+      {
+        "interval": "06:30",
+        "dayAhead": 2.5,
+        "rtd": 0
+      },
+      {
+        "interval": "06:35",
+        "dayAhead": 3.2,
+        "rtd": 0
+      },
+      {
+        "interval": "06:40",
+        "dayAhead": 4,
+        "rtd": 0
+      },
+      {
+        "interval": "06:45",
+        "dayAhead": 5,
+        "rtd": 0
+      },
+      {
+        "interval": "06:50",
+        "dayAhead": 6,
+        "rtd": 0
+      },
+      {
+        "interval": "06:55",
+        "dayAhead": 7,
+        "rtd": 0
+      },
+      {
+        "interval": "07:00",
+        "dayAhead": 6.7,
+        "rtd": 0
+      },
+      {
+        "interval": "07:05",
+        "dayAhead": 9.7,
+        "rtd": 0
+      },
+      {
+        "interval": "07:10",
+        "dayAhead": 11,
+        "rtd": 0
+      },
+      {
+        "interval": "07:15",
+        "dayAhead": 12.5,
+        "rtd": 0
+      },
+      {
+        "interval": "07:20",
+        "dayAhead": 13.8,
+        "rtd": 0
+      },
+      {
+        "interval": "07:25",
+        "dayAhead": 15.2,
+        "rtd": 0
+      },
+      {
+        "interval": "07:30",
+        "dayAhead": 16.7,
+        "rtd": 0
+      },
+      {
+        "interval": "07:35",
+        "dayAhead": 18.2,
+        "rtd": 0
+      },
+      {
+        "interval": "07:40",
+        "dayAhead": 19.7,
+        "rtd": 0
+      },
+      {
+        "interval": "07:45",
+        "dayAhead": 21,
+        "rtd": 0
+      },
+      {
+        "interval": "07:50",
+        "dayAhead": 22.5,
+        "rtd": 0
+      },
+      {
+        "interval": "07:55",
+        "dayAhead": 23.8,
+        "rtd": 0
+      },
+      {
+        "interval": "08:00",
+        "dayAhead": 25.2,
+        "rtd": 0
+      },
+      {
+        "interval": "08:05",
+        "dayAhead": 26.6,
+        "rtd": 0
+      },
+      {
+        "interval": "08:10",
+        "dayAhead": 27.8,
+        "rtd": 0
+      },
+      {
+        "interval": "08:15",
+        "dayAhead": 29.2,
+        "rtd": 0
+      },
+      {
+        "interval": "08:20",
+        "dayAhead": 30.3,
+        "rtd": 0
+      },
+      {
+        "interval": "08:25",
+        "dayAhead": 30.7,
+        "rtd": 0
+      },
+      {
+        "interval": "08:30",
+        "dayAhead": 32.7,
+        "rtd": 0
+      },
+      {
+        "interval": "08:35",
+        "dayAhead": 34.1,
+        "rtd": 0
+      },
+      {
+        "interval": "08:40",
+        "dayAhead": 34.6,
+        "rtd": 0
+      },
+      {
+        "interval": "08:45",
+        "dayAhead": 36.2,
+        "rtd": 0
+      },
+      {
+        "interval": "08:50",
+        "dayAhead": 37.4,
+        "rtd": 0
+      },
+      {
+        "interval": "08:55",
+        "dayAhead": 38.5,
+        "rtd": 0
+      },
+      {
+        "interval": "09:00",
+        "dayAhead": 39.5,
+        "rtd": 0
+      },
+      {
+        "interval": "09:05",
+        "dayAhead": 40.4,
+        "rtd": 0
+      },
+      {
+        "interval": "09:10",
+        "dayAhead": 41.4,
+        "rtd": 0
+      },
+      {
+        "interval": "09:15",
+        "dayAhead": 42.5,
+        "rtd": 0
+      },
+      {
+        "interval": "09:20",
+        "dayAhead": 43.2,
+        "rtd": 0
+      },
+      {
+        "interval": "09:25",
+        "dayAhead": 43.6,
+        "rtd": 0
+      },
+      {
+        "interval": "09:30",
+        "dayAhead": 44.9,
+        "rtd": 0
+      },
+      {
+        "interval": "09:35",
+        "dayAhead": 45.5,
+        "rtd": 0
+      },
+      {
+        "interval": "09:40",
+        "dayAhead": 48,
+        "rtd": 0
+      },
+      {
+        "interval": "09:45",
+        "dayAhead": 49.2,
+        "rtd": 0
+      },
+      {
+        "interval": "09:50",
+        "dayAhead": 49.4,
+        "rtd": 0
+      },
+      {
+        "interval": "09:55",
+        "dayAhead": 49.9,
+        "rtd": 0
+      },
+      {
+        "interval": "10:00",
+        "dayAhead": 50,
+        "rtd": 0
+      },
+      {
+        "interval": "10:05",
+        "dayAhead": 50,
+        "rtd": 0
+      },
+      {
+        "interval": "10:10",
+        "dayAhead": 50,
+        "rtd": 0
+      },
+      {
+        "interval": "10:15",
+        "dayAhead": 50,
+        "rtd": 0
+      },
+      {
+        "interval": "10:20",
+        "dayAhead": 50,
+        "rtd": 0
+      },
+      {
+        "interval": "10:25",
+        "dayAhead": 50,
+        "rtd": 0
+      },
+      {
+        "interval": "10:30",
+        "dayAhead": 50,
+        "rtd": 0
+      },
+      {
+        "interval": "10:35",
+        "dayAhead": 50,
+        "rtd": 0
+      },
+      {
+        "interval": "10:40",
+        "dayAhead": 50,
+        "rtd": 0
+      },
+      {
+        "interval": "10:45",
+        "dayAhead": 50,
+        "rtd": 0
+      },
+      {
+        "interval": "10:50",
+        "dayAhead": 50,
+        "rtd": 0
+      },
+      {
+        "interval": "10:55",
+        "dayAhead": 50,
+        "rtd": 0
+      },
+      {
+        "interval": "11:00",
+        "dayAhead": 50,
+        "rtd": 0
+      },
+      {
+        "interval": "11:05",
+        "dayAhead": 50,
+        "rtd": 0
+      },
+      {
+        "interval": "11:10",
+        "dayAhead": 50,
+        "rtd": 0
+      },
+      {
+        "interval": "11:15",
+        "dayAhead": 50,
+        "rtd": 0
+      },
+      {
+        "interval": "11:20",
+        "dayAhead": 50,
+        "rtd": 0
+      },
+      {
+        "interval": "11:25",
+        "dayAhead": 50,
+        "rtd": 0
+      },
+      {
+        "interval": "11:30",
+        "dayAhead": 50,
+        "rtd": 0
+      },
+      {
+        "interval": "11:35",
+        "dayAhead": 50,
+        "rtd": 0
+      },
+      {
+        "interval": "11:40",
+        "dayAhead": 50,
+        "rtd": 0
+      },
+      {
+        "interval": "11:45",
+        "dayAhead": 50,
+        "rtd": 0
+      },
+      {
+        "interval": "11:50",
+        "dayAhead": 50,
+        "rtd": 0
+      },
+      {
+        "interval": "11:55",
+        "dayAhead": 50,
+        "rtd": 0
+      },
+      {
+        "interval": "12:00",
+        "dayAhead": 50,
+        "rtd": 0
+      },
+      {
+        "interval": "12:05",
+        "dayAhead": 50,
+        "rtd": 0
+      },
+      {
+        "interval": "12:10",
+        "dayAhead": 50,
+        "rtd": 0
+      },
+      {
+        "interval": "12:15",
+        "dayAhead": 50,
+        "rtd": 0
+      },
+      {
+        "interval": "12:20",
+        "dayAhead": 50,
+        "rtd": 0
+      },
+      {
+        "interval": "12:25",
+        "dayAhead": 50,
+        "rtd": 0
+      },
+      {
+        "interval": "12:30",
+        "dayAhead": 50,
+        "rtd": 0
+      },
+      {
+        "interval": "12:35",
+        "dayAhead": 50,
+        "rtd": 0
+      },
+      {
+        "interval": "12:40",
+        "dayAhead": 50,
+        "rtd": 0
+      },
+      {
+        "interval": "12:45",
+        "dayAhead": 50,
+        "rtd": 0
+      },
+      {
+        "interval": "12:50",
+        "dayAhead": 50,
+        "rtd": 0
+      },
+      {
+        "interval": "12:55",
+        "dayAhead": 50,
+        "rtd": 0
+      },
+      {
+        "interval": "13:00",
+        "dayAhead": 50,
+        "rtd": 0
+      },
+      {
+        "interval": "13:05",
+        "dayAhead": 50,
+        "rtd": 0
+      },
+      {
+        "interval": "13:10",
+        "dayAhead": 50,
+        "rtd": 0
+      },
+      {
+        "interval": "13:15",
+        "dayAhead": 50,
+        "rtd": 0
+      },
+      {
+        "interval": "13:20",
+        "dayAhead": 50,
+        "rtd": 0
+      },
+      {
+        "interval": "13:25",
+        "dayAhead": 50,
+        "rtd": 0
+      },
+      {
+        "interval": "13:30",
+        "dayAhead": 50,
+        "rtd": 0
+      },
+      {
+        "interval": "13:35",
+        "dayAhead": 50,
+        "rtd": 0
+      },
+      {
+        "interval": "13:40",
+        "dayAhead": 50,
+        "rtd": 0
+      },
+      {
+        "interval": "13:45",
+        "dayAhead": 50,
+        "rtd": 0
+      },
+      {
+        "interval": "13:50",
+        "dayAhead": 50,
+        "rtd": 0
+      },
+      {
+        "interval": "13:55",
+        "dayAhead": 50,
+        "rtd": 0
+      },
+      {
+        "interval": "14:00",
+        "dayAhead": 49,
+        "rtd": 0
+      },
+      {
+        "interval": "14:05",
+        "dayAhead": 48.3,
+        "rtd": 0
+      },
+      {
+        "interval": "14:10",
+        "dayAhead": 47.9,
+        "rtd": 0
+      },
+      {
+        "interval": "14:15",
+        "dayAhead": 47.5,
+        "rtd": 0
+      },
+      {
+        "interval": "14:20",
+        "dayAhead": 46.8,
+        "rtd": 0
+      },
+      {
+        "interval": "14:25",
+        "dayAhead": 45.8,
+        "rtd": 0
+      },
+      {
+        "interval": "14:30",
+        "dayAhead": 45.2,
+        "rtd": 0
+      },
+      {
+        "interval": "14:35",
+        "dayAhead": 44.1,
+        "rtd": 0
+      },
+      {
+        "interval": "14:40",
+        "dayAhead": 43,
+        "rtd": 0
+      },
+      {
+        "interval": "14:45",
+        "dayAhead": 41.9,
+        "rtd": 0
+      },
+      {
+        "interval": "14:50",
+        "dayAhead": 41.4,
+        "rtd": 0
+      },
+      {
+        "interval": "14:55",
+        "dayAhead": 40.4,
+        "rtd": 0
+      },
+      {
+        "interval": "15:00",
+        "dayAhead": 39.4,
+        "rtd": 0
+      },
+      {
+        "interval": "15:05",
+        "dayAhead": 38.3,
+        "rtd": 0
+      },
+      {
+        "interval": "15:10",
+        "dayAhead": 36.9,
+        "rtd": 0
+      },
+      {
+        "interval": "15:15",
+        "dayAhead": 36.1,
+        "rtd": 0
+      },
+      {
+        "interval": "15:20",
+        "dayAhead": 35.2,
+        "rtd": 0
+      },
+      {
+        "interval": "15:25",
+        "dayAhead": 33.7,
+        "rtd": 0
+      },
+      {
+        "interval": "15:30",
+        "dayAhead": 32.9,
+        "rtd": 0
+      },
+      {
+        "interval": "15:35",
+        "dayAhead": 31.7,
+        "rtd": 0
+      },
+      {
+        "interval": "15:40",
+        "dayAhead": 30.4,
+        "rtd": 0
+      },
+      {
+        "interval": "15:45",
+        "dayAhead": 29.5,
+        "rtd": 0
+      },
+      {
+        "interval": "15:50",
+        "dayAhead": 28.3,
+        "rtd": 0
+      },
+      {
+        "interval": "15:55",
+        "dayAhead": 26.8,
+        "rtd": 0
+      },
+      {
+        "interval": "16:00",
+        "dayAhead": 25.7,
+        "rtd": 0
+      },
+      {
+        "interval": "16:05",
+        "dayAhead": 24.5,
+        "rtd": 0
+      },
+      {
+        "interval": "16:10",
+        "dayAhead": 23.2,
+        "rtd": 0
+      },
+      {
+        "interval": "16:15",
+        "dayAhead": 21.8,
+        "rtd": 0
+      },
+      {
+        "interval": "16:20",
+        "dayAhead": 20.5,
+        "rtd": 0
+      },
+      {
+        "interval": "16:25",
+        "dayAhead": 18.9,
+        "rtd": 0
+      },
+      {
+        "interval": "16:30",
+        "dayAhead": 17.2,
+        "rtd": 0
+      },
+      {
+        "interval": "16:35",
+        "dayAhead": 15.3,
+        "rtd": 0
+      },
+      {
+        "interval": "16:40",
+        "dayAhead": 14.6,
+        "rtd": 0
+      },
+      {
+        "interval": "16:45",
+        "dayAhead": 13.8,
+        "rtd": 0
+      },
+      {
+        "interval": "16:50",
+        "dayAhead": 12.3,
+        "rtd": 0
+      },
+      {
+        "interval": "16:55",
+        "dayAhead": 10.7,
+        "rtd": 0
+      },
+      {
+        "interval": "17:00",
+        "dayAhead": 9.2,
+        "rtd": 0
+      },
+      {
+        "interval": "17:05",
+        "dayAhead": 8.3,
+        "rtd": 0
+      },
+      {
+        "interval": "17:10",
+        "dayAhead": 6.8,
+        "rtd": 0
+      },
+      {
+        "interval": "17:15",
+        "dayAhead": 6,
+        "rtd": 0
+      },
+      {
+        "interval": "17:20",
+        "dayAhead": 5.2,
+        "rtd": 0
+      },
+      {
+        "interval": "17:25",
+        "dayAhead": 4,
+        "rtd": 0
+      },
+      {
+        "interval": "17:30",
+        "dayAhead": 3,
+        "rtd": 0
+      },
+      {
+        "interval": "17:35",
+        "dayAhead": 2,
+        "rtd": 0
+      },
+      {
+        "interval": "17:40",
+        "dayAhead": 1.5,
+        "rtd": 0
+      },
+      {
+        "interval": "17:45",
+        "dayAhead": 0,
+        "rtd": 0
+      },
+      {
+        "interval": "17:50",
+        "dayAhead": 0,
+        "rtd": 0
+      },
+      {
+        "interval": "17:55",
+        "dayAhead": 0,
+        "rtd": 0
+      },
+      {
+        "interval": "18:00",
+        "dayAhead": 0,
+        "rtd": 0
+      },
+      {
+        "interval": "18:05",
+        "dayAhead": 0,
+        "rtd": 0
+      },
+      {
+        "interval": "18:10",
+        "dayAhead": 0,
+        "rtd": 0
+      },
+      {
+        "interval": "18:15",
+        "dayAhead": 0,
+        "rtd": 0
+      },
+      {
+        "interval": "18:20",
+        "dayAhead": 0,
+        "rtd": 0
+      },
+      {
+        "interval": "18:25",
+        "dayAhead": 0,
+        "rtd": 0
+      },
+      {
+        "interval": "18:30",
+        "dayAhead": 0,
+        "rtd": 0
+      },
+      {
+        "interval": "18:35",
+        "dayAhead": 0,
+        "rtd": 0
+      },
+      {
+        "interval": "18:40",
+        "dayAhead": 0,
+        "rtd": 0
+      },
+      {
+        "interval": "18:45",
+        "dayAhead": 0,
+        "rtd": 0
+      },
+      {
+        "interval": "18:50",
+        "dayAhead": 0,
+        "rtd": 0
+      },
+      {
+        "interval": "18:55",
+        "dayAhead": 0,
+        "rtd": 0
+      },
+      {
+        "interval": "19:00",
+        "dayAhead": 0,
+        "rtd": 0
+      }
+    ],
+    "rtdPercent": 100,
+    "rtdForecastMode": "custom",
+    "weatherHourly": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0.696,
+      6.372,
+      11.584,
+      21.611,
+      19.088,
+      14.319,
+      2.964,
+      2.642,
+      4.368,
+      1.082,
+      1.19,
+      0.279,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "weatherSummary": "Fallback: Open-Meteo only (no OpenAI). Values from cloud cover and radiation. — Served from daily cache — OpenAI was not called again (1 API use max per day for this date). [cached today]",
+    "weatherDate": "2026-03-15",
+    "plantNameForVreExport": "65MWp ARECO SOLAR PV POWER PLANT PROJECT_Short term forecast2026-03-15",
+    "savedAt": "2026-03-15T07:37:04.737Z",
+    "exportedAt": "2026-03-15T07:37:04.737Z",
+    "vreHourly": [
+      {
+        "deliveryHour": 1,
+        "vreNom": 0
+      },
+      {
+        "deliveryHour": 2,
+        "vreNom": 0
+      },
+      {
+        "deliveryHour": 3,
+        "vreNom": 0
+      },
+      {
+        "deliveryHour": 4,
+        "vreNom": 0
+      },
+      {
+        "deliveryHour": 5,
+        "vreNom": 0
+      },
+      {
+        "deliveryHour": 6,
+        "vreNom": 2.5
+      },
+      {
+        "deliveryHour": 7,
+        "vreNom": 15.9
+      },
+      {
+        "deliveryHour": 8,
+        "vreNom": 31.9
+      },
+      {
+        "deliveryHour": 9,
+        "vreNom": 44.8
+      },
+      {
+        "deliveryHour": 10,
+        "vreNom": 50
+      },
+      {
+        "deliveryHour": 11,
+        "vreNom": 50
+      },
+      {
+        "deliveryHour": 12,
+        "vreNom": 50
+      },
+      {
+        "deliveryHour": 13,
+        "vreNom": 50
+      },
+      {
+        "deliveryHour": 14,
+        "vreNom": 45.1
+      },
+      {
+        "deliveryHour": 15,
+        "vreNom": 33.3
+      },
+      {
+        "deliveryHour": 16,
+        "vreNom": 18.2
+      },
+      {
+        "deliveryHour": 17,
+        "vreNom": 3.8
+      },
+      {
+        "deliveryHour": 18,
+        "vreNom": 0
+      },
+      {
+        "deliveryHour": 19,
+        "vreNom": 0
+      },
+      {
+        "deliveryHour": 20,
+        "vreNom": 0
+      },
+      {
+        "deliveryHour": 21,
+        "vreNom": 0
+      },
+      {
+        "deliveryHour": 22,
+        "vreNom": 0
+      },
+      {
+        "deliveryHour": 23,
+        "vreNom": 0
+      },
+      {
+        "deliveryHour": 24,
+        "vreNom": 0
+      }
+    ],
+    "forecastRefDateIso": "2026-03-15"
+  },
+  {
+    "forecastRefDate": "March 16, 2026",
+    "nomination": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      2.467,
+      15.9,
+      31.942,
+      44.792,
+      50,
+      50,
+      50,
+      50,
+      45.108,
+      33.267,
+      18.208,
+      3.833,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "intervals": [
+      {
+        "interval": "05:05",
+        "dayAhead": 0,
+        "rtd": 0
+      },
+      {
+        "interval": "05:10",
+        "dayAhead": 0,
+        "rtd": 0
+      },
+      {
+        "interval": "05:15",
+        "dayAhead": 0,
+        "rtd": 0
+      },
+      {
+        "interval": "05:20",
+        "dayAhead": 0,
+        "rtd": 0
+      },
+      {
+        "interval": "05:25",
+        "dayAhead": 0,
+        "rtd": 0
+      },
+      {
+        "interval": "05:30",
+        "dayAhead": 0,
+        "rtd": 0
+      },
+      {
+        "interval": "05:35",
+        "dayAhead": 0,
+        "rtd": 0
+      },
+      {
+        "interval": "05:40",
+        "dayAhead": 0,
+        "rtd": 0
+      },
+      {
+        "interval": "05:45",
+        "dayAhead": 0,
+        "rtd": 0
+      },
+      {
+        "interval": "05:50",
+        "dayAhead": 0,
+        "rtd": 0
+      },
+      {
+        "interval": "05:55",
+        "dayAhead": 0,
+        "rtd": 0
+      },
+      {
+        "interval": "06:00",
+        "dayAhead": 0,
+        "rtd": 0
+      },
+      {
+        "interval": "06:05",
+        "dayAhead": 0,
+        "rtd": 0
+      },
+      {
+        "interval": "06:10",
+        "dayAhead": 0,
+        "rtd": 0
+      },
+      {
+        "interval": "06:15",
+        "dayAhead": 0,
+        "rtd": 0
+      },
+      {
+        "interval": "06:20",
+        "dayAhead": 0,
+        "rtd": 0
+      },
+      {
+        "interval": "06:25",
+        "dayAhead": 1.9,
+        "rtd": 1.71
+      },
+      {
+        "interval": "06:30",
+        "dayAhead": 2.5,
+        "rtd": 2.25
+      },
+      {
+        "interval": "06:35",
+        "dayAhead": 3.2,
+        "rtd": 2.88
+      },
+      {
+        "interval": "06:40",
+        "dayAhead": 4,
+        "rtd": 3.6
+      },
+      {
+        "interval": "06:45",
+        "dayAhead": 5,
+        "rtd": 4.5
+      },
+      {
+        "interval": "06:50",
+        "dayAhead": 6,
+        "rtd": 5.4
+      },
+      {
+        "interval": "06:55",
+        "dayAhead": 7,
+        "rtd": 6.3
+      },
+      {
+        "interval": "07:00",
+        "dayAhead": 6.7,
+        "rtd": 6.03
+      },
+      {
+        "interval": "07:05",
+        "dayAhead": 9.7,
+        "rtd": 8.73
+      },
+      {
+        "interval": "07:10",
+        "dayAhead": 11,
+        "rtd": 9.9
+      },
+      {
+        "interval": "07:15",
+        "dayAhead": 12.5,
+        "rtd": 11.25
+      },
+      {
+        "interval": "07:20",
+        "dayAhead": 13.8,
+        "rtd": 12.42
+      },
+      {
+        "interval": "07:25",
+        "dayAhead": 15.2,
+        "rtd": 13.68
+      },
+      {
+        "interval": "07:30",
+        "dayAhead": 16.7,
+        "rtd": 15.03
+      },
+      {
+        "interval": "07:35",
+        "dayAhead": 18.2,
+        "rtd": 16.38
+      },
+      {
+        "interval": "07:40",
+        "dayAhead": 19.7,
+        "rtd": 17.73
+      },
+      {
+        "interval": "07:45",
+        "dayAhead": 21,
+        "rtd": 18.9
+      },
+      {
+        "interval": "07:50",
+        "dayAhead": 22.5,
+        "rtd": 20.25
+      },
+      {
+        "interval": "07:55",
+        "dayAhead": 23.8,
+        "rtd": 21.42
+      },
+      {
+        "interval": "08:00",
+        "dayAhead": 25.2,
+        "rtd": 22.68
+      },
+      {
+        "interval": "08:05",
+        "dayAhead": 26.6,
+        "rtd": 23.94
+      },
+      {
+        "interval": "08:10",
+        "dayAhead": 27.8,
+        "rtd": 25.02
+      },
+      {
+        "interval": "08:15",
+        "dayAhead": 29.2,
+        "rtd": 26.28
+      },
+      {
+        "interval": "08:20",
+        "dayAhead": 30.3,
+        "rtd": 27.27
+      },
+      {
+        "interval": "08:25",
+        "dayAhead": 30.7,
+        "rtd": 27.63
+      },
+      {
+        "interval": "08:30",
+        "dayAhead": 32.7,
+        "rtd": 29.43
+      },
+      {
+        "interval": "08:35",
+        "dayAhead": 34.1,
+        "rtd": 30.69
+      },
+      {
+        "interval": "08:40",
+        "dayAhead": 34.6,
+        "rtd": 31.14
+      },
+      {
+        "interval": "08:45",
+        "dayAhead": 36.2,
+        "rtd": 32.58
+      },
+      {
+        "interval": "08:50",
+        "dayAhead": 37.4,
+        "rtd": 33.66
+      },
+      {
+        "interval": "08:55",
+        "dayAhead": 38.5,
+        "rtd": 34.65
+      },
+      {
+        "interval": "09:00",
+        "dayAhead": 39.5,
+        "rtd": 35.55
+      },
+      {
+        "interval": "09:05",
+        "dayAhead": 40.4,
+        "rtd": 36.36
+      },
+      {
+        "interval": "09:10",
+        "dayAhead": 41.4,
+        "rtd": 37.26
+      },
+      {
+        "interval": "09:15",
+        "dayAhead": 42.5,
+        "rtd": 38.25
+      },
+      {
+        "interval": "09:20",
+        "dayAhead": 43.2,
+        "rtd": 38.88
+      },
+      {
+        "interval": "09:25",
+        "dayAhead": 43.6,
+        "rtd": 39.24
+      },
+      {
+        "interval": "09:30",
+        "dayAhead": 44.9,
+        "rtd": 40.41
+      },
+      {
+        "interval": "09:35",
+        "dayAhead": 45.5,
+        "rtd": 40.95
+      },
+      {
+        "interval": "09:40",
+        "dayAhead": 48,
+        "rtd": 43.2
+      },
+      {
+        "interval": "09:45",
+        "dayAhead": 49.2,
+        "rtd": 44.28
+      },
+      {
+        "interval": "09:50",
+        "dayAhead": 49.4,
+        "rtd": 44.46
+      },
+      {
+        "interval": "09:55",
+        "dayAhead": 49.9,
+        "rtd": 44.91
+      },
+      {
+        "interval": "10:00",
+        "dayAhead": 50,
+        "rtd": 45
+      },
+      {
+        "interval": "10:05",
+        "dayAhead": 50,
+        "rtd": 45
+      },
+      {
+        "interval": "10:10",
+        "dayAhead": 50,
+        "rtd": 45
+      },
+      {
+        "interval": "10:15",
+        "dayAhead": 50,
+        "rtd": 45
+      },
+      {
+        "interval": "10:20",
+        "dayAhead": 50,
+        "rtd": 45
+      },
+      {
+        "interval": "10:25",
+        "dayAhead": 50,
+        "rtd": 45
+      },
+      {
+        "interval": "10:30",
+        "dayAhead": 50,
+        "rtd": 45
+      },
+      {
+        "interval": "10:35",
+        "dayAhead": 50,
+        "rtd": 45
+      },
+      {
+        "interval": "10:40",
+        "dayAhead": 50,
+        "rtd": 45
+      },
+      {
+        "interval": "10:45",
+        "dayAhead": 50,
+        "rtd": 45
+      },
+      {
+        "interval": "10:50",
+        "dayAhead": 50,
+        "rtd": 45
+      },
+      {
+        "interval": "10:55",
+        "dayAhead": 50,
+        "rtd": 45
+      },
+      {
+        "interval": "11:00",
+        "dayAhead": 50,
+        "rtd": 45
+      },
+      {
+        "interval": "11:05",
+        "dayAhead": 50,
+        "rtd": 45
+      },
+      {
+        "interval": "11:10",
+        "dayAhead": 50,
+        "rtd": 45
+      },
+      {
+        "interval": "11:15",
+        "dayAhead": 50,
+        "rtd": 45
+      },
+      {
+        "interval": "11:20",
+        "dayAhead": 50,
+        "rtd": 45
+      },
+      {
+        "interval": "11:25",
+        "dayAhead": 50,
+        "rtd": 45
+      },
+      {
+        "interval": "11:30",
+        "dayAhead": 50,
+        "rtd": 45
+      },
+      {
+        "interval": "11:35",
+        "dayAhead": 50,
+        "rtd": 45
+      },
+      {
+        "interval": "11:40",
+        "dayAhead": 50,
+        "rtd": 45
+      },
+      {
+        "interval": "11:45",
+        "dayAhead": 50,
+        "rtd": 45
+      },
+      {
+        "interval": "11:50",
+        "dayAhead": 50,
+        "rtd": 45
+      },
+      {
+        "interval": "11:55",
+        "dayAhead": 50,
+        "rtd": 45
+      },
+      {
+        "interval": "12:00",
+        "dayAhead": 50,
+        "rtd": 45
+      },
+      {
+        "interval": "12:05",
+        "dayAhead": 50,
+        "rtd": 45
+      },
+      {
+        "interval": "12:10",
+        "dayAhead": 50,
+        "rtd": 45
+      },
+      {
+        "interval": "12:15",
+        "dayAhead": 50,
+        "rtd": 45
+      },
+      {
+        "interval": "12:20",
+        "dayAhead": 50,
+        "rtd": 45
+      },
+      {
+        "interval": "12:25",
+        "dayAhead": 50,
+        "rtd": 45
+      },
+      {
+        "interval": "12:30",
+        "dayAhead": 50,
+        "rtd": 45
+      },
+      {
+        "interval": "12:35",
+        "dayAhead": 50,
+        "rtd": 45
+      },
+      {
+        "interval": "12:40",
+        "dayAhead": 50,
+        "rtd": 45
+      },
+      {
+        "interval": "12:45",
+        "dayAhead": 50,
+        "rtd": 45
+      },
+      {
+        "interval": "12:50",
+        "dayAhead": 50,
+        "rtd": 45
+      },
+      {
+        "interval": "12:55",
+        "dayAhead": 50,
+        "rtd": 45
+      },
+      {
+        "interval": "13:00",
+        "dayAhead": 50,
+        "rtd": 45
+      },
+      {
+        "interval": "13:05",
+        "dayAhead": 50,
+        "rtd": 45
+      },
+      {
+        "interval": "13:10",
+        "dayAhead": 50,
+        "rtd": 45
+      },
+      {
+        "interval": "13:15",
+        "dayAhead": 50,
+        "rtd": 45
+      },
+      {
+        "interval": "13:20",
+        "dayAhead": 50,
+        "rtd": 45
+      },
+      {
+        "interval": "13:25",
+        "dayAhead": 50,
+        "rtd": 45
+      },
+      {
+        "interval": "13:30",
+        "dayAhead": 50,
+        "rtd": 45
+      },
+      {
+        "interval": "13:35",
+        "dayAhead": 50,
+        "rtd": 45
+      },
+      {
+        "interval": "13:40",
+        "dayAhead": 50,
+        "rtd": 45
+      },
+      {
+        "interval": "13:45",
+        "dayAhead": 50,
+        "rtd": 45
+      },
+      {
+        "interval": "13:50",
+        "dayAhead": 50,
+        "rtd": 45
+      },
+      {
+        "interval": "13:55",
+        "dayAhead": 50,
+        "rtd": 45
+      },
+      {
+        "interval": "14:00",
+        "dayAhead": 49,
+        "rtd": 44.1
+      },
+      {
+        "interval": "14:05",
+        "dayAhead": 48.3,
+        "rtd": 43.47
+      },
+      {
+        "interval": "14:10",
+        "dayAhead": 47.9,
+        "rtd": 43.11
+      },
+      {
+        "interval": "14:15",
+        "dayAhead": 47.5,
+        "rtd": 42.75
+      },
+      {
+        "interval": "14:20",
+        "dayAhead": 46.8,
+        "rtd": 42.12
+      },
+      {
+        "interval": "14:25",
+        "dayAhead": 45.8,
+        "rtd": 41.22
+      },
+      {
+        "interval": "14:30",
+        "dayAhead": 45.2,
+        "rtd": 40.68
+      },
+      {
+        "interval": "14:35",
+        "dayAhead": 44.1,
+        "rtd": 39.69
+      },
+      {
+        "interval": "14:40",
+        "dayAhead": 43,
+        "rtd": 38.7
+      },
+      {
+        "interval": "14:45",
+        "dayAhead": 41.9,
+        "rtd": 37.71
+      },
+      {
+        "interval": "14:50",
+        "dayAhead": 41.4,
+        "rtd": 37.26
+      },
+      {
+        "interval": "14:55",
+        "dayAhead": 40.4,
+        "rtd": 36.36
+      },
+      {
+        "interval": "15:00",
+        "dayAhead": 39.4,
+        "rtd": 35.46
+      },
+      {
+        "interval": "15:05",
+        "dayAhead": 38.3,
+        "rtd": 34.47
+      },
+      {
+        "interval": "15:10",
+        "dayAhead": 36.9,
+        "rtd": 33.21
+      },
+      {
+        "interval": "15:15",
+        "dayAhead": 36.1,
+        "rtd": 32.49
+      },
+      {
+        "interval": "15:20",
+        "dayAhead": 35.2,
+        "rtd": 31.68
+      },
+      {
+        "interval": "15:25",
+        "dayAhead": 33.7,
+        "rtd": 30.33
+      },
+      {
+        "interval": "15:30",
+        "dayAhead": 32.9,
+        "rtd": 29.61
+      },
+      {
+        "interval": "15:35",
+        "dayAhead": 31.7,
+        "rtd": 28.53
+      },
+      {
+        "interval": "15:40",
+        "dayAhead": 30.4,
+        "rtd": 27.36
+      },
+      {
+        "interval": "15:45",
+        "dayAhead": 29.5,
+        "rtd": 26.55
+      },
+      {
+        "interval": "15:50",
+        "dayAhead": 28.3,
+        "rtd": 25.47
+      },
+      {
+        "interval": "15:55",
+        "dayAhead": 26.8,
+        "rtd": 24.12
+      },
+      {
+        "interval": "16:00",
+        "dayAhead": 25.7,
+        "rtd": 23.13
+      },
+      {
+        "interval": "16:05",
+        "dayAhead": 24.5,
+        "rtd": 22.05
+      },
+      {
+        "interval": "16:10",
+        "dayAhead": 23.2,
+        "rtd": 20.88
+      },
+      {
+        "interval": "16:15",
+        "dayAhead": 21.8,
+        "rtd": 19.62
+      },
+      {
+        "interval": "16:20",
+        "dayAhead": 20.5,
+        "rtd": 18.45
+      },
+      {
+        "interval": "16:25",
+        "dayAhead": 18.9,
+        "rtd": 17.01
+      },
+      {
+        "interval": "16:30",
+        "dayAhead": 17.2,
+        "rtd": 15.48
+      },
+      {
+        "interval": "16:35",
+        "dayAhead": 15.3,
+        "rtd": 13.77
+      },
+      {
+        "interval": "16:40",
+        "dayAhead": 14.6,
+        "rtd": 13.14
+      },
+      {
+        "interval": "16:45",
+        "dayAhead": 13.8,
+        "rtd": 12.42
+      },
+      {
+        "interval": "16:50",
+        "dayAhead": 12.3,
+        "rtd": 11.07
+      },
+      {
+        "interval": "16:55",
+        "dayAhead": 10.7,
+        "rtd": 9.63
+      },
+      {
+        "interval": "17:00",
+        "dayAhead": 9.2,
+        "rtd": 8.28
+      },
+      {
+        "interval": "17:05",
+        "dayAhead": 8.3,
+        "rtd": 7.47
+      },
+      {
+        "interval": "17:10",
+        "dayAhead": 6.8,
+        "rtd": 6.12
+      },
+      {
+        "interval": "17:15",
+        "dayAhead": 6,
+        "rtd": 5.4
+      },
+      {
+        "interval": "17:20",
+        "dayAhead": 5.2,
+        "rtd": 4.68
+      },
+      {
+        "interval": "17:25",
+        "dayAhead": 4,
+        "rtd": 3.6
+      },
+      {
+        "interval": "17:30",
+        "dayAhead": 3,
+        "rtd": 2.7
+      },
+      {
+        "interval": "17:35",
+        "dayAhead": 2,
+        "rtd": 1.8
+      },
+      {
+        "interval": "17:40",
+        "dayAhead": 1.5,
+        "rtd": 1.35
+      },
+      {
+        "interval": "17:45",
+        "dayAhead": 0,
+        "rtd": 0
+      },
+      {
+        "interval": "17:50",
+        "dayAhead": 0,
+        "rtd": 0
+      },
+      {
+        "interval": "17:55",
+        "dayAhead": 0,
+        "rtd": 0
+      },
+      {
+        "interval": "18:00",
+        "dayAhead": 0,
+        "rtd": 0
+      },
+      {
+        "interval": "18:05",
+        "dayAhead": 0,
+        "rtd": 0
+      },
+      {
+        "interval": "18:10",
+        "dayAhead": 0,
+        "rtd": 0
+      },
+      {
+        "interval": "18:15",
+        "dayAhead": 0,
+        "rtd": 0
+      },
+      {
+        "interval": "18:20",
+        "dayAhead": 0,
+        "rtd": 0
+      },
+      {
+        "interval": "18:25",
+        "dayAhead": 0,
+        "rtd": 0
+      },
+      {
+        "interval": "18:30",
+        "dayAhead": 0,
+        "rtd": 0
+      },
+      {
+        "interval": "18:35",
+        "dayAhead": 0,
+        "rtd": 0
+      },
+      {
+        "interval": "18:40",
+        "dayAhead": 0,
+        "rtd": 0
+      },
+      {
+        "interval": "18:45",
+        "dayAhead": 0,
+        "rtd": 0
+      },
+      {
+        "interval": "18:50",
+        "dayAhead": 0,
+        "rtd": 0
+      },
+      {
+        "interval": "18:55",
+        "dayAhead": 0,
+        "rtd": 0
+      },
+      {
+        "interval": "19:00",
+        "dayAhead": 0,
+        "rtd": 0
+      }
+    ],
+    "rtdPercent": 100,
+    "rtdForecastMode": "low",
+    "weatherHourly": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0.696,
+      6.372,
+      11.584,
+      21.611,
+      19.088,
+      14.319,
+      2.964,
+      2.642,
+      4.368,
+      1.082,
+      1.19,
+      0.279,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "weatherSummary": "Fallback: Open-Meteo only (no OpenAI). Values from cloud cover and radiation. — Served from daily cache — OpenAI was not called again (1 API use max per day for this date). [cached today]",
+    "weatherDate": "2026-03-15",
+    "plantNameForVreExport": "65MWp ARECO SOLAR PV POWER PLANT PROJECT_Short term forecast2026-03-16",
+    "savedAt": "2026-03-15T07:39:11.863Z",
+    "exportedAt": "2026-03-15T07:39:11.863Z",
+    "vreHourly": [
+      {
+        "deliveryHour": 1,
+        "vreNom": 0
+      },
+      {
+        "deliveryHour": 2,
+        "vreNom": 0
+      },
+      {
+        "deliveryHour": 3,
+        "vreNom": 0
+      },
+      {
+        "deliveryHour": 4,
+        "vreNom": 0
+      },
+      {
+        "deliveryHour": 5,
+        "vreNom": 0
+      },
+      {
+        "deliveryHour": 6,
+        "vreNom": 2.5
+      },
+      {
+        "deliveryHour": 7,
+        "vreNom": 15.9
+      },
+      {
+        "deliveryHour": 8,
+        "vreNom": 31.9
+      },
+      {
+        "deliveryHour": 9,
+        "vreNom": 44.8
+      },
+      {
+        "deliveryHour": 10,
+        "vreNom": 50
+      },
+      {
+        "deliveryHour": 11,
+        "vreNom": 50
+      },
+      {
+        "deliveryHour": 12,
+        "vreNom": 50
+      },
+      {
+        "deliveryHour": 13,
+        "vreNom": 50
+      },
+      {
+        "deliveryHour": 14,
+        "vreNom": 45.1
+      },
+      {
+        "deliveryHour": 15,
+        "vreNom": 33.3
+      },
+      {
+        "deliveryHour": 16,
+        "vreNom": 18.2
+      },
+      {
+        "deliveryHour": 17,
+        "vreNom": 3.8
+      },
+      {
+        "deliveryHour": 18,
+        "vreNom": 0
+      },
+      {
+        "deliveryHour": 19,
+        "vreNom": 0
+      },
+      {
+        "deliveryHour": 20,
+        "vreNom": 0
+      },
+      {
+        "deliveryHour": 21,
+        "vreNom": 0
+      },
+      {
+        "deliveryHour": 22,
+        "vreNom": 0
+      },
+      {
+        "deliveryHour": 23,
+        "vreNom": 0
+      },
+      {
+        "deliveryHour": 24,
+        "vreNom": 0
+      }
+    ],
+    "forecastRefDateIso": "2026-03-16"
+  }
+]
