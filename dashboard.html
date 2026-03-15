@@ -53,7 +53,6 @@
         <p class="text-xs text-brand-muted tracking-widest uppercase">WESM Nomination Dashboard</p>
       </div>
     </div>
-    <button id="btn-export" class="bg-brand-accent hover:bg-brand-accent/80 text-brand-dark px-6 py-2 rounded font-bold transition-all uppercase tracking-tighter">EXPORT</button>
   </header>
 
   <main class="flex-grow p-6 space-y-6 max-w-[1600px] mx-auto w-full">
@@ -154,10 +153,18 @@
             <h3 class="text-xs font-bold uppercase tracking-widest text-brand-muted">Live plant output</h3>
             <span class="text-[10px] text-brand-muted">Actual generation</span>
           </div>
+          <div class="px-4 py-2 border-b border-brand-border/50 flex flex-col gap-1.5">
+            <label for="live-stream-url" class="text-[10px] text-brand-muted uppercase">Stream URL</label>
+            <div class="flex gap-2">
+              <input type="url" id="live-stream-url" placeholder="https://vdo.ninja/?view=..." class="flex-1 min-w-0 bg-brand-dark border border-brand-border rounded px-2 py-1.5 text-xs text-brand-text placeholder:text-brand-muted/60 focus:ring-1 focus:ring-brand-accent focus:border-brand-accent" />
+              <button type="button" id="live-stream-apply" class="shrink-0 px-3 py-1.5 bg-brand-accent text-brand-dark rounded text-xs font-bold uppercase hover:bg-brand-accent/90 transition-colors">Apply</button>
+            </div>
+            <p class="text-[9px] text-brand-muted/80">Change when the link expires; saved in this browser until you update it.</p>
+          </div>
           <div class="aspect-video bg-brand-dark relative">
             <iframe
               id="vdo-ninja-stream"
-              src="https://vdo.ninja/?view=2vNAR9X"
+              src=""
               title="VDO.Ninja – Live plant output"
               class="absolute inset-0 w-full h-full border-0"
               allow="autoplay; fullscreen; picture-in-picture; display-capture"
@@ -174,17 +181,18 @@
           </div>
         </div>
         <div class="grid grid-cols-1 gap-3">
+          <div class="grid grid-cols-2 gap-2">
+            <input type="file" id="forecast-file-input" accept=".csv,.xls,.xlsx" class="hidden"/>
+            <button type="button" id="btn-import" class="w-full py-3 border border-brand-border rounded-xl bg-brand-card hover:bg-brand-border text-brand-text font-bold uppercase text-xs transition-all flex items-center justify-center">
+              <svg class="h-4 w-4 mr-1 text-brand-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/></svg>
+              IMPORT
+            </button>
+            <button type="button" id="btn-export" class="w-full py-3 rounded-xl font-bold uppercase text-xs transition-all bg-brand-accent hover:bg-brand-accent/80 text-brand-dark">EXPORT</button>
+          </div>
           <p id="persist-hint" class="text-[9px] text-amber-400/90 border border-amber-500/30 rounded-lg px-2 py-1.5 bg-amber-500/5 hidden"></p>
           <button type="button" id="btn-weather" class="w-full py-3 border border-amber-500/40 rounded-xl bg-brand-card hover:bg-amber-500/10 text-amber-400 font-bold uppercase text-xs transition-all">Weather forecast (1×/day)</button>
           <p class="text-[9px] text-brand-muted">OpenAI once per day; multi-source weather (Open-Meteo, wttr.in). Max <strong class="text-amber-400">50 MW</strong> plant cap.</p>
           <p id="weather-summary" class="text-[10px] text-brand-muted leading-snug min-h-[2rem]"></p>
-          <div>
-            <input type="file" id="forecast-file-input" accept=".csv,.xls,.xlsx" class="hidden"/>
-            <button id="btn-import" class="w-full py-4 border border-brand-border rounded-xl bg-brand-card hover:bg-brand-border text-brand-text font-bold uppercase text-xs transition-all flex items-center justify-center">
-              <svg class="h-4 w-4 mr-1 text-brand-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/></svg>
-              IMPORT
-            </button>
-          </div>
         </div>
       </section>
     </div>
@@ -254,6 +262,8 @@
 
   <script>
     const STORAGE_KEY = 'areco_forecast_import';
+    const LIVE_STREAM_STORAGE_KEY = 'areco_live_stream_url';
+    const DEFAULT_LIVE_STREAM_URL = 'https://vdo.ninja/?view=2vNAR9X';
     const PLANT_MAX_MW = 50;
     function clampMw(v) {
       var n = Number(v);
@@ -503,10 +513,39 @@
         var radio = document.querySelector('input[name="forecast"][value="' + mode + '"]');
         if (radio) radio.checked = true;
       }
-      intervalsData = (payload.intervals && payload.intervals.length) ? payload.intervals.filter(function(row) {
-        var da = Number(row.dayAhead);
-        return !isNaN(da) && da > 0;
-      }).slice(0, 200) : [];
+      function getFixedIntervalSlots0505To1900() {
+        var slots = [];
+        for (var m = 5 * 60 + 5; m <= 19 * 60; m += 5) {
+          var h = Math.floor(m / 60);
+          var min = m % 60;
+          slots.push((h < 10 ? '0' + h : '' + h) + ':' + (min < 10 ? '0' + min : '' + min));
+        }
+        return slots;
+      }
+      function normalizeIntervalStr(s) {
+        if (!s || typeof s !== 'string') return '';
+        var p = s.trim().split(':');
+        var h = parseInt(p[0], 10);
+        var m = p.length > 1 ? parseInt(p[1], 10) : 0;
+        if (isNaN(h)) return '';
+        return (h < 10 ? '0' + h : '' + h) + ':' + (isNaN(m) ? '00' : (m < 10 ? '0' + m : '' + m));
+      }
+      var fixedSlots = getFixedIntervalSlots0505To1900();
+      var lookup = {};
+      if (payload.intervals && payload.intervals.length) {
+        payload.intervals.forEach(function(r) {
+          var k = normalizeIntervalStr(r.interval);
+          if (k) lookup[k] = { dayAhead: r.dayAhead, rtd: r.rtd };
+        });
+      }
+      intervalsData = fixedSlots.map(function(slot) {
+        var d = lookup[slot];
+        return {
+          interval: slot,
+          dayAhead: d && d.dayAhead != null ? d.dayAhead : 0,
+          rtd: d && d.rtd != null ? d.rtd : 0
+        };
+      });
       const tbody = document.querySelector('.interval-data-tbody');
       if (tbody && intervalsData.length) {
         tbody.innerHTML = intervalsData.map(function(row) {
@@ -915,7 +954,7 @@
         sb.push('          <timeIntervalEnd>' + tEnd + '</timeIntervalEnd>');
         minutesInHour.forEach(function(min) {
           var mw = rtdLookup[h + ',' + min] != null ? rtdLookup[h + ',' + min] : 0;
-          sb.push('          <minuteMW><minuteOfHour>' + min + '</minuteOfHour><quantity>' + mw + '</quantity></minuteMW>');
+          sb.push('          <minuteMW><minuteOfHour>' + min + '</minuteOfHour><quantity>' + Number(mw).toFixed(1) + '</quantity></minuteMW>');
         });
         sb.push('        </Nomination>');
       }
@@ -1039,9 +1078,33 @@
           if (ls2) restoreFromRecord(JSON.parse(ls2));
         } catch (e2) {}
       }
+      if (!intervalsData || intervalsData.length === 0) applyForecastToSystem({});
       renderVreTable();
       showPersistHint();
     });
+
+    (function initLiveStreamUrl() {
+      var saved = '';
+      try { saved = localStorage.getItem(LIVE_STREAM_STORAGE_KEY) || ''; } catch (e) {}
+      var url = (saved && saved.trim()) ? saved.trim() : DEFAULT_LIVE_STREAM_URL;
+      var iframe = document.getElementById('vdo-ninja-stream');
+      var input = document.getElementById('live-stream-url');
+      if (iframe) iframe.src = url;
+      if (input) input.value = url;
+      if (!saved || !saved.trim()) {
+        try { localStorage.setItem(LIVE_STREAM_STORAGE_KEY, url); } catch (e2) {}
+      }
+      function applyUrl() {
+        var u = (input && input.value) ? input.value.trim() : '';
+        if (!u) return;
+        try { localStorage.setItem(LIVE_STREAM_STORAGE_KEY, u); } catch (e3) {}
+        if (iframe) iframe.src = u;
+      }
+      var applyBtn = document.getElementById('live-stream-apply');
+      if (applyBtn) applyBtn.addEventListener('click', applyUrl);
+      if (input) input.addEventListener('blur', applyUrl);
+      if (input) input.addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); applyUrl(); } });
+    })();
 
     document.getElementById('btn-weather').addEventListener('click', function() {
       var btn = this;
