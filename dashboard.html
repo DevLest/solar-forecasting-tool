@@ -206,6 +206,7 @@
             <button type="button" id="btn-export" class="w-full py-3 rounded-xl font-bold uppercase text-xs transition-all bg-brand-accent hover:bg-brand-accent/80 text-brand-dark">EXPORT</button>
           </div>
           <p id="persist-hint" class="text-[9px] text-amber-400/90 border border-amber-500/30 rounded-lg px-2 py-1.5 bg-amber-500/5 hidden"></p>
+          <p id="weather-coords-display" class="text-[9px] text-brand-muted">Weather location: 10.6388, 123.0042</p>
           <button type="button" id="btn-weather" class="w-full py-3 border border-amber-500/40 rounded-xl bg-brand-card hover:bg-amber-500/10 text-amber-400 font-bold uppercase text-xs transition-all">Weather forecast (1×/day)</button>
           <p class="text-[9px] text-brand-muted">OpenAI once per day; multi-source weather (Open-Meteo, wttr.in). Max <strong class="text-amber-400">50 MW</strong> plant cap.</p>
           <p id="weather-summary" class="text-[10px] text-brand-muted leading-snug min-h-[2rem]"></p>
@@ -213,30 +214,42 @@
       </section>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-3">
-      <section class="lg:col-span-5 bg-brand-card rounded-xl border border-brand-border overflow-hidden shadow-xl">
-        <div class="px-6 py-4 border-b border-brand-border flex justify-between items-center">
-          <h3 class="text-sm font-bold uppercase tracking-widest text-brand-muted">Resource Nomination History</h3>
-          <button type="button" id="btn-refresh-history" class="text-[10px] uppercase font-semibold text-brand-accent hover:text-brand-accent/80 transition-colors">Refresh</button>
-        </div>
-        <p class="text-[9px] text-brand-muted px-6 py-1">Click a row to load that export into the dashboard (intervals, %, forecast date, etc.).</p>
-        <div class="overflow-x-auto max-h-52 overflow-y-auto">
-          <table class="w-full text-xs text-left">
-            <thead class="bg-brand-dark/50 text-brand-muted border-b border-brand-border sticky top-0">
-              <tr>
-                <th class="px-4 py-2 font-semibold uppercase">Exported</th>
-                <th class="px-4 py-2 font-semibold uppercase">Forecast date</th>
-                <th class="px-4 py-2 font-semibold uppercase">Intervals</th>
-                <th class="px-4 py-2 font-semibold uppercase">RTD %</th>
-                <th class="px-4 py-2 font-semibold uppercase">Mode</th>
-              </tr>
-            </thead>
-            <tbody id="history-tbody" class="divide-y divide-brand-border/30">
-              <tr><td colspan="5" class="px-4 py-4 text-brand-muted text-center">Loading…</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-3 lg:items-stretch">
+      <div class="lg:col-span-5 flex flex-col gap-3 min-h-0">
+        <section class="bg-brand-card rounded-xl border border-brand-border overflow-hidden shadow-xl flex-none">
+          <div class="px-6 py-4 border-b border-brand-border flex justify-between items-center">
+            <h3 class="text-sm font-bold uppercase tracking-widest text-brand-muted">Resource Nomination History</h3>
+            <button type="button" id="btn-refresh-history" class="text-[10px] uppercase font-semibold text-brand-accent hover:text-brand-accent/80 transition-colors">Refresh</button>
+          </div>
+          <p class="text-[9px] text-brand-muted px-6 py-1">Click a row to load that export into the dashboard (intervals, %, forecast date, etc.).</p>
+          <div class="overflow-x-auto max-h-72 overflow-y-auto">
+            <table class="w-full text-xs text-left">
+              <thead class="bg-brand-dark/50 text-brand-muted border-b border-brand-border sticky top-0">
+                <tr>
+                  <th class="px-4 py-2 font-semibold uppercase">Exported</th>
+                  <th class="px-4 py-2 font-semibold uppercase">Forecast date</th>
+                  <th class="px-4 py-2 font-semibold uppercase">Intervals</th>
+                  <th class="px-4 py-2 font-semibold uppercase">RTD %</th>
+                  <th class="px-4 py-2 font-semibold uppercase">Mode</th>
+                </tr>
+              </thead>
+              <tbody id="history-tbody" class="divide-y divide-brand-border/30">
+                <tr><td colspan="5" class="px-4 py-4 text-brand-muted text-center">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="bg-brand-card rounded-xl border border-brand-border overflow-hidden shadow-xl flex-1 min-h-0 flex flex-col" id="analytics-section">
+          <div class="px-6 py-4 border-b border-brand-border flex-none">
+            <h3 class="text-sm font-bold uppercase tracking-widest text-brand-muted">Analytics from history</h3>
+            <p class="text-[9px] text-brand-muted mt-1">Derived from saved exports (server). Refresh history to update.</p>
+          </div>
+          <div id="analytics-cards" class="p-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-2 gap-4 overflow-auto min-h-0 flex-1 content-start">
+            <!-- filled by JS -->
+          </div>
+        </section>
+      </div>
 
       <section class="lg:col-span-7 bg-brand-card rounded-xl border border-brand-border p-6 shadow-xl">
         <div class="flex justify-between items-center mb-4 flex-wrap gap-4">
@@ -267,16 +280,6 @@
         </div>
       </section>
     </div>
-
-    <section class="bg-brand-card rounded-xl border border-brand-border overflow-hidden shadow-xl" id="analytics-section">
-      <div class="px-6 py-4 border-b border-brand-border">
-        <h3 class="text-sm font-bold uppercase tracking-widest text-brand-muted">Analytics from history</h3>
-        <p class="text-[9px] text-brand-muted mt-1">Derived from saved exports (server). Refresh history to update.</p>
-      </div>
-      <div id="analytics-cards" class="p-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
-        <!-- filled by JS -->
-      </div>
-    </section>
   </main>
 
   <div id="confirmation-modal" role="dialog" aria-modal="true" aria-labelledby="confirmation-modal-title">
@@ -351,6 +354,8 @@
 
     const STORAGE_KEY = 'areco_forecast_import';
     const LIVE_STREAM_STORAGE_KEY = 'areco_live_stream_url';
+    const WEATHER_LOCATION_KEY = 'areco_weather_location';
+    var weatherLocation = { lat: 10.638755644610793, lon: 123.00417639451439 };
     const DEFAULT_LIVE_STREAM_URL = 'https://vdo.ninja/?view=2vNAR9X';
     const PLANT_MAX_MW = 50;
     function clampMw(v) {
@@ -1007,6 +1012,28 @@
       return y + '-' + m + '-' + d + 'T' + h + ':' + min + ':' + sec;
     }
 
+    /** ISO timestamp for MessageHeader: YYYY-MM-DDTHH:mm:ss.000Z */
+    function formatTimeDateZ(date) {
+      var y = date.getFullYear();
+      var m = String(date.getMonth() + 1).padStart(2, '0');
+      var d = String(date.getDate()).padStart(2, '0');
+      var h = String(date.getHours()).padStart(2, '0');
+      var min = String(date.getMinutes()).padStart(2, '0');
+      var sec = String(date.getSeconds()).padStart(2, '0');
+      return y + '-' + m + '-' + d + 'T' + h + ':' + min + ':' + sec + '.000Z';
+    }
+
+    /** Nomination interval time: YYYY-MM-DDTHH:mm:ss.000+08:00 */
+    function formatNominationTime(y, m, d, hour, minute, second) {
+      var yy = String(y);
+      var mm = String(m).padStart(2, '0');
+      var dd = String(d).padStart(2, '0');
+      var hh = String(hour).padStart(2, '0');
+      var min = String(minute).padStart(2, '0');
+      var ss = String(second).padStart(2, '0');
+      return yy + '-' + mm + '-' + dd + 'T' + hh + ':' + min + ':' + ss + '.000+08:00';
+    }
+
     /** Hourly average (VRE_NOM) per hour 1–24 from Day Ahead intervals. */
     function getVreHourlyAverages() {
       var intervals = getIntervalsFromTable().length ? getIntervalsFromTable() : intervalsData;
@@ -1084,48 +1111,63 @@
       var refDateStr = getForecastRefDateString();
       var bidDate = refDateStr ? new Date(refDateStr) : new Date();
       if (isNaN(bidDate.getTime())) bidDate = new Date();
-      var y = bidDate.getFullYear(), m = String(bidDate.getMonth() + 1).padStart(2, '0'), d = String(bidDate.getDate()).padStart(2, '0');
-      var dayStart = y + '-' + m + '-' + d;
-      var startTime = dayStart + 'T00:00:00';
-      var stopTime = dayStart + 'T23:59:59';
-      var nowIso = formatDateTime(new Date());
+      var y = bidDate.getFullYear(), mo = bidDate.getMonth() + 1, day = bidDate.getDate();
+      var m = String(mo).padStart(2, '0'), d = String(day).padStart(2, '0');
+      var startTime = formatNominationTime(y, mo, day, 0, 0, 0);
+      var nextDay = new Date(bidDate.getFullYear(), bidDate.getMonth(), bidDate.getDate() + 1);
+      var stopTimeNextDay = formatNominationTime(nextDay.getFullYear(), nextDay.getMonth() + 1, nextDay.getDate(), 0, 0, 0);
+      var nowZ = formatTimeDateZ(new Date());
       var ns = 'http://pemc/soa/RawBidSet.xsd';
-      var minutesInHour = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55];
+      var xsi = 'http://www.w3.org/2001/XMLSchema-instance';
+      var minutesInHour = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60];
+
+      function getMw(hour, minute) {
+        if (minute === 60) {
+          return rtdLookup[hour + ',55'] != null ? rtdLookup[hour + ',55'] : (rtdLookup[hour + ',0'] != null ? rtdLookup[hour + ',0'] : 0);
+        }
+        return rtdLookup[hour + ',' + minute] != null ? rtdLookup[hour + ',' + minute] : 0;
+      }
 
       var sb = [];
       sb.push('<?xml version="1.0" encoding="UTF-8"?>');
-      sb.push('<RawBidSet xmlns="' + ns + '">');
-      sb.push('  <MessageHeader>');
-      sb.push('    <TimeDate>' + nowIso + '</TimeDate>');
-      sb.push('    <Source>ARECO Solar Dashboard</Source>');
-      sb.push('  </MessageHeader>');
-      sb.push('  <MessagePayload>');
-      sb.push('    <GeneratingBid>');
-      sb.push('      <startTime>' + startTime + '</startTime>');
-      sb.push('      <stopTime>' + stopTime + '</stopTime>');
-      sb.push('      <RegisteredGenerator><mrid>' + escapeXml(RESOURCE_MRID) + '</mrid></RegisteredGenerator>');
-      sb.push('      <MarketParticipant><mrid>' + escapeXml(MARKET_PARTICIPANT_MRID) + '</mrid></MarketParticipant>');
-      sb.push('      <ProductBid>');
-      sb.push('        <MarketProduct><marketProductType>EN</marketProductType></MarketProduct>');
+      sb.push('<m:RawBidSet xmlns:m="' + ns + '" xmlns:xsi="' + xsi + '" xsi:schemaLocation="' + ns + ' RawBidSet.xsd">');
+      sb.push(' <m:MessageHeader>');
+      sb.push('  <m:TimeDate>' + nowZ + '</m:TimeDate>');
+      sb.push('  <m:Source>Default</m:Source>');
+      sb.push(' </m:MessageHeader>');
+      sb.push(' <m:MessagePayload>');
+      sb.push('  <m:GeneratingBid>');
+      sb.push('   <m:name>' + escapeXml(RESOURCE_MRID) + '</m:name>');
+      sb.push('   <m:startTime>' + startTime + '</m:startTime>');
+      sb.push('   <m:stopTime>' + stopTimeNextDay + '</m:stopTime>');
+      sb.push('   <m:RegisteredGenerator>');
+      sb.push('    <m:mrid>' + escapeXml(RESOURCE_MRID) + '</m:mrid>');
+      sb.push('   </m:RegisteredGenerator>');
+      sb.push('   <m:MarketParticipant>');
+      sb.push('    <m:mrid>' + escapeXml(MARKET_PARTICIPANT_MRID) + '</m:mrid>');
+      sb.push('   </m:MarketParticipant>');
+      sb.push('   <m:ProductBid>');
 
       for (var h = 0; h < 24; h++) {
-        var hh = String(h).padStart(2, '0');
-        var tStart = dayStart + 'T' + hh + ':00:00';
-        var tEnd = h < 23 ? dayStart + 'T' + String(h + 1).padStart(2, '0') + ':00:00' : dayStart + 'T23:59:59';
-        sb.push('        <Nomination>');
-        sb.push('          <timeIntervalStart>' + tStart + '</timeIntervalStart>');
-        sb.push('          <timeIntervalEnd>' + tEnd + '</timeIntervalEnd>');
+        var tStart = formatNominationTime(y, mo, day, h, 0, 0);
+        var tEnd = h < 23 ? formatNominationTime(y, mo, day, h + 1, 0, 0) : stopTimeNextDay;
+        sb.push('    <m:Nomination>');
+        sb.push('     <m:timeIntervalStart>' + tStart + '</m:timeIntervalStart>');
+        sb.push('     <m:timeIntervalEnd>' + tEnd + '</m:timeIntervalEnd>');
         minutesInHour.forEach(function(min) {
-          var mw = rtdLookup[h + ',' + min] != null ? rtdLookup[h + ',' + min] : 0;
-          sb.push('          <minuteMW><minuteOfHour>' + min + '</minuteOfHour><quantity>' + Number(mw).toFixed(1) + '</quantity></minuteMW>');
+          var mw = getMw(h, min);
+          sb.push('     <m:minuteMW>');
+          sb.push('      <m:minuteOfHour>' + min + '</m:minuteOfHour>');
+          sb.push('      <m:quantity>' + Number(mw).toFixed(1) + '</m:quantity>');
+          sb.push('     </m:minuteMW>');
         });
-        sb.push('        </Nomination>');
+        sb.push('    </m:Nomination>');
       }
 
-      sb.push('      </ProductBid>');
-      sb.push('    </GeneratingBid>');
-      sb.push('  </MessagePayload>');
-      sb.push('</RawBidSet>');
+      sb.push('   </m:ProductBid>');
+      sb.push('  </m:GeneratingBid>');
+      sb.push(' </m:MessagePayload>');
+      sb.push('</m:RawBidSet>');
       return sb.join('\n');
     }
 
@@ -1152,16 +1194,30 @@
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(snapshot)
-      }).then(function(r) { return r.json(); }).then(function(res) {
+      }).then(function(r) {
+        if (!r.ok) {
+          return r.text().then(function(t) {
+            var errMsg = r.status + ' ' + (r.statusText || '');
+            try { var j = JSON.parse(t); if (j && j.error) errMsg = j.error; } catch (e) {}
+            return Promise.reject(new Error(errMsg));
+          });
+        }
+        return r.json();
+      }).then(function(res) {
         if (res && res.ok) {
-          var key = snapshot.forecastRefDateIso;
-          if (key) historicalExportsList = historicalExportsList.filter(function(r) { return r.forecastRefDateIso !== key; });
+          historicalExportsList = historicalExportsList.filter(function(r) { return r.forecastRefDateIso !== (snapshot.forecastRefDateIso || ''); });
           historicalExportsList.unshift(snapshot);
           renderHistoryTable(historicalExportsList);
           renderAnalytics();
+          loadHistory();
         }
         if (typeof onDone === 'function') onDone();
-      }).catch(function() { if (typeof onDone === 'function') onDone(); });
+      }).catch(function(err) {
+        var msg = (err && err.message) ? err.message : 'Could not save to history.';
+        console.warn('saveExportToHistory failed:', msg);
+        alert('History save failed: ' + msg + '\n\nMake sure the dashboard is running (python run_dashboard.py). Use "Refresh history" after starting the server, or try again.');
+        if (typeof onDone === 'function') onDone();
+      });
     }
 
     function formatHistoryExportedAt(iso) {
@@ -1276,7 +1332,10 @@
     }
 
     function loadHistory() {
-      fetch('/api/historical-exports').then(function(r) { return r.json(); }).then(function(data) {
+      fetch('/api/historical-exports').then(function(r) {
+        if (!r.ok) return r.text().then(function() { return []; });
+        return r.json();
+      }).then(function(data) {
         historicalExportsList = Array.isArray(data) ? data : (data && data.error ? [] : []);
         renderHistoryTable(historicalExportsList);
         renderAnalytics();
@@ -1311,6 +1370,24 @@
     }
     var btnRefreshHistory = document.getElementById('btn-refresh-history');
     if (btnRefreshHistory) btnRefreshHistory.addEventListener('click', loadHistory);
+
+    function updateWeatherCoordsDisplay() {
+      var el = document.getElementById('weather-coords-display');
+      if (el) el.textContent = 'Weather location: ' + (weatherLocation.lat != null && weatherLocation.lon != null ? weatherLocation.lat.toFixed(4) + ', ' + weatherLocation.lon.toFixed(4) : '—');
+    }
+
+    function initWeatherLocation() {
+      try {
+        var s = localStorage.getItem(WEATHER_LOCATION_KEY);
+        if (s) {
+          var parsed = JSON.parse(s);
+          if (parsed && typeof parsed.lat === 'number' && typeof parsed.lon === 'number') {
+            weatherLocation = { lat: parsed.lat, lon: parsed.lon };
+          }
+        }
+      } catch (e) {}
+      updateWeatherCoordsDisplay();
+    }
 
     function getExportDetailStrings() {
       var refStr = getForecastRefDateString();
@@ -1488,6 +1565,7 @@
       renderVreTable();
       showPersistHint();
       loadHistory();
+      initWeatherLocation();
     });
 
     (function initNavbarTimeAndDateMin() {
@@ -1592,7 +1670,7 @@
       fetch('/api/weather-forecast', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ date: d })
+        body: JSON.stringify({ date: d, lat: weatherLocation.lat, lon: weatherLocation.lon })
       }).then(function(r) { return r.json().then(function(j) { return { ok: r.ok, status: r.status, j: j }; }); })
         .then(function(_ref) {
           var j = _ref.j;

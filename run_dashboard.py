@@ -26,8 +26,9 @@ MAX_HISTORY_DAYS = 7
 
 # Plant limit — system rejects / caps above this (MW)
 PLANT_MAX_MW = 50.0
-# Approx. site (Philippines — adjust if needed)
-LAT, LON = 15.14, 120.59
+# Default weather location (Vista Alegre area)
+DEFAULT_LAT, DEFAULT_LON = 10.638755644610793, 123.00417639451439
+LAT, LON = DEFAULT_LAT, DEFAULT_LON
 
 
 def get_openai_key():
@@ -69,16 +70,18 @@ def _http_get_text(url: str, timeout: int = 25) -> str:
         return resp.read().decode(errors="replace")[:8000]
 
 
-def gather_multi_source_weather(target_date: str) -> str:
+def gather_multi_source_weather(target_date: str, lat: float = None, lon: float = None) -> str:
     """Pull from several free endpoints (no OpenAI tokens). Returns compact text for the model."""
+    lat, lon = lat if lat is not None else LAT, lon if lon is not None else LON
+    tz = "auto"
     chunks = []
-    # 1) Open-Meteo — hourly cloud + radiation (Asia/Manila)
+    # 1) Open-Meteo — hourly cloud + radiation (auto timezone from coordinates)
     try:
         om = _http_get_json(
-            f"https://api.open-meteo.com/v1/forecast?latitude={LAT}&longitude={LON}"
+            f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}"
             f"&hourly=temperature_2m,cloud_cover,shortwave_radiation,precipitation_probability"
             f"&daily=weathercode,precipitation_sum,cloud_cover_mean"
-            f"&forecast_days=3&timezone=Asia/Manila"
+            f"&forecast_days=3&timezone={tz}"
         )
         chunks.append("=== Source: Open-Meteo (api.open-meteo.com) ===\n" + json.dumps(om)[:6000])
     except Exception as e:
@@ -87,7 +90,7 @@ def gather_multi_source_weather(target_date: str) -> str:
     # 2) wttr.in — different backend (edge cache)
     try:
         w = _http_get_text(
-            f"https://wttr.in/{LAT},{LON}?format=j1"
+            f"https://wttr.in/{lat},{lon}?format=j1"
         )
         chunks.append("=== Source: wttr.in ===\n" + w[:4000])
     except Exception as e:
@@ -96,9 +99,9 @@ def gather_multi_source_weather(target_date: str) -> str:
     # 3) Open-Meteo second model (ECMWF) for divergence check
     try:
         om2 = _http_get_json(
-            f"https://api.open-meteo.com/v1/forecast?latitude={LAT}&longitude={LON}"
+            f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}"
             f"&models=ecmwf_ifs025&hourly=cloud_cover,precipitation"
-            f"&forecast_days=2&timezone=Asia/Manila"
+            f"&forecast_days=2&timezone={tz}"
         )
         chunks.append("=== Source: Open-Meteo ECMWF model ===\n" + json.dumps(om2)[:3500])
     except Exception as e:
@@ -110,7 +113,7 @@ def gather_multi_source_weather(target_date: str) -> str:
         try:
             loc_url = (
                 f"https://dataservice.accuweather.com/locations/v1/cities/geoposition/search"
-                f"?apikey={ak}&q={LAT}%2C{LON}"
+                f"?apikey={ak}&q={lat}%2C{lon}"
             )
             loc = _http_get_json(loc_url)
             loc_key = loc.get("Key")
@@ -126,16 +129,17 @@ def gather_multi_source_weather(target_date: str) -> str:
     return "\n\n".join(chunks)
 
 
-def fallback_weather_from_open_meteo(target_date: str) -> dict:
+def fallback_weather_from_open_meteo(target_date: str, lat: float = None, lon: float = None) -> dict:
     """
     Free fallback when OpenAI fails or no key: derive hourly_mw from Open-Meteo only (no API key).
     Uses cloud_cover and shortwave_radiation to scale a 50 MW cap curve.
     """
+    lat, lon = lat if lat is not None else LAT, lon if lon is not None else LON
     try:
         om = _http_get_json(
-            f"https://api.open-meteo.com/v1/forecast?latitude={LAT}&longitude={LON}"
+            f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}"
             f"&hourly=temperature_2m,cloud_cover,shortwave_radiation,precipitation_probability"
-            f"&forecast_days=3&timezone=Asia/Manila"
+            f"&forecast_days=3&timezone=auto"
         )
     except Exception as e:
         return {"error": f"Open-Meteo fallback failed: {e}"}
@@ -147,7 +151,7 @@ def fallback_weather_from_open_meteo(target_date: str) -> dict:
     if not h_times:
         return {"error": "Open-Meteo: no hourly data"}
 
-    # Typical clear-sky relative curve for Philippines (hour 0–24, ~0 at night, peak at 12)
+    # Typical clear-sky relative curve (hour 0–24, ~0 at night, peak at 12)
     clear_sky = [
         0, 0, 0, 0, 0, 0, 0.1, 0.25, 0.45, 0.65, 0.82, 0.95, 1.0, 0.95, 0.82, 0.65, 0.45, 0.25, 0.1, 0, 0, 0, 0, 0, 0,
     ]
@@ -181,18 +185,19 @@ def fallback_weather_from_open_meteo(target_date: str) -> dict:
     }
 
 
-def fallback_weather_from_accuweather(target_date: str):
+def fallback_weather_from_accuweather(target_date: str, lat: float = None, lon: float = None):
     """
     When OpenAI fails and AccuWeather API key is set: derive hourly_mw from AccuWeather 24h hourly.
     Returns None if no key or request fails. Never raises.
     """
+    lat, lon = lat if lat is not None else LAT, lon if lon is not None else LON
     try:
         ak = get_accuweather_key().strip()
         if not ak:
             return None
         loc = _http_get_json(
             f"https://dataservice.accuweather.com/locations/v1/cities/geoposition/search"
-            f"?apikey={ak}&q={LAT}%2C{LON}",
+            f"?apikey={ak}&q={lat}%2C{lon}",
             timeout=15,
         )
         if not isinstance(loc, dict):
@@ -233,8 +238,10 @@ def fallback_weather_from_accuweather(target_date: str):
     }
 
 
-def cache_path_for(target_date: str) -> str:
-    return os.path.join(DATA_DIR, f"{CACHE_PREFIX}{target_date}.json")
+def cache_path_for(target_date: str, lat: float = None, lon: float = None) -> str:
+    lat, lon = lat if lat is not None else LAT, lon if lon is not None else LON
+    slug = f"{target_date}_{lat:.4f}_{lon:.4f}".replace(".", "_")
+    return os.path.join(DATA_DIR, f"{CACHE_PREFIX}{slug}.json")
 
 
 def openai_weather_forecast(target_date: str, weather_digest: str) -> dict:
@@ -244,18 +251,18 @@ def openai_weather_forecast(target_date: str, weather_digest: str) -> dict:
 
     cap = int(PLANT_MAX_MW)
     system = (
-        f"You are a solar forecasting assistant for a {cap} MW AC-limited solar plant in the Philippines (ARECO). "
+        f"You are a solar forecasting assistant for a {cap} MW AC-limited solar plant (ARECO). "
         "The user message includes RAW weather-style data aggregated from multiple public sources "
         "(Open-Meteo, wttr.in, ECMWF via Open-Meteo). You do NOT browse the web; use ONLY that pasted data "
         "to infer cloud cover, rain risk, and irradiance trends for the given date.\n"
         "Respond with ONLY valid JSON (no markdown):\n"
         '{"hourly_mw": [25 numbers], "summary": "one sentence"}\n'
-        f"hourly_mw: exactly 25 values for hours 0–24 local (Asia/Manila), estimated AC power in MW. "
+        f"hourly_mw: exactly 25 values for hours 0–24 local time, estimated AC power in MW. "
         f"NIGHT (~18:00–05:00): near 0. Daytime: shape like solar curve. "
         f"STRICT: every value MUST be >= 0 and <= {cap}. Never output above {cap} — the plant cannot accept more."
     )
     user = (
-        f"Forecast date (local Asia/Manila): {target_date}. "
+        f"Forecast date (local): {target_date}. "
         "From the hourly time arrays below, use only hours that fall on that calendar date.\n\n"
         "Multi-source weather snapshot:\n\n"
         f"{weather_digest[:28000]}"
@@ -311,12 +318,13 @@ def openai_weather_forecast(target_date: str, weather_digest: str) -> dict:
     }
 
 
-def get_weather_forecast(target_date: str, force_refresh: bool = False) -> dict:
+def get_weather_forecast(target_date: str, force_refresh: bool = False, lat: float = None, lon: float = None) -> dict:
     """
-    At most one OpenAI call per calendar day per date key.
+    At most one OpenAI call per calendar day per date key (and per location).
     Always pulls fresh multi-source HTTP data when calling OpenAI (same day refresh still uses cache unless force).
     """
-    path = cache_path_for(target_date)
+    lat, lon = (float(lat), float(lon)) if lat is not None and lon is not None else (LAT, LON)
+    path = cache_path_for(target_date, lat, lon)
     if not force_refresh and os.path.isfile(path):
         try:
             with open(path, encoding="utf-8") as f:
@@ -330,7 +338,7 @@ def get_weather_forecast(target_date: str, force_refresh: bool = False) -> dict:
         except (json.JSONDecodeError, OSError):
             pass
 
-    digest = gather_multi_source_weather(target_date)
+    digest = gather_multi_source_weather(target_date, lat, lon)
     result = openai_weather_forecast(target_date, digest)
     if "error" in result:
         openai_err = result.get("error", "")
@@ -339,7 +347,7 @@ def get_weather_forecast(target_date: str, force_refresh: bool = False) -> dict:
         if get_accuweather_key():
             try:
                 print("Weather: OpenAI failed, trying AccuWeather fallback...")
-                result = fallback_weather_from_accuweather(target_date)
+                result = fallback_weather_from_accuweather(target_date, lat, lon)
                 if result:
                     print("Weather: AccuWeather fallback OK.")
             except Exception as e:
@@ -349,7 +357,7 @@ def get_weather_forecast(target_date: str, force_refresh: bool = False) -> dict:
             try:
                 if result is None:
                     print("Weather: trying Open-Meteo fallback...")
-                result = fallback_weather_from_open_meteo(target_date)
+                result = fallback_weather_from_open_meteo(target_date, lat, lon)
                 if result and "error" not in result:
                     print("Weather: Open-Meteo fallback OK.")
             except Exception as e:
@@ -509,7 +517,14 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             data = {}
         target = data.get("date") or date.today().isoformat()
         force = bool(data.get("force_refresh"))
-        result = get_weather_forecast(target, force_refresh=force)
+        lat = data.get("lat")
+        lon = data.get("lon")
+        if lat is not None and lon is not None:
+            try:
+                lat, lon = float(lat), float(lon)
+            except (TypeError, ValueError):
+                lat, lon = None, None
+        result = get_weather_forecast(target, force_refresh=force, lat=lat, lon=lon)
         body = json.dumps(result).encode("utf-8")
         self.send_response(200 if "error" not in result else 502)
         self.send_header("Content-Type", "application/json")
