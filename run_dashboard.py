@@ -585,7 +585,7 @@ def main():
         if get_accuweather_key():
             print("AccuWeather: API key loaded (optional extra source).")
         print("Press Ctrl+C to stop.")
-        webbrowser.open(url)
+        webbrowser.open(url_local)
         try:
             httpd.serve_forever()
         except KeyboardInterrupt:

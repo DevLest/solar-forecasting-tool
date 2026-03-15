@@ -3,6 +3,8 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <link rel="icon" type="image/png" href="assets/solar-automation-icon.png"/>
+  <link rel="apple-touch-icon" href="assets/solar-automation-icon.png"/>
   <title>ARECO 65 SOLAR - WESM Nomination Dashboard</title>
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -871,24 +873,25 @@
       });
     }
 
-    /** Rebuild hour filter options to only include hours that appear in the interval table (e.g. 05:05–19:00 → 05, 06, … 19). */
+    /** Rebuild hour filter to only show hours that appear in the interval table (e.g. 05:05–19:00 → 05, 06, … 19). */
     function populateIntervalHourFilter() {
-      var rows = document.querySelectorAll('.interval-data-tbody tr.interval-row');
-      var hours = {};
-      rows.forEach(function(tr) {
-        var interval = tr.getAttribute('data-interval') || '';
-        var part = interval.split(':')[0];
-        if (part && /^\d{1,2}$/.test(part)) hours[('0' + part).slice(-2)] = true;
-      });
-      var hourList = Object.keys(hours).sort();
-      var sel = document.getElementById('interval-hour-filter');
-      if (!sel) return;
-      var currentVal = sel.value;
-      var optionsHtml = '<option value="all">All</option>' + hourList.map(function(h) { return '<option value="' + h + '">' + h + '</option>'; }).join('');
-      sel.innerHTML = optionsHtml;
-      if (currentVal !== 'all' && hourList.indexOf(currentVal) === -1) sel.value = 'all';
-      else if (hourList.indexOf(currentVal) !== -1) sel.value = currentVal;
-      applyIntervalFilter();
+      try {
+        var sel = document.getElementById('interval-hour-filter');
+        if (!sel) return;
+        var rows = document.querySelectorAll('.interval-data-tbody tr.interval-row');
+        var hours = {};
+        for (var i = 0; i < rows.length; i++) {
+          var interval = (rows[i].getAttribute && rows[i].getAttribute('data-interval')) || '';
+          var part = (interval.split(':')[0] || '').trim();
+          if (part && /^\d{1,2}$/.test(part)) hours[('0' + part).slice(-2)] = true;
+        }
+        var hourList = Object.keys(hours).sort();
+        var currentVal = sel.value;
+        sel.innerHTML = '<option value="all">All</option>' + hourList.map(function(h) { return '<option value="' + h + '">' + h + '</option>'; }).join('');
+        if (currentVal !== 'all' && hourList.indexOf(currentVal) === -1) sel.value = 'all';
+        else if (hourList.indexOf(currentVal) !== -1) sel.value = currentVal;
+        applyIntervalFilter();
+      } catch (e) {}
     }
 
     function attachIntervalRowHandlers() {
@@ -1508,7 +1511,6 @@
     if (intervalFilterEl) intervalFilterEl.addEventListener('change', applyIntervalFilter);
 
     attachIntervalRowHandlers();
-    populateIntervalHourFilter();
 
     document.getElementById('forecast-file-input').addEventListener('change', function() {
       const file = this.files && this.files[0];
@@ -1591,6 +1593,7 @@
         } catch (e2) {}
       }
       if (!intervalsData || intervalsData.length === 0) applyForecastToSystem({});
+      populateIntervalHourFilter();
       renderVreTable();
       showPersistHint();
       loadHistory();
