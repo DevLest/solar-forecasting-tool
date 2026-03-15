@@ -352,6 +352,9 @@
       if (overlay) overlay.addEventListener('click', function(e) { if (e.target === overlay) onCancel(); });
     })();
 
+    /** Use current page origin so save/history/weather work when opening from another device (e.g. http://HOST_IP:8765). */
+    var API_BASE = (typeof window !== 'undefined' && window.location && window.location.origin) ? window.location.origin : '';
+
     const STORAGE_KEY = 'areco_forecast_import';
     const LIVE_STREAM_STORAGE_KEY = 'areco_live_stream_url';
     const WEATHER_LOCATION_KEY = 'areco_weather_location';
@@ -443,6 +446,10 @@
         el.textContent = 'Open via http://127.0.0.1:8765 (run run_dashboard.py) so imports persist after refresh. file:// often blocks storage.';
       } else {
         el.classList.add('hidden');
+        if (location.hostname !== '127.0.0.1' && location.hostname !== 'localhost') {
+          el.classList.remove('hidden');
+          el.textContent = 'Using server at ' + API_BASE + ' — save and history work from this device.';
+        }
       }
     }
 
@@ -718,6 +725,7 @@
           return '<tr class="interval-row hover:bg-brand-border/20 transition-colors" data-interval="' + (row.interval || '') + '"><td class="py-2 font-mono">' + (row.interval || '') + '</td><td class="py-2 text-right pr-4 day-ahead-cell">' + dayAhead + '</td><td class="py-2 text-right"><input type="number" class="rtd-input w-16 bg-brand-dark border border-brand-border rounded px-1 py-0.5 text-right text-sm font-mono" min="0" max="50" step="0.001" value="' + rtd + '"/></td></tr>';
         }).join('');
         attachIntervalRowHandlers();
+        populateIntervalHourFilter();
       }
       if (payload.plantNameForVreExport && document.getElementById('vre-plant-name')) {
         document.getElementById('vre-plant-name').value = payload.plantNameForVreExport;
@@ -861,6 +869,26 @@
         var match = hour === 'all' || interval.indexOf(hour + ':') === 0;
         tr.style.display = match ? '' : 'none';
       });
+    }
+
+    /** Rebuild hour filter options to only include hours that appear in the interval table (e.g. 05:05–19:00 → 05, 06, … 19). */
+    function populateIntervalHourFilter() {
+      var rows = document.querySelectorAll('.interval-data-tbody tr.interval-row');
+      var hours = {};
+      rows.forEach(function(tr) {
+        var interval = tr.getAttribute('data-interval') || '';
+        var part = interval.split(':')[0];
+        if (part && /^\d{1,2}$/.test(part)) hours[('0' + part).slice(-2)] = true;
+      });
+      var hourList = Object.keys(hours).sort();
+      var sel = document.getElementById('interval-hour-filter');
+      if (!sel) return;
+      var currentVal = sel.value;
+      var optionsHtml = '<option value="all">All</option>' + hourList.map(function(h) { return '<option value="' + h + '">' + h + '</option>'; }).join('');
+      sel.innerHTML = optionsHtml;
+      if (currentVal !== 'all' && hourList.indexOf(currentVal) === -1) sel.value = 'all';
+      else if (hourList.indexOf(currentVal) !== -1) sel.value = currentVal;
+      applyIntervalFilter();
     }
 
     function attachIntervalRowHandlers() {
@@ -1190,7 +1218,7 @@
 
     function saveExportToHistory(snapshot, onDone) {
       if (!snapshot) snapshot = buildExportSnapshot();
-      fetch('/api/save-export', {
+      fetch(API_BASE + '/api/save-export', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(snapshot)
@@ -1332,7 +1360,7 @@
     }
 
     function loadHistory() {
-      fetch('/api/historical-exports').then(function(r) {
+      fetch(API_BASE + '/api/historical-exports').then(function(r) {
         if (!r.ok) return r.text().then(function() { return []; });
         return r.json();
       }).then(function(data) {
@@ -1480,6 +1508,7 @@
     if (intervalFilterEl) intervalFilterEl.addEventListener('change', applyIntervalFilter);
 
     attachIntervalRowHandlers();
+    populateIntervalHourFilter();
 
     document.getElementById('forecast-file-input').addEventListener('change', function() {
       const file = this.files && this.files[0];
@@ -1667,7 +1696,7 @@
       btn.classList.add('opacity-75', 'cursor-not-allowed');
       var dateInput = document.getElementById('forecast-ref-date');
       var d = (dateInput && dateInput.value) ? dateInput.value : new Date().toISOString().slice(0, 10);
-      fetch('/api/weather-forecast', {
+      fetch(API_BASE + '/api/weather-forecast', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ date: d, lat: weatherLocation.lat, lon: weatherLocation.lon })

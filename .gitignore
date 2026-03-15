@@ -1,6 +1,7 @@
 openai_api_key.txt
 accuweather_api_key.txt
-data/weather_forecast_*.json
+# All data and future generated files in data/
+data/
 __pycache__/
 *.pyc
 .env

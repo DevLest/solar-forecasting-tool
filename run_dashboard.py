@@ -7,6 +7,7 @@ Plant AC limit: 50 MW (values never exceed 50).
 import http.server
 import json
 import os
+import socket
 import socketserver
 import sys
 import urllib.error
@@ -557,10 +558,24 @@ def main():
         print(f"Error: {DASHBOARD_FILE} not found in {SCRIPT_DIR}", file=sys.stderr)
         sys.exit(1)
 
+    def _local_ip():
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.settimeout(0.5)
+            s.connect(("8.8.8.8", 80))
+            ip = s.getsockname()[0]
+            s.close()
+            return ip
+        except Exception:
+            return None
+
     socketserver.TCPServer.allow_reuse_address = True
     with socketserver.ThreadingTCPServer(("", PORT), DashboardHandler) as httpd:
-        url = f"http://127.0.0.1:{PORT}/"
-        print(f"Serving dashboard at {url}")
+        url_local = f"http://127.0.0.1:{PORT}/"
+        print(f"Serving dashboard at {url_local}")
+        lan_ip = _local_ip()
+        if lan_ip:
+            print(f"  From another device use: http://{lan_ip}:{PORT}/ (save/history will work)")
         print(f"Plant cap: {int(PLANT_MAX_MW)} MW | Weather: 1 OpenAI call/day/date (cached in data/)")
         print(f"Export history: up to {MAX_HISTORY_DAYS} days saved to {HISTORICAL_EXPORTS_FILE}")
         if get_openai_key():
