@@ -4,3 +4,5 @@ data/weather_forecast_*.json
 __pycache__/
 *.pyc
 .env
+.python/
+py_embed.zip
