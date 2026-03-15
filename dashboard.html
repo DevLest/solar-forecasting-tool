@@ -138,7 +138,7 @@
                 <span class="text-sm">Custom</span>
               </label>
             </div>
-            <p class="text-[9px] text-brand-muted max-w-[240px]">% is the source value. RTD = Day Ahead × (% × band). Low=×0.9, Mid=×1, High=×1.1. Custom: same as Mid or edit RTD per interval.</p>
+            <p class="text-[9px] text-brand-muted max-w-[240px]">% is the source value. RTD = Day Ahead × (% × band). P10=×0.1, P50=×0.5, P90=×0.9. Custom: same as Mid or edit RTD per interval.</p>
           </div>
           <div class="text-right">
             <div class="text-xs text-brand-muted uppercase">Forecast Ref</div>
@@ -258,7 +258,7 @@
           <h3 class="text-xl font-bold uppercase tracking-wider text-brand-accent">VRE Table</h3>
           <div class="flex items-center gap-4">
             <label class="text-[10px] text-brand-muted uppercase">Plant name for export</label>
-            <input type="text" id="vre-plant-name" value="Vista Alegre Solar Power Plant" class="bg-brand-dark border border-brand-border rounded px-3 py-1.5 text-sm w-64" placeholder="e.g. Vista Alegre Solar Power Plant" title="Used in VRE CSV filename: VRE_NOM_{name}_{date}.csv"/>
+            <input type="text" id="vre-plant-name" value="Vista Alegre Solar Power Plant" class="bg-brand-dark border border-brand-border rounded px-3 py-1.5 text-sm w-64" placeholder="e.g. Vista Alegre Solar Power Plant" title="VRE CSV filename is always: VRE_NOM_{Vista Alegre Solar Power Plant}_YYYYMMDD.csv (only the date changes)"/>
             <button type="button" id="btn-export-vre-csv" class="bg-brand-accent hover:bg-brand-accent/80 text-brand-dark px-4 py-2 rounded font-bold text-sm uppercase tracking-tighter">Export CSV</button>
           </div>
         </div>
@@ -777,16 +777,16 @@
       return curve;
     }
 
-    /** Returns { low, mid, high } 25-point curves for shadow reference lines (percent × band). */
+    /** Returns { low, mid, high } 25-point curves for shadow reference lines. P10 = percent×0.1, P50 = percent×0.5, P90 = percent×0.9. */
     function getLowMidHighCurves() {
       var intervals = getIntervalsFromTable().length ? getIntervalsFromTable() : intervalsData;
       var dayAheadHourly = (intervals && intervals.length) ? intervalsToDayAheadCurve(intervals) : nomData.slice();
       var percentInp = document.getElementById('percent-value');
       var pct = percentInp ? parseFloat(percentInp.value) : 100;
       if (isNaN(pct) || pct <= 0) pct = 100;
-      var low = dayAheadHourly.map(function(v) { return clampMw(v * (pct * 0.9) / 100); });
-      var mid = dayAheadHourly.map(function(v) { return clampMw(v * (pct * 1.0) / 100); });
-      var high = dayAheadHourly.map(function(v) { return clampMw(v * (pct * 1.1) / 100); });
+      var low = dayAheadHourly.map(function(v) { return clampMw(v * (pct * 0.1) / 100); });
+      var mid = dayAheadHourly.map(function(v) { return clampMw(v * (pct * 0.5) / 100); });
+      var high = dayAheadHourly.map(function(v) { return clampMw(v * (pct * 0.9) / 100); });
       return { low: low, mid: mid, high: high };
     }
 
@@ -824,10 +824,10 @@
       return out;
     }
 
-    /** Multipliers for Low/Mid/High applied to the user's percentage. */
-    var MODE_MULTIPLIER = { low: 0.9, mid: 1.0, high: 1.1, custom: 1.0 };
+    /** Multipliers for Low/Mid/High: P10 = percent×0.1, P50 = percent×0.5, P90 = percent×0.9. */
+    var MODE_MULTIPLIER = { low: 0.1, mid: 0.5, high: 0.9, custom: 1.0 };
 
-    /** Fill RTD from Day Ahead using: (percentage × mode multiplier). Percentage is static source; Low=90%, Mid=100%, High=110% of that. Custom: do not overwrite RTD inputs. */
+    /** Fill RTD from Day Ahead using: (percentage × mode multiplier). P10=×0.1, P50=×0.5, P90=×0.9. Custom: do not overwrite RTD inputs. */
     function applyPercentageToRtd() {
       var percentInp = document.getElementById('percent-value');
       var pct = percentInp ? parseFloat(percentInp.value) : NaN;
@@ -1432,32 +1432,70 @@
       return { mm: mm, dd: dd, yyyy: yyyy, forecastDate: forecastDateDisplay, intervalCount: (intervals && intervals.length) ? intervals.length : 0 };
     }
 
+    /**
+     * Save a blob to a file. Uses Save File Picker when available so user can choose directory and filename;
+     * otherwise falls back to programmatic download.
+     * @param {Blob} blob
+     * @param {string} suggestedFilename
+     * @param {{ description: string, mimeType: string, extension: string }} fileType
+     * @returns {Promise<string|null>} Resolves with the saved filename, or null if user cancelled.
+     */
+    function saveBlobWithPicker(blob, suggestedFilename, fileType) {
+      if (typeof window.showSaveFilePicker === 'function') {
+        return window.showSaveFilePicker({
+          suggestedName: suggestedFilename,
+          types: [{ description: fileType.description, accept: { [fileType.mimeType]: [fileType.extension] } }]
+        }).then(function(handle) {
+          return handle.createWritable().then(function(writable) {
+            return writable.write(blob).then(function() { return writable.close(); }).then(function() { return handle.name; });
+          });
+        }).catch(function(err) {
+          if (err.name === 'AbortError') return null;
+          throw err;
+        });
+      }
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = suggestedFilename;
+      a.click();
+      URL.revokeObjectURL(a.href);
+      return Promise.resolve(suggestedFilename);
+    }
+
     document.getElementById('btn-export').addEventListener('click', function() {
       var detail = getExportDetailStrings();
       var filename = 'ARECO_' + detail.mm + '_' + detail.dd + '_' + detail.yyyy + '.xml';
-      var body = 'Forecast date: ' + detail.forecastDate + '\nIntervals: ' + detail.intervalCount + '\nFile: ' + filename + '\n\nOnly one export per forecast date; this will replace any existing export for this date.';
+      var body = 'Forecast date: ' + detail.forecastDate + '\nIntervals: ' + detail.intervalCount + '\nSuggested file: ' + filename + '\n\nYou will choose where to save the file.';
       showConfirmationModal({
         title: 'Export confirmation (XML)',
         body: body,
-        confirmLabel: 'Confirm & Export',
+        confirmLabel: 'Confirm & Save as…',
         cancelLabel: 'Cancel',
         onConfirm: function() {
           var xml = buildRawBidSetXml();
           var blob = new Blob([xml], { type: 'application/xml;charset=utf-8' });
-          var a = document.createElement('a');
-          a.href = URL.createObjectURL(blob);
-          a.download = filename;
-          a.click();
-          URL.revokeObjectURL(a.href);
-          var snapshot = buildExportSnapshot();
-          saveExportToHistory(snapshot, function() {
-            showConfirmationModal({
-              title: 'Export complete',
-              body: 'File downloaded: ' + filename + '\n\nHistory updated for this date (replaced if same date).',
-              confirmLabel: 'OK',
-              hideCancel: true
+          saveBlobWithPicker(blob, filename, { description: 'XML file', mimeType: 'application/xml', extension: '.xml' })
+            .then(function(savedName) {
+              if (savedName == null) return;
+              var snapshot = buildExportSnapshot();
+              saveExportToHistory(snapshot, function() {
+                showConfirmationModal({
+                  title: 'Export complete',
+                  body: 'File saved: ' + savedName + '\n\nHistory updated for this date (replaced if same date).',
+                  confirmLabel: 'OK',
+                  hideCancel: true
+                });
+              });
+            })
+            .catch(function(err) {
+              console.error('Export failed:', err);
+              showConfirmationModal({
+                title: 'Export failed',
+                body: 'Could not save file. ' + (err && err.message ? err.message : ''),
+                confirmLabel: 'OK',
+                hideCancel: true
+              });
             });
-          });
         }
       });
     });
@@ -1466,32 +1504,40 @@
       var plantNameEl = document.getElementById('vre-plant-name');
       var plantName = (plantNameEl && plantNameEl.value && plantNameEl.value.trim()) ? plantNameEl.value.trim() : 'Vista Alegre Solar Power Plant';
       var detail = getExportDetailStrings();
-      var dateStr = detail.yyyy + detail.mm + detail.dd;
-      var safeName = plantName.replace(/[/\\?*:"<>|]/g, '_').trim() || 'Plant';
-      var filename = 'VRE_NOM_{' + safeName + '}_' + dateStr + '.csv';
-      var body = 'Forecast date: ' + detail.forecastDate + '\nIntervals: ' + detail.intervalCount + '\nPlant: ' + plantName + '\nFile: ' + filename + '\n\nOnly one export per forecast date; this will replace any existing export for this date.';
+      // Dynamic date YYYYMMDD from forecast reference date; filename always uses fixed plant name for format
+      var dateStr = String(detail.yyyy) + detail.mm + detail.dd;
+      var filename = 'VRE_NOM_{Vista Alegre Solar Power Plant}_' + dateStr + '.csv';
+      var body = 'Forecast date: ' + detail.forecastDate + '\nIntervals: ' + detail.intervalCount + '\nPlant: ' + plantName + '\nSuggested file: ' + filename + '\n\nYou will choose where to save the file.';
       showConfirmationModal({
         title: 'Export confirmation (VRE CSV)',
         body: body,
-        confirmLabel: 'Confirm & Export',
+        confirmLabel: 'Confirm & Save as…',
         cancelLabel: 'Cancel',
         onConfirm: function() {
           var csv = buildVreCsvContent();
           var blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
-          var a = document.createElement('a');
-          a.href = URL.createObjectURL(blob);
-          a.download = filename;
-          a.click();
-          URL.revokeObjectURL(a.href);
-          var snapshot = buildExportSnapshot();
-          saveExportToHistory(snapshot, function() {
-            showConfirmationModal({
-              title: 'Export complete',
-              body: 'File downloaded: ' + filename + '\n\nHistory updated for this date (replaced if same date).',
-              confirmLabel: 'OK',
-              hideCancel: true
+          saveBlobWithPicker(blob, filename, { description: 'CSV file', mimeType: 'text/csv', extension: '.csv' })
+            .then(function(savedName) {
+              if (savedName == null) return;
+              var snapshot = buildExportSnapshot();
+              saveExportToHistory(snapshot, function() {
+                showConfirmationModal({
+                  title: 'Export complete',
+                  body: 'File saved: ' + savedName + '\n\nHistory updated for this date (replaced if same date).',
+                  confirmLabel: 'OK',
+                  hideCancel: true
+                });
+              });
+            })
+            .catch(function(err) {
+              console.error('VRE export failed:', err);
+              showConfirmationModal({
+                title: 'Export failed',
+                body: 'Could not save file. ' + (err && err.message ? err.message : ''),
+                confirmLabel: 'OK',
+                hideCancel: true
+              });
             });
-          });
         }
       });
     });
