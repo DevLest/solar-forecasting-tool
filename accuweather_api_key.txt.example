@@ -1,0 +1,5 @@
+# Copy this file to accuweather_api_key.txt and paste your AccuWeather API key (one line).
+# Get a free key at https://developer.accuweather.com/
+# accuweather_api_key.txt is gitignored — do not commit your key.
+
+your_accuweather_api_key_here

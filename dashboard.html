@@ -1,0 +1,1127 @@
+<!DOCTYPE html>
+<html class="h-full" lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ARECO 65 SOLAR - WESM Nomination Dashboard</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              dark: '#0f172a',
+              card: '#1e293b',
+              accent: '#10b981',
+              border: '#334155',
+              text: '#f8fafc',
+              muted: '#94a3b8'
+            }
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #475569; }
+    .matrix-table td, .matrix-table th {
+      padding: 0.25rem 0.5rem;
+      font-size: 0.75rem;
+      text-align: center;
+      border: 1px solid #334155;
+    }
+    .matrix-table tr:nth-child(even) { background-color: rgba(51, 65, 85, 0.3); }
+    .legend-dash { border-style: dashed; }
+  </style>
+</head>
+<body class="bg-brand-dark text-brand-text font-sans antialiased min-h-screen flex flex-col">
+  <header class="border-b border-brand-border bg-brand-dark/80 backdrop-blur-md sticky top-0 z-50 p-4 px-8 flex justify-between items-center">
+    <div class="flex items-center space-x-4">
+      <div class="p-2 bg-brand-accent rounded-lg">
+        <svg class="h-6 w-6 text-brand-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m12.728 0l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707-.707M6.343 6.343l-.707-.707" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+        </svg>
+      </div>
+      <div>
+        <h1 class="text-3xl font-bold tracking-widest text-brand-accent uppercase">ARECO 65MW SOLAR</h1>
+        <p class="text-xs text-brand-muted tracking-widest uppercase">WESM Nomination Dashboard</p>
+      </div>
+    </div>
+    <button id="btn-export" class="bg-brand-accent hover:bg-brand-accent/80 text-brand-dark px-6 py-2 rounded font-bold transition-all uppercase tracking-tighter">EXPORT</button>
+  </header>
+
+  <main class="flex-grow p-6 space-y-6 max-w-[1600px] mx-auto w-full">
+    <div class="grid grid-cols-12 gap-6">
+      <section class="col-span-12 lg:col-span-3 self-start bg-brand-card rounded-xl border border-brand-border p-4 shadow-xl overflow-hidden flex flex-col min-h-0 h-[33.5rem]">
+        <h3 class="text-sm font-semibold mb-2 text-brand-muted uppercase tracking-wider">Interval Data</h3>
+        <p class="text-[9px] text-brand-muted mb-3">Only hours with day-ahead forecast. Manual nomination via RTD column.</p>
+        <div class="flex items-center gap-2 mb-3">
+          <label for="interval-hour-filter" class="text-[10px] text-brand-muted uppercase whitespace-nowrap">Hour</label>
+          <select id="interval-hour-filter" class="flex-1 min-w-0 bg-brand-dark border border-brand-border rounded px-2 py-1.5 text-xs text-brand-text focus:ring-1 focus:ring-brand-accent">
+            <option value="all">All</option>
+            <option value="00">00</option><option value="01">01</option><option value="02">02</option><option value="03">03</option>
+            <option value="04">04</option><option value="05">05</option><option value="06">06</option><option value="07">07</option>
+            <option value="08">08</option><option value="09">09</option><option value="10">10</option><option value="11">11</option>
+            <option value="12">12</option><option value="13">13</option><option value="14">14</option><option value="15">15</option>
+            <option value="16">16</option><option value="17">17</option><option value="18">18</option><option value="19">19</option>
+            <option value="20">20</option><option value="21">21</option><option value="22">22</option><option value="23">23</option>
+          </select>
+        </div>
+        <div class="overflow-y-auto flex-1 min-h-0">
+          <table class="w-full text-sm text-left border-collapse">
+            <thead class="sticky top-0 bg-brand-card">
+              <tr class="text-brand-muted border-b border-brand-border">
+                <th class="py-2">Interval</th>
+                <th class="py-2">Day Ahead (MW)</th>
+                <th class="py-2">RTD (MW)</th>
+              </tr>
+            </thead>
+            <tbody class="interval-data-tbody divide-y divide-brand-border/30">
+              <tr class="interval-row hover:bg-brand-border/20 transition-colors" data-interval="00:05"><td class="py-2 font-mono">00:05</td><td class="py-2 text-right pr-4">0.0</td><td class="py-2 text-right"><input type="number" class="rtd-input w-16 bg-brand-dark border border-brand-border rounded px-1 py-0.5 text-right text-sm font-mono" min="0" max="50" step="0.001" value="0"/></td></tr>
+              <tr class="interval-row hover:bg-brand-border/20 transition-colors" data-interval="00:10"><td class="py-2 font-mono">00:10</td><td class="py-2 text-right pr-4">0.0</td><td class="py-2 text-right"><input type="number" class="rtd-input w-16 bg-brand-dark border border-brand-border rounded px-1 py-0.5 text-right text-sm font-mono" min="0" max="50" step="0.001" value="0"/></td></tr>
+              <tr class="interval-row hover:bg-brand-border/20 transition-colors" data-interval="08:00"><td class="py-2 font-mono">08:00</td><td class="py-2 text-right pr-4">10.10</td><td class="py-2 text-right"><input type="number" class="rtd-input w-16 bg-brand-dark border border-brand-border rounded px-1 py-0.5 text-right text-sm font-mono" min="0" max="50" step="0.001" value="0"/></td></tr>
+              <tr class="interval-row interval-row-active hover:bg-brand-border/20 transition-colors" data-interval="09:00"><td class="py-2 font-mono text-brand-accent">09:00</td><td class="py-2 text-right pr-4 text-brand-accent font-bold">39.40</td><td class="py-2 text-right"><input type="number" class="rtd-input w-16 bg-brand-dark border border-brand-border rounded px-1 py-0.5 text-right text-sm font-mono" min="0" max="50" step="0.001" value="0"/></td></tr>
+              <tr class="interval-row hover:bg-brand-border/20 transition-colors" data-interval="12:00"><td class="py-2 font-mono">12:00</td><td class="py-2 text-right pr-4">48.50</td><td class="py-2 text-right"><input type="number" class="rtd-input w-16 bg-brand-dark border border-brand-border rounded px-1 py-0.5 text-right text-sm font-mono" min="0" max="50" step="0.001" value="0"/></td></tr>
+              <tr class="interval-row hover:bg-brand-border/20 transition-colors" data-interval="21:00"><td class="py-2 font-mono">21:00</td><td class="py-2 text-right pr-4">0.00</td><td class="py-2 text-right"><input type="number" class="rtd-input w-16 bg-brand-dark border border-brand-border rounded px-1 py-0.5 text-right text-sm font-mono" min="0" max="50" step="0.001" value="0"/></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <div class="col-span-12 lg:col-span-6 space-y-6">
+        <section class="bg-brand-card rounded-xl border border-brand-border p-5 flex justify-between items-center shadow-lg">
+          <div class="flex items-center space-x-4">
+            <div class="bg-brand-dark border border-brand-border rounded px-3 py-1">
+              <span class="text-brand-muted text-xs block">Percent (RTD vs Day Ahead)</span>
+              <input type="number" id="percent-value" min="1" max="200" step="1" value="100" class="w-16 bg-transparent text-brand-accent font-bold text-lg border-0 p-0 focus:ring-0 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" title="Apply this % of Day Ahead to all RTD values"/>
+              <span class="text-brand-muted text-sm">%</span>
+            </div>
+            <div class="h-10 w-[1px] bg-brand-border mx-2"></div>
+            <div class="grid grid-cols-2 gap-x-4 gap-y-2">
+              <label class="flex items-center space-x-2 cursor-pointer">
+                <input name="forecast" type="radio" value="low" class="form-radio text-brand-accent focus:ring-brand-accent bg-brand-dark border-brand-border"/>
+                <span class="text-sm">Low (P10)</span>
+              </label>
+              <label class="flex items-center space-x-2 cursor-pointer">
+                <input name="forecast" type="radio" value="mid" class="form-radio text-brand-accent focus:ring-brand-accent bg-brand-dark border-brand-border"/>
+                <span class="text-sm">Mid (P50)</span>
+              </label>
+              <label class="flex items-center space-x-2 cursor-pointer">
+                <input name="forecast" type="radio" value="high" class="form-radio text-brand-accent focus:ring-brand-accent bg-brand-dark border-brand-border"/>
+                <span class="text-sm">High (P90)</span>
+              </label>
+              <label class="flex items-center space-x-2 cursor-pointer">
+                <input name="forecast" type="radio" value="custom" checked class="form-radio text-brand-accent focus:ring-brand-accent bg-brand-dark border-brand-border"/>
+                <span class="text-sm">Custom</span>
+              </label>
+            </div>
+            <p class="text-[9px] text-brand-muted max-w-[240px]">% is the source value. RTD = Day Ahead × (% × band). Low=×0.9, Mid=×1, High=×1.1. Custom: same as Mid or edit RTD per interval.</p>
+          </div>
+          <div class="text-right">
+            <div class="text-xs text-brand-muted uppercase">Forecast Ref</div>
+            <div id="forecast-ref-date" class="text-sm font-semibold">March 15, 2026</div>
+          </div>
+        </section>
+
+        <section class="bg-brand-card rounded-xl border border-brand-border p-6 shadow-lg h-96 flex flex-col">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="text-sm font-semibold uppercase text-brand-muted">ARECO WORKING NOMINATION</h3>
+            <div class="flex flex-wrap gap-2 text-[10px] uppercase font-bold tracking-widest">
+              <span class="legend-item text-brand-accent"><span class="w-3 h-1 bg-brand-accent mr-1 inline-block"></span> Import (CSV)</span>
+              <span class="legend-item text-amber-400"><span class="w-3 h-[2px] bg-amber-400 mr-1 inline-block"></span> Weather</span>
+              <span class="legend-item text-violet-400"><span class="w-3 h-[2px] bg-violet-400 mr-1 inline-block"></span> RTD</span>
+              <span class="legend-item text-sky-400/80"><span class="w-3 h-[1px] border-t border-dashed border-sky-400/80 mr-1 inline-block"></span> Low</span>
+              <span class="legend-item text-slate-400"><span class="w-3 h-[1px] border-t border-dashed border-slate-400 mr-1 inline-block"></span> Mid</span>
+              <span class="legend-item text-orange-300/80"><span class="w-3 h-[1px] border-t border-dashed border-orange-300/80 mr-1 inline-block"></span> High</span>
+            </div>
+          </div>
+          <div class="flex-grow relative">
+            <canvas id="nominationChart"></canvas>
+          </div>
+        </section>
+      </div>
+
+      <section class="col-span-12 lg:col-span-3 space-y-6">
+        <!-- Live plant output stream (VDO.Ninja) - actual generated value source -->
+        <div class="bg-brand-card rounded-xl border border-brand-border overflow-hidden shadow-2xl">
+          <div class="px-4 py-3 border-b border-brand-border flex justify-between items-center">
+            <h3 class="text-xs font-bold uppercase tracking-widest text-brand-muted">Live plant output</h3>
+            <span class="text-[10px] text-brand-muted">Actual generation</span>
+          </div>
+          <div class="aspect-video bg-brand-dark relative">
+            <iframe
+              id="vdo-ninja-stream"
+              src="https://vdo.ninja/?view=2vNAR9X"
+              title="VDO.Ninja – Live plant output"
+              class="absolute inset-0 w-full h-full border-0"
+              allow="autoplay; fullscreen; picture-in-picture; display-capture"
+              allowfullscreen
+              loading="lazy"
+            ></iframe>
+          </div>
+          <div class="px-4 py-2 border-t border-brand-border flex flex-col gap-1">
+            <div class="flex items-center justify-between text-[10px] text-brand-muted">
+              <span>Stream: VDO.Ninja</span>
+              <span id="stream-value-label">Value from stream: <strong id="stream-mw" class="text-brand-accent">—</strong> MW</span>
+            </div>
+            <p class="text-[9px] text-brand-muted/80">Auto-parse from video requires a separate OCR service; use <code class="bg-brand-dark px-1 rounded">updateStreamMw(value)</code> or <code class="bg-brand-dark px-1 rounded">/api/stream-mw</code> to push the value.</p>
+          </div>
+        </div>
+        <div class="grid grid-cols-1 gap-3">
+          <p id="persist-hint" class="text-[9px] text-amber-400/90 border border-amber-500/30 rounded-lg px-2 py-1.5 bg-amber-500/5 hidden"></p>
+          <button type="button" id="btn-weather" class="w-full py-3 border border-amber-500/40 rounded-xl bg-brand-card hover:bg-amber-500/10 text-amber-400 font-bold uppercase text-xs transition-all">Weather forecast (1×/day)</button>
+          <p class="text-[9px] text-brand-muted">OpenAI once per day; multi-source weather (Open-Meteo, wttr.in). Max <strong class="text-amber-400">50 MW</strong> plant cap.</p>
+          <p id="weather-summary" class="text-[10px] text-brand-muted leading-snug min-h-[2rem]"></p>
+          <div>
+            <input type="file" id="forecast-file-input" accept=".csv,.xls,.xlsx" class="hidden"/>
+            <button id="btn-import" class="w-full py-4 border border-brand-border rounded-xl bg-brand-card hover:bg-brand-border text-brand-text font-bold uppercase text-xs transition-all flex items-center justify-center">
+              <svg class="h-4 w-4 mr-1 text-brand-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/></svg>
+              IMPORT
+            </button>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <section class="bg-brand-card rounded-xl border border-brand-border overflow-hidden shadow-xl">
+      <div class="px-6 py-4 border-b border-brand-border">
+        <h3 class="text-sm font-bold uppercase tracking-widest text-brand-muted">Resource Nomination History</h3>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-xs text-left">
+          <thead class="bg-brand-dark/50 text-brand-muted border-b border-brand-border">
+            <tr>
+              <th class="px-6 py-3 font-semibold uppercase">Start</th>
+              <th class="px-6 py-3 font-semibold uppercase">Type</th>
+              <th class="px-6 py-3 font-semibold uppercase">Resource</th>
+              <th class="px-6 py-3 font-semibold uppercase">Market Participant</th>
+              <th class="px-6 py-3 font-semibold uppercase">Trading Participant</th>
+              <th class="px-6 py-3 font-semibold uppercase">Submitted</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-brand-border/30">
+            <tr class="hover:bg-brand-border/10"><td class="px-6 py-3 text-brand-accent">03/10/2026</td><td class="px-6 py-3">Generator</td><td class="px-6 py-3">06VISTASOL_G01</td><td class="px-6 py-3">ARECO_01</td><td class="px-6 py-3">ARECO</td><td class="px-6 py-3 text-brand-muted">03/10/2026 16:38:40</td></tr>
+            <tr class="hover:bg-brand-border/10"><td class="px-6 py-3 text-brand-accent">03/17/2026</td><td class="px-6 py-3">Generator</td><td class="px-6 py-3">06VISTASOL_G01</td><td class="px-6 py-3">ARECO_01</td><td class="px-6 py-3">ARECO</td><td class="px-6 py-3 text-brand-muted">03/10/2026 03:16:58</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="bg-brand-card rounded-xl border border-brand-border p-6 shadow-xl">
+      <div class="flex justify-between items-center mb-6 flex-wrap gap-4">
+        <h3 class="text-lg font-bold uppercase tracking-wider">VRE Table</h3>
+        <div class="flex items-center gap-4">
+          <label class="text-[10px] text-brand-muted uppercase">Plant name for export</label>
+          <input type="text" id="vre-plant-name" value="Vista Alegre Solar Power Plant" class="bg-brand-dark border border-brand-border rounded px-3 py-1.5 text-sm w-64" placeholder="e.g. Vista Alegre Solar Power Plant" title="Used in VRE CSV filename: VRE_NOM_{name}_{date}.csv"/>
+          <button type="button" id="btn-export-vre-csv" class="bg-brand-accent hover:bg-brand-accent/80 text-brand-dark px-4 py-2 rounded font-bold text-sm uppercase tracking-tighter">Export CSV</button>
+        </div>
+      </div>
+      <p class="text-[10px] text-brand-muted mb-4">VRE_NOM = average per hour from Day Ahead data. Hours 1–24.</p>
+      <div class="overflow-x-auto">
+        <table class="w-full border-collapse matrix-table" id="vre-table">
+          <thead>
+            <tr class="bg-brand-dark/50">
+              <th class="text-brand-muted">PLT_CODE</th>
+              <th class="text-brand-muted">DELIVERY_DATE</th>
+              <th class="text-brand-muted">DELIVERY_HOUR</th>
+              <th class="text-brand-muted">UNIT_NO</th>
+              <th class="text-brand-muted">VRE_NOM</th>
+              <th class="text-brand-muted">DEPENDABLE_CAPACITY</th>
+            </tr>
+          </thead>
+          <tbody id="vre-tbody">
+            <!-- filled by JS from Day Ahead hourly averages -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer class="border-t border-brand-border p-6 text-center text-[10px] text-brand-muted uppercase tracking-[0.2em] space-y-4">
+    <div>© 2024 ARECO Solar Management Systems. Data updated in real-time.</div>
+    <div class="flex justify-center space-x-6">
+      <a id="link-privacy" class="hover:text-brand-accent transition-colors cursor-pointer">Privacy Policy</a>
+      <a id="link-status" class="hover:text-brand-accent transition-colors cursor-pointer">System Status</a>
+      <a id="link-support" class="hover:text-brand-accent transition-colors cursor-pointer">Support</a>
+    </div>
+  </footer>
+
+  <script>
+    const STORAGE_KEY = 'areco_forecast_import';
+    const PLANT_MAX_MW = 50;
+    function clampMw(v) {
+      var n = Number(v);
+      if (isNaN(n) || n < 0) return 0;
+      return Math.min(PLANT_MAX_MW, Math.round(n * 1000) / 1000);
+    }
+    const IDB_NAME = 'arecoSolarDB';
+    const IDB_STORE = 'forecast';
+    const IDB_KEY = 'main';
+
+    const hours = Array.from({ length: 25 }, (_, i) => i);
+    let nomData = [0,0,0,0,0,0,4,12,16,20,22,22,20,18,12,8,4,0,0,0,0,0,0,0,0];
+    let weatherData = Array(25).fill(0);
+    let weatherSummaryText = '';
+    let weatherDateStr = '';
+    var intervalsData = [];
+    var selectedInterval = null;
+    var rtdData = Array(25).fill(0);
+
+    function idbOpen() {
+      return new Promise(function(resolve, reject) {
+        var r = indexedDB.open(IDB_NAME, 1);
+        r.onerror = function() { reject(r.error); };
+        r.onsuccess = function() { resolve(r.result); };
+        r.onupgradeneeded = function(e) {
+          var db = e.target.result;
+          if (!db.objectStoreNames.contains(IDB_STORE)) db.createObjectStore(IDB_STORE, { keyPath: 'id' });
+        };
+      });
+    }
+    function idbPut(payload) {
+      return idbOpen().then(function(db) {
+        return new Promise(function(resolve, reject) {
+          var tx = db.transaction(IDB_STORE, 'readwrite');
+          tx.oncomplete = function() { resolve(); };
+          tx.onerror = function() { reject(tx.error); };
+          var row = Object.assign({ id: IDB_KEY }, payload);
+          tx.objectStore(IDB_STORE).put(row);
+        });
+      });
+    }
+    function idbGet() {
+      return idbOpen().then(function(db) {
+        return new Promise(function(resolve, reject) {
+          var tx = db.transaction(IDB_STORE, 'readonly');
+          var q = tx.objectStore(IDB_STORE).get(IDB_KEY);
+          q.onsuccess = function() { resolve(q.result || null); };
+          q.onerror = function() { reject(q.error); };
+        });
+      }).catch(function() { return null; });
+    }
+
+    function showPersistHint() {
+      var el = document.getElementById('persist-hint');
+      if (!el) return;
+      if (location.protocol === 'file:') {
+        el.classList.remove('hidden');
+        el.textContent = 'Open via http://127.0.0.1:8765 (run run_dashboard.py) so imports persist after refresh. file:// often blocks storage.';
+      } else {
+        el.classList.add('hidden');
+      }
+    }
+
+    function normalizeNum(v) {
+      if (v == null || v === '') return NaN;
+      const n = typeof v === 'number' ? v : parseFloat(String(v).replace(/,/g, ''));
+      return isNaN(n) ? NaN : n;
+    }
+
+    function findPredictedPowerColumn(headers) {
+      const key = headers.findIndex(function(h) {
+        const s = String(h || '').toLowerCase();
+        return s.indexOf('predicted') >= 0 && (s.indexOf('power') >= 0 || s.indexOf('mw') >= 0) ||
+          s === 'power' || s === 'mw' || s === 'power (mw)' || s === 'predicted power';
+      });
+      return key >= 0 ? key : headers.findIndex(function(h) {
+        return /power|mw|forecast/i.test(String(h || ''));
+      });
+    }
+
+    function findTimeColumn(headers, powerCol) {
+      const timeLike = ['time', 'date', 'datetime', 'hour', 'interval', 'timestamp', 'period'];
+      for (let i = 0; i < headers.length; i++) {
+        const s = String(headers[i] || '').toLowerCase();
+        if (i !== powerCol && timeLike.some(function(t) { return s.indexOf(t) >= 0; })) return i;
+      }
+      return powerCol === 0 ? 1 : 0;
+    }
+
+    /** Parse hour (0-24) from datetime string. Uses only explicit time (HH:MM), never date parts like day 16. */
+    function parseHourFromDatetime(s) {
+      var str = String(s || '').trim();
+      if (!str) return NaN;
+      var hour = NaN;
+      var afterT = str.indexOf('T') >= 0 ? str.split('T')[1] : null;
+      if (afterT) {
+        var hm = afterT.match(/^(\d{1,2}):(\d{2})/);
+        if (hm) hour = parseInt(hm[1], 10);
+      }
+      if (isNaN(hour)) {
+        var parts = str.split(/\s+/);
+        var timePart = parts.length > 1 ? parts[parts.length - 1] : null;
+        if (timePart && /^\d{1,2}:\d{2}/.test(timePart)) {
+          var hm2 = timePart.match(/^(\d{1,2}):(\d{2})/);
+          if (hm2) hour = parseInt(hm2[1], 10);
+        }
+      }
+      if (isNaN(hour)) {
+        var anyTime = str.match(/(\d{1,2}):(\d{2})/);
+        if (anyTime) hour = parseInt(anyTime[1], 10);
+      }
+      return (hour >= 0 && hour <= 24) ? hour : NaN;
+    }
+
+    /** Get interval label (HH:MM) from datetime. Uses only explicit time, never date. */
+    function intervalLabelFromDatetime(s) {
+      var str = String(s || '').trim();
+      if (!str) return null;
+      var afterT = str.indexOf('T') >= 0 ? str.split('T')[1] : null;
+      if (afterT) {
+        var hm = afterT.match(/^(\d{1,2}):(\d{2})/);
+        if (hm) return (hm[1].length === 1 ? '0' + hm[1] : hm[1]) + ':' + hm[2];
+      }
+      var parts = str.split(/\s+/);
+      var timePart = parts.length > 1 ? parts[parts.length - 1] : null;
+      if (timePart && /^\d{1,2}:\d{2}/.test(timePart)) {
+        var hm2 = timePart.match(/^(\d{1,2}):(\d{2})/);
+        if (hm2) return (hm2[1].length === 1 ? '0' + hm2[1] : hm2[1]) + ':' + hm2[2];
+      }
+      var anyTime = str.match(/(\d{1,2}):(\d{2})/);
+      if (anyTime) return (anyTime[1].length === 1 ? '0' + anyTime[1] : anyTime[1]) + ':' + anyTime[2];
+      return null;
+    }
+
+    function parseCsv(text) {
+      const lines = text.split(/\r?\n/).filter(function(l) { return l.trim(); });
+      if (lines.length < 2) return [];
+      const headers = lines[0].split(/[,;\t]/).map(function(c) { return c.trim().replace(/^["']|["']$/g, ''); });
+      const powerCol = findPredictedPowerColumn(headers);
+      const timeCol = findTimeColumn(headers, powerCol);
+      if (powerCol < 0) return [];
+      const rows = [];
+      for (let i = 1; i < lines.length; i++) {
+        const cells = lines[i].split(/[,;\t]/).map(function(c) { return c.trim().replace(/^["']|["']$/g, ''); });
+        const power = normalizeNum(cells[powerCol]);
+        if (isNaN(power)) continue;
+        const timeStr = cells[timeCol] || '';
+        var hour = parseHourFromDatetime(timeStr);
+        if (isNaN(hour) || hour < 0 || hour > 24) hour = rows.length;
+        rows.push({ hour: hour, value: clampMw(power), timeLabel: timeStr || null });
+      }
+      return rows;
+    }
+
+    function parseXls(buffer) {
+      if (typeof XLSX === 'undefined') return [];
+      const wb = XLSX.read(new Uint8Array(buffer), { type: 'array', cellDates: true });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      if (!ws) return [];
+      const data = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+      if (data.length < 2) return [];
+      const headers = data[0].map(function(c) { return String(c || '').trim(); });
+      const powerCol = findPredictedPowerColumn(headers);
+      const timeCol = findTimeColumn(headers, powerCol);
+      if (powerCol < 0) return [];
+      const rows = [];
+      for (let i = 1; i < data.length; i++) {
+        const row = data[i];
+        const power = normalizeNum(row[powerCol]);
+        if (isNaN(power)) continue;
+        const timeVal = row[timeCol];
+        let timeLabel = '';
+        let hour = NaN;
+        if (timeVal instanceof Date) {
+          hour = timeVal.getHours();
+          timeLabel = timeVal.toISOString ? timeVal.toISOString().slice(0, 16) : String(timeVal);
+        } else if (typeof timeVal === 'number' && timeVal > 1) {
+          var d = new Date((timeVal - 25569) * 86400 * 1000);
+          if (!isNaN(d.getTime())) { hour = d.getHours(); timeLabel = d.toISOString ? d.toISOString().slice(0, 16) : String(timeVal); }
+        }
+        if (isNaN(hour)) {
+          timeLabel = String(timeVal || '');
+          hour = parseHourFromDatetime(timeLabel);
+        }
+        if (isNaN(hour) || hour < 0 || hour > 24) hour = rows.length;
+        rows.push({ hour: hour, value: clampMw(power), timeLabel: timeLabel || null });
+      }
+      return rows;
+    }
+
+    function rowsToHourlyAndIntervals(rows) {
+      const hourly = Array(25).fill(0);
+      const byHour = {};
+      rows.forEach(function(r) {
+        const h = Math.min(24, Math.max(0, Math.floor(r.hour)));
+        if (!byHour[h]) byHour[h] = [];
+        byHour[h].push(r.value);
+      });
+      for (let h = 0; h <= 24; h++) {
+        if (byHour[h] && byHour[h].length) {
+          const sum = byHour[h].reduce(function(a, b) { return a + b; }, 0);
+          hourly[h] = Math.round((sum / byHour[h].length) * 1000) / 1000;
+        }
+      }
+      const intervals = rows.map(function(r, i) {
+        const h = Math.min(24, Math.max(0, Math.floor(r.hour)));
+        var intervalStr = intervalLabelFromDatetime(r.timeLabel);
+        if (!intervalStr) {
+          var mmMatch = r.timeLabel && String(r.timeLabel).match(/:(\d{2})/);
+          var mm = mmMatch ? mmMatch[1] : (i < 12 ? String(i * 5).padStart(2, '0') : '00');
+          intervalStr = (h < 10 ? '0' + h : String(h)) + ':' + mm;
+        }
+        return { interval: intervalStr, dayAhead: r.value, rtd: 0 };
+      });
+      return { hourly: hourly, intervals: intervals };
+    }
+
+    function applyForecastToSystem(payload) {
+      if (payload.nomination && payload.nomination.length) {
+        nomData = payload.nomination.length === 25 ? payload.nomination.slice() : payload.nomination.slice(0, 25);
+        while (nomData.length < 25) nomData.push(0);
+        nomData = nomData.map(clampMw);
+      }
+      if (payload.weatherHourly && payload.weatherHourly.length >= 25) {
+        weatherData = payload.weatherHourly.slice(0, 25).map(clampMw);
+        while (weatherData.length < 25) weatherData.push(0);
+      }
+      if (payload.weatherSummary != null) weatherSummaryText = String(payload.weatherSummary);
+      if (payload.weatherDate) weatherDateStr = String(payload.weatherDate);
+      if (typeof chart !== 'undefined' && chart.data && chart.data.datasets) {
+        chart.data.datasets[0].data = nomData;
+        chart.data.datasets[1].data = weatherData.slice();
+        updateRtdChartSeries();
+      }
+      var ws = document.getElementById('weather-summary');
+      if (ws && weatherSummaryText) ws.textContent = weatherSummaryText;
+      if (payload.forecastRefDate && document.getElementById('forecast-ref-date')) {
+        document.getElementById('forecast-ref-date').textContent = payload.forecastRefDate;
+      }
+      var percentInp = document.getElementById('percent-value');
+      if (percentInp && payload.rtdPercent != null) {
+        var p = Math.min(200, Math.max(1, Math.round(Number(payload.rtdPercent))));
+        percentInp.value = p;
+      }
+      var mode = payload.rtdForecastMode;
+      if (mode && typeof mode === 'string') {
+        var radio = document.querySelector('input[name="forecast"][value="' + mode + '"]');
+        if (radio) radio.checked = true;
+      }
+      intervalsData = (payload.intervals && payload.intervals.length) ? payload.intervals.filter(function(row) {
+        var da = Number(row.dayAhead);
+        return !isNaN(da) && da > 0;
+      }).slice(0, 200) : [];
+      const tbody = document.querySelector('.interval-data-tbody');
+      if (tbody && intervalsData.length) {
+        tbody.innerHTML = intervalsData.map(function(row) {
+          var dayAhead = typeof row.dayAhead === 'number' ? row.dayAhead.toFixed(3) : (row.dayAhead != null ? row.dayAhead : '0');
+          var rtd = row.rtd != null ? Number(row.rtd) : 0;
+          rtd = isNaN(rtd) ? 0 : clampMw(rtd);
+          return '<tr class="interval-row hover:bg-brand-border/20 transition-colors" data-interval="' + (row.interval || '') + '"><td class="py-2 font-mono">' + (row.interval || '') + '</td><td class="py-2 text-right pr-4 day-ahead-cell">' + dayAhead + '</td><td class="py-2 text-right"><input type="number" class="rtd-input w-16 bg-brand-dark border border-brand-border rounded px-1 py-0.5 text-right text-sm font-mono" min="0" max="50" step="0.001" value="' + rtd + '"/></td></tr>';
+        }).join('');
+        attachIntervalRowHandlers();
+      }
+      if (payload.plantNameForVreExport && document.getElementById('vre-plant-name')) {
+        document.getElementById('vre-plant-name').value = payload.plantNameForVreExport;
+      }
+      renderVreTable();
+    }
+
+    function intervalsToDayAheadCurve(intervals) {
+      var curve = Array(25).fill(0);
+      if (!intervals || !intervals.length) return curve;
+      var byHour = {};
+      intervals.forEach(function(row) {
+        var interval = row.interval || '';
+        var parts = interval.split(':');
+        var h = parseInt(parts[0], 10);
+        if (isNaN(h) || h < 0 || h > 24) return;
+        if (!byHour[h]) byHour[h] = [];
+        byHour[h].push(clampMw(Number(row.dayAhead) || 0));
+      });
+      for (var h = 0; h <= 24; h++) {
+        if (byHour[h] && byHour[h].length) {
+          var sum = byHour[h].reduce(function(a, b) { return a + b; }, 0);
+          curve[h] = Math.round((sum / byHour[h].length) * 1000) / 1000;
+        }
+      }
+      return curve;
+    }
+
+    function intervalsToRtdCurve(intervals) {
+      var curve = Array(25).fill(0);
+      if (!intervals || !intervals.length) return curve;
+      var byHour = {};
+      intervals.forEach(function(row) {
+        var interval = row.interval || '';
+        var parts = interval.split(':');
+        var h = parseInt(parts[0], 10);
+        if (isNaN(h) || h < 0 || h > 24) return;
+        if (!byHour[h]) byHour[h] = [];
+        byHour[h].push(clampMw(Number(row.rtd) || 0));
+      });
+      for (var h = 0; h <= 24; h++) {
+        if (byHour[h] && byHour[h].length) {
+          var sum = byHour[h].reduce(function(a, b) { return a + b; }, 0);
+          curve[h] = Math.round((sum / byHour[h].length) * 1000) / 1000;
+        }
+      }
+      return curve;
+    }
+
+    /** Returns { low, mid, high } 25-point curves for shadow reference lines (percent × band). */
+    function getLowMidHighCurves() {
+      var intervals = getIntervalsFromTable().length ? getIntervalsFromTable() : intervalsData;
+      var dayAheadHourly = (intervals && intervals.length) ? intervalsToDayAheadCurve(intervals) : nomData.slice();
+      var percentInp = document.getElementById('percent-value');
+      var pct = percentInp ? parseFloat(percentInp.value) : 100;
+      if (isNaN(pct) || pct <= 0) pct = 100;
+      var low = dayAheadHourly.map(function(v) { return clampMw(v * (pct * 0.9) / 100); });
+      var mid = dayAheadHourly.map(function(v) { return clampMw(v * (pct * 1.0) / 100); });
+      var high = dayAheadHourly.map(function(v) { return clampMw(v * (pct * 1.1) / 100); });
+      return { low: low, mid: mid, high: high };
+    }
+
+    function updateShadowCurves() {
+      var curves = getLowMidHighCurves();
+      if (typeof chart !== 'undefined' && chart.data && chart.data.datasets.length >= 5) {
+        chart.data.datasets[2].data = curves.low.slice();
+        chart.data.datasets[3].data = curves.mid.slice();
+        chart.data.datasets[4].data = curves.high.slice();
+      }
+    }
+
+    function updateRtdChartSeries() {
+      var intervals = getIntervalsFromTable().length ? getIntervalsFromTable() : intervalsData;
+      rtdData = intervalsToRtdCurve(intervals);
+      updateShadowCurves();
+      if (typeof chart !== 'undefined' && chart.data && chart.data.datasets.length >= 6) {
+        chart.data.datasets[5].data = rtdData.slice();
+        chart.update();
+      }
+    }
+
+    function getIntervalsFromTable() {
+      var rows = document.querySelectorAll('.interval-data-tbody tr.interval-row');
+      var out = [];
+      rows.forEach(function(tr) {
+        var interval = tr.getAttribute('data-interval') || '';
+        var dayAheadCell = tr.querySelector('.day-ahead-cell') || (tr.querySelectorAll('td')[1]);
+        var dayAhead = dayAheadCell ? parseFloat(dayAheadCell.textContent) : 0;
+        if (isNaN(dayAhead)) dayAhead = 0;
+        var rtdIn = tr.querySelector('.rtd-input');
+        var rtd = rtdIn ? clampMw(parseFloat(rtdIn.value) || 0) : 0;
+        out.push({ interval: interval, dayAhead: dayAhead, rtd: rtd });
+      });
+      return out;
+    }
+
+    /** Multipliers for Low/Mid/High applied to the user's percentage. */
+    var MODE_MULTIPLIER = { low: 0.9, mid: 1.0, high: 1.1, custom: 1.0 };
+
+    /** Fill RTD from Day Ahead using: (percentage × mode multiplier). Percentage is static source; Low=90%, Mid=100%, High=110% of that. Custom: do not overwrite RTD inputs. */
+    function applyPercentageToRtd() {
+      var percentInp = document.getElementById('percent-value');
+      var pct = percentInp ? parseFloat(percentInp.value) : NaN;
+      if (isNaN(pct) || pct <= 0) return;
+      var modeEl = document.querySelector('input[name="forecast"]:checked');
+      var mode = modeEl ? modeEl.value : 'custom';
+      if (mode === 'custom') {
+        var intervals = getIntervalsFromTable().length ? getIntervalsFromTable() : intervalsData;
+        rtdData = intervalsToRtdCurve(intervals);
+        updateShadowCurves();
+        if (typeof chart !== 'undefined' && chart.data && chart.data.datasets.length >= 6) {
+          chart.data.datasets[5].data = rtdData.slice();
+          chart.update();
+        }
+        return;
+      }
+      var mult = MODE_MULTIPLIER[mode] != null ? MODE_MULTIPLIER[mode] : 1;
+      var effectivePct = (pct * mult) / 100;
+      var rows = document.querySelectorAll('.interval-data-tbody tr.interval-row');
+      rows.forEach(function(tr) {
+        var dayAheadCell = tr.querySelector('.day-ahead-cell') || (tr.querySelectorAll('td')[1]);
+        var dayAhead = dayAheadCell ? parseFloat(dayAheadCell.textContent) : 0;
+        if (isNaN(dayAhead)) dayAhead = 0;
+        var rtdIn = tr.querySelector('.rtd-input');
+        if (rtdIn) {
+          var rtdVal = clampMw(dayAhead * effectivePct);
+          rtdIn.value = rtdVal;
+        }
+      });
+      intervalsData = getIntervalsFromTable();
+      saveForecastLocally({ intervals: intervalsData });
+      updateRtdChartSeries();
+    }
+
+    function applyIntervalFilter() {
+      var sel = document.getElementById('interval-hour-filter');
+      var hour = (sel && sel.value) ? sel.value : 'all';
+      document.querySelectorAll('.interval-data-tbody tr.interval-row').forEach(function(tr) {
+        var interval = tr.getAttribute('data-interval') || '';
+        var match = hour === 'all' || interval.indexOf(hour + ':') === 0;
+        tr.style.display = match ? '' : 'none';
+      });
+    }
+
+    function attachIntervalRowHandlers() {
+      document.querySelectorAll('.interval-data-tbody .interval-row').forEach(function(row) {
+        row.addEventListener('click', function() {
+          document.querySelectorAll('.interval-data-tbody .interval-row').forEach(function(r) {
+            r.classList.remove('interval-row-active');
+            r.querySelectorAll('td').forEach(function(td) { td.classList.remove('text-brand-accent', 'font-bold'); });
+          });
+          this.classList.add('interval-row-active');
+          this.querySelectorAll('td').forEach(function(td) { td.classList.add('text-brand-accent', 'font-bold'); });
+          selectedInterval = this.getAttribute('data-interval');
+        });
+        var rtdIn = row.querySelector('.rtd-input');
+        if (rtdIn) {
+          rtdIn.addEventListener('change', function() {
+            var v = clampMw(parseFloat(this.value) || 0);
+            this.value = v;
+            intervalsData = getIntervalsFromTable();
+            saveForecastLocally({ intervals: intervalsData });
+            updateRtdChartSeries();
+            renderVreTable();
+          });
+          rtdIn.addEventListener('input', function() {
+            var v = parseFloat(this.value);
+            if (!isNaN(v) && (v < 0 || v > PLANT_MAX_MW)) return;
+            intervalsData = getIntervalsFromTable();
+            updateRtdChartSeries();
+          });
+        }
+      });
+      var firstActive = document.querySelector('.interval-data-tbody .interval-row-active');
+      selectedInterval = firstActive ? firstActive.getAttribute('data-interval') : (intervalsData[0] && intervalsData[0].interval);
+      if (!intervalsData.length) intervalsData = getIntervalsFromTable();
+      updateRtdChartSeries();
+      renderVreTable();
+      applyIntervalFilter();
+    }
+
+    function buildPersistPayload(extra) {
+      extra = extra || {};
+      var intervals = extra.intervals && extra.intervals.length ? extra.intervals : (getIntervalsFromTable().length ? getIntervalsFromTable() : intervalsData);
+      var percentEl = document.getElementById('percent-value');
+      var percentVal = percentEl && !isNaN(parseFloat(percentEl.value)) ? Math.round(parseFloat(percentEl.value)) : 100;
+      var modeEl = document.querySelector('input[name="forecast"]:checked');
+      var modeVal = modeEl ? modeEl.value : 'custom';
+      var vrePlantEl = document.getElementById('vre-plant-name');
+      var plantNameForVre = (vrePlantEl && vrePlantEl.value && vrePlantEl.value.trim()) ? vrePlantEl.value.trim() : '';
+      return {
+        forecastRefDate: extra.forecastRefDate || document.getElementById('forecast-ref-date').textContent,
+        nomination: extra.nomination || nomData.slice(),
+        intervals: intervals,
+        rtdPercent: extra.rtdPercent != null ? extra.rtdPercent : percentVal,
+        rtdForecastMode: extra.rtdForecastMode != null ? extra.rtdForecastMode : modeVal,
+        weatherHourly: extra.weatherHourly != null ? extra.weatherHourly : weatherData.slice(),
+        weatherSummary: extra.weatherSummary != null ? extra.weatherSummary : weatherSummaryText,
+        weatherDate: extra.weatherDate != null ? extra.weatherDate : weatherDateStr,
+        plantNameForVreExport: extra.plantNameForVreExport != null ? extra.plantNameForVreExport : plantNameForVre,
+        savedAt: new Date().toISOString()
+      };
+    }
+
+    function saveForecastLocally(payload) {
+      var full = buildPersistPayload(payload);
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(full)); } catch (e) {}
+      idbPut(full).catch(function() {});
+      try { sessionStorage.setItem(STORAGE_KEY + '_ram', JSON.stringify(full)); } catch (e) {}
+    }
+
+    function applyStoredRecord(data) {
+      if (!data) return;
+      var hasImport = data.nomination && data.nomination.length;
+      var hasIntervals = data.intervals && data.intervals.length;
+      var hasWeather = data.weatherHourly && data.weatherHourly.length;
+      if (!hasImport && !hasIntervals && !hasWeather) return;
+      applyForecastToSystem(data);
+    }
+
+    var shadowCurves = getLowMidHighCurves();
+    const chart = new Chart(document.getElementById('nominationChart').getContext('2d'), {
+      type: 'line',
+      data: {
+        labels: hours,
+        datasets: [
+          { label: 'Import (CSV)', data: nomData, borderColor: '#10b981', borderWidth: 2, pointRadius: 0, fill: { target: 'origin', above: 'rgba(16, 185, 129, 0.05)' }, tension: 0.4 },
+          { label: 'Weather', data: weatherData.slice(), borderColor: '#f59e0b', borderWidth: 2, borderDash: [4, 4], pointRadius: 0, fill: false, tension: 0.4 },
+          { label: 'Low (P10)', data: shadowCurves.low.slice(), borderColor: 'rgba(56, 189, 248, 0.7)', borderWidth: 1, borderDash: [6, 4], pointRadius: 0, fill: false, tension: 0.4 },
+          { label: 'Mid (P50)', data: shadowCurves.mid.slice(), borderColor: 'rgba(148, 163, 184, 0.6)', borderWidth: 1, borderDash: [6, 4], pointRadius: 0, fill: false, tension: 0.4 },
+          { label: 'High (P90)', data: shadowCurves.high.slice(), borderColor: 'rgba(253, 186, 116, 0.7)', borderWidth: 1, borderDash: [6, 4], pointRadius: 0, fill: false, tension: 0.4 },
+          { label: 'RTD', data: rtdData.slice(), borderColor: '#a78bfa', borderWidth: 2, pointRadius: 0, fill: false, tension: 0.4 }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { min: 0, max: PLANT_MAX_MW, grid: { color: 'rgba(51, 65, 85, 0.3)' }, ticks: { color: '#94a3b8', font: { size: 9 } }, title: { display: true, text: 'MW (max 50)', color: '#94a3b8', font: { size: 10 } } },
+          x: { grid: { display: false }, ticks: { color: '#94a3b8', font: { size: 9 } }, title: { display: true, text: 'Hour', color: '#94a3b8', font: { size: 10 } } }
+        }
+      }
+    });
+
+    document.querySelectorAll('input[name="forecast"]').forEach(function(radio) {
+      radio.addEventListener('change', function() {
+        applyPercentageToRtd();
+      });
+    });
+
+    document.getElementById('percent-value').addEventListener('change', function() {
+      var p = parseFloat(this.value);
+      if (isNaN(p) || p < 1 || p > 200) {
+        this.value = 100;
+      } else {
+        this.value = Math.round(p);
+      }
+      applyPercentageToRtd();
+    });
+    document.getElementById('percent-value').addEventListener('input', function() {
+      var p = parseFloat(this.value);
+      if (!isNaN(p) && p >= 1 && p <= 200) applyPercentageToRtd();
+    });
+
+    var RESOURCE_MRID = '06VISTASOL_G01';
+    var MARKET_PARTICIPANT_MRID = 'ARECO_01';
+    var PLT_CODE_VRE = '06_VISTASOL_G01';
+    var DEPENDABLE_CAPACITY_MW = 50.1;
+
+    function escapeXml(s) {
+      if (s == null) return '';
+      return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&apos;');
+    }
+
+    function formatDateTime(date) {
+      var y = date.getFullYear();
+      var m = String(date.getMonth() + 1).padStart(2, '0');
+      var d = String(date.getDate()).padStart(2, '0');
+      var h = String(date.getHours()).padStart(2, '0');
+      var min = String(date.getMinutes()).padStart(2, '0');
+      var sec = String(date.getSeconds()).padStart(2, '0');
+      return y + '-' + m + '-' + d + 'T' + h + ':' + min + ':' + sec;
+    }
+
+    /** Hourly average (VRE_NOM) per hour 1–24 from Day Ahead intervals. */
+    function getVreHourlyAverages() {
+      var intervals = getIntervalsFromTable().length ? getIntervalsFromTable() : intervalsData;
+      var byHour = {};
+      for (var h = 1; h <= 24; h++) byHour[h] = [];
+      intervals.forEach(function(row) {
+        var interval = (row.interval || '').trim();
+        var parts = interval.split(':');
+        var hour = parseInt(parts[0], 10);
+        if (hour >= 0 && hour <= 23) {
+          var deliveryHour = hour === 0 ? 24 : hour;
+          byHour[deliveryHour].push(clampMw(Number(row.dayAhead) || 0));
+        }
+      });
+      var out = [];
+      for (var h = 1; h <= 24; h++) {
+        var vals = byHour[h];
+        var avg = (vals && vals.length) ? vals.reduce(function(a, b) { return a + b; }, 0) / vals.length : 0;
+        out.push({ deliveryHour: h, vreNom: Math.round(avg * 10) / 10 });
+      }
+      return out;
+    }
+
+    function getVreDeliveryDate() {
+      var refEl = document.getElementById('forecast-ref-date');
+      var d = refEl && refEl.textContent ? new Date(refEl.textContent.trim()) : new Date();
+      if (isNaN(d.getTime())) d = new Date();
+      var m = String(d.getMonth() + 1).padStart(2, '0');
+      var day = String(d.getDate()).padStart(2, '0');
+      var y = d.getFullYear();
+      return m + '/' + day + '/' + y;
+    }
+
+    function renderVreTable() {
+      var tbody = document.getElementById('vre-tbody');
+      if (!tbody) return;
+      var vreRows = getVreHourlyAverages();
+      var deliveryDate = getVreDeliveryDate();
+      tbody.innerHTML = vreRows.map(function(r) {
+        return '<tr><td>' + PLT_CODE_VRE + '</td><td>' + deliveryDate + '</td><td>' + r.deliveryHour + '</td><td>1</td><td>' + r.vreNom + '</td><td>' + DEPENDABLE_CAPACITY_MW + '</td></tr>';
+      }).join('');
+    }
+
+    function buildVreCsvContent() {
+      var vreRows = getVreHourlyAverages();
+      var deliveryDate = getVreDeliveryDate();
+      var lines = ['PLT_CODE,DELIVERY_DATE,DELIVERY_HOUR,UNIT_NO,VRE_NOM, DEPENDABLE_CAPACITY'];
+      vreRows.forEach(function(r) {
+        lines.push([PLT_CODE_VRE, deliveryDate, r.deliveryHour, 1, r.vreNom, DEPENDABLE_CAPACITY_MW].join(','));
+      });
+      lines.push('EOF,,,,,');
+      return lines.join('\r\n');
+    }
+
+    /** Build lookup (hour, minute) -> MW from table/intervals; used for export. Export always 00:00–23:59. */
+    function getRtdLookupForExport() {
+      var intervals = getIntervalsFromTable().length ? getIntervalsFromTable() : intervalsData;
+      var map = {};
+      intervals.forEach(function(row) {
+        var interval = (row.interval || '').trim();
+        var parts = interval.split(':');
+        var hour = parseInt(parts[0], 10);
+        var minute = parts.length > 1 ? parseInt(parts[1], 10) : 0;
+        if (isNaN(hour) || hour < 0 || hour > 23) return;
+        if (isNaN(minute)) minute = 0;
+        map[hour + ',' + minute] = clampMw(Number(row.rtd) || 0);
+      });
+      return map;
+    }
+
+    function buildRawBidSetXml() {
+      var rtdLookup = getRtdLookupForExport();
+      var refDateEl = document.getElementById('forecast-ref-date');
+      var refDateStr = refDateEl ? refDateEl.textContent.trim() : '';
+      var bidDate = refDateStr ? new Date(refDateStr) : new Date();
+      if (isNaN(bidDate.getTime())) bidDate = new Date();
+      var y = bidDate.getFullYear(), m = String(bidDate.getMonth() + 1).padStart(2, '0'), d = String(bidDate.getDate()).padStart(2, '0');
+      var dayStart = y + '-' + m + '-' + d;
+      var startTime = dayStart + 'T00:00:00';
+      var stopTime = dayStart + 'T23:59:59';
+      var nowIso = formatDateTime(new Date());
+      var ns = 'http://pemc/soa/RawBidSet.xsd';
+      var minutesInHour = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55];
+
+      var sb = [];
+      sb.push('<?xml version="1.0" encoding="UTF-8"?>');
+      sb.push('<RawBidSet xmlns="' + ns + '">');
+      sb.push('  <MessageHeader>');
+      sb.push('    <TimeDate>' + nowIso + '</TimeDate>');
+      sb.push('    <Source>ARECO Solar Dashboard</Source>');
+      sb.push('  </MessageHeader>');
+      sb.push('  <MessagePayload>');
+      sb.push('    <GeneratingBid>');
+      sb.push('      <startTime>' + startTime + '</startTime>');
+      sb.push('      <stopTime>' + stopTime + '</stopTime>');
+      sb.push('      <RegisteredGenerator><mrid>' + escapeXml(RESOURCE_MRID) + '</mrid></RegisteredGenerator>');
+      sb.push('      <MarketParticipant><mrid>' + escapeXml(MARKET_PARTICIPANT_MRID) + '</mrid></MarketParticipant>');
+      sb.push('      <ProductBid>');
+      sb.push('        <MarketProduct><marketProductType>EN</marketProductType></MarketProduct>');
+
+      for (var h = 0; h < 24; h++) {
+        var hh = String(h).padStart(2, '0');
+        var tStart = dayStart + 'T' + hh + ':00:00';
+        var tEnd = h < 23 ? dayStart + 'T' + String(h + 1).padStart(2, '0') + ':00:00' : dayStart + 'T23:59:59';
+        sb.push('        <Nomination>');
+        sb.push('          <timeIntervalStart>' + tStart + '</timeIntervalStart>');
+        sb.push('          <timeIntervalEnd>' + tEnd + '</timeIntervalEnd>');
+        minutesInHour.forEach(function(min) {
+          var mw = rtdLookup[h + ',' + min] != null ? rtdLookup[h + ',' + min] : 0;
+          sb.push('          <minuteMW><minuteOfHour>' + min + '</minuteOfHour><quantity>' + mw + '</quantity></minuteMW>');
+        });
+        sb.push('        </Nomination>');
+      }
+
+      sb.push('      </ProductBid>');
+      sb.push('    </GeneratingBid>');
+      sb.push('  </MessagePayload>');
+      sb.push('</RawBidSet>');
+      return sb.join('\n');
+    }
+
+    document.getElementById('btn-export').addEventListener('click', function() {
+      var xml = buildRawBidSetXml();
+      var blob = new Blob([xml], { type: 'application/xml;charset=utf-8' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      var refEl = document.getElementById('forecast-ref-date');
+      var d = refEl && refEl.textContent ? new Date(refEl.textContent.trim()) : new Date();
+      if (isNaN(d.getTime())) d = new Date();
+      var mm = String(d.getMonth() + 1).padStart(2, '0');
+      var dd = String(d.getDate()).padStart(2, '0');
+      var yyyy = d.getFullYear();
+      a.download = 'ARECO_' + mm + '_' + dd + '_' + yyyy + '.xml';
+      a.click();
+      URL.revokeObjectURL(a.href);
+    });
+
+    document.getElementById('btn-export-vre-csv').addEventListener('click', function() {
+      var plantNameEl = document.getElementById('vre-plant-name');
+      var plantName = (plantNameEl && plantNameEl.value && plantNameEl.value.trim()) ? plantNameEl.value.trim() : 'Vista Alegre Solar Power Plant';
+      var refEl = document.getElementById('forecast-ref-date');
+      var d = refEl && refEl.textContent ? new Date(refEl.textContent.trim()) : new Date();
+      if (isNaN(d.getTime())) d = new Date();
+      var yyyy = d.getFullYear();
+      var mm = String(d.getMonth() + 1).padStart(2, '0');
+      var dd = String(d.getDate()).padStart(2, '0');
+      var dateStr = yyyy + mm + dd;
+      var safeName = plantName.replace(/[/\\?*:"<>|]/g, '_').trim() || 'Plant';
+      var csv = buildVreCsvContent();
+      var blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'VRE_NOM_{' + safeName + '}_' + dateStr + '.csv';
+      a.click();
+      URL.revokeObjectURL(a.href);
+    });
+
+    document.getElementById('btn-import').addEventListener('click', function() {
+      document.getElementById('forecast-file-input').click();
+    });
+
+    var intervalFilterEl = document.getElementById('interval-hour-filter');
+    if (intervalFilterEl) intervalFilterEl.addEventListener('change', applyIntervalFilter);
+
+    attachIntervalRowHandlers();
+
+    document.getElementById('forecast-file-input').addEventListener('change', function() {
+      const file = this.files && this.files[0];
+      if (!file) return;
+      const isCsv = /\.csv$/i.test(file.name);
+      const isExcel = /\.xls[x]?$/i.test(file.name);
+      const reader = new FileReader();
+      reader.onload = function() {
+        let rows = [];
+        if (isCsv) rows = parseCsv(reader.result);
+        else if (isExcel && typeof XLSX !== 'undefined') rows = parseXls(reader.result);
+        if (!rows.length) {
+          alert('No "predicted power" (or similar) column found, or no valid numeric rows.');
+          return;
+        }
+        var plantNameFromFile = file.name.replace(/\.[^.]*$/, '').trim();
+        if (plantNameFromFile) {
+          var vrePlantEl = document.getElementById('vre-plant-name');
+          if (vrePlantEl) vrePlantEl.value = plantNameFromFile;
+        }
+        const result = rowsToHourlyAndIntervals(rows);
+        const intervalsWithForecast = result.intervals.filter(function(r) {
+          var da = Number(r.dayAhead);
+          return !isNaN(da) && da > 0;
+        });
+        const payload = {
+          forecastRefDate: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+          nomination: result.hourly,
+          intervals: intervalsWithForecast,
+          plantNameForVreExport: plantNameFromFile || (document.getElementById('vre-plant-name') && document.getElementById('vre-plant-name').value) || undefined
+        };
+        saveForecastLocally(payload);
+        applyForecastToSystem(payload);
+        renderVreTable();
+        alert('Imported ' + rows.length + ' rows. Saved to browser storage (localStorage + IndexedDB). Use Save backup for a JSON file copy.');
+      };
+      if (isCsv) reader.readAsText(file);
+      else reader.readAsArrayBuffer(file);
+      this.value = '';
+    });
+
+    function restoreFromRecord(data) {
+      if (!data) return;
+      applyStoredRecord(data);
+      if (data.weatherHourly && data.weatherHourly.length) {
+        weatherData = data.weatherHourly.slice(0, 25);
+        while (weatherData.length < 25) weatherData.push(0);
+        chart.data.datasets[1].data = weatherData.slice();
+        if (data.weatherSummary) document.getElementById('weather-summary').textContent = data.weatherSummary;
+        chart.update();
+      }
+    }
+
+    idbGet().then(function(idbRow) {
+      var ls = null;
+      try { ls = localStorage.getItem(STORAGE_KEY); } catch (e) {}
+      var fromLs = ls ? JSON.parse(ls) : null;
+      var fromSess = null;
+      try { var s = sessionStorage.getItem(STORAGE_KEY + '_ram'); if (s) fromSess = JSON.parse(s); } catch (e) {}
+      var best = idbRow || fromLs || fromSess;
+      if (best && best.id) delete best.id;
+      if (best) restoreFromRecord(best);
+      else {
+        try {
+          var ls2 = localStorage.getItem(STORAGE_KEY);
+          if (ls2) restoreFromRecord(JSON.parse(ls2));
+        } catch (e2) {}
+      }
+      renderVreTable();
+      showPersistHint();
+    });
+
+    document.getElementById('btn-weather').addEventListener('click', function() {
+      var btn = this;
+      btn.disabled = true;
+      var d = new Date().toISOString().slice(0, 10);
+      fetch('/api/weather-forecast', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date: d })
+      }).then(function(r) { return r.json().then(function(j) { return { ok: r.ok, status: r.status, j: j }; }); })
+        .then(function(_ref) {
+          var j = _ref.j;
+          if (j.error) {
+            alert('Weather error: ' + j.error + '\n\nIf OpenAI failed, the server tries AccuWeather then Open-Meteo. Ensure run_dashboard.py is running and accuweather_api_key.txt exists if using fallback.');
+            return;
+          }
+          if (!j.hourly_mw || !j.hourly_mw.length) {
+            alert('Weather: no hourly data in response.');
+            return;
+          }
+          weatherData = j.hourly_mw.slice(0, 25).map(clampMw);
+          while (weatherData.length < 25) weatherData.push(0);
+          weatherSummaryText = (j.summary || '') + (j.message ? ' — ' + j.message : '') + (j.from_cache ? ' [cached today]' : '');
+          weatherDateStr = j.date || d;
+          chart.data.datasets[1].data = weatherData.slice();
+          chart.update();
+          document.getElementById('weather-summary').textContent = weatherSummaryText;
+          saveForecastLocally({ weatherHourly: weatherData, weatherSummary: weatherSummaryText, weatherDate: weatherDateStr });
+        })
+        .catch(function(err) {
+          alert('Cannot reach /api/weather-forecast. Start the dashboard with: python run_dashboard.py');
+        })
+        .finally(function() { btn.disabled = false; });
+    });
+
+    ['link-privacy', 'link-status', 'link-support'].forEach(id => {
+      document.getElementById(id).addEventListener('click', function(e) {
+        e.preventDefault();
+        const t = this.textContent.trim();
+        alert(t + ' — placeholder. Link would open here.');
+      });
+    });
+
+    document.querySelectorAll('.interval-row').forEach(row => {
+      row.addEventListener('click', function() {
+        document.querySelectorAll('.interval-row').forEach(r => {
+          r.classList.remove('interval-row-active');
+          r.querySelectorAll('td').forEach(td => { td.classList.remove('text-brand-accent', 'font-bold'); });
+        });
+        this.classList.add('interval-row-active');
+        this.querySelectorAll('td').forEach(td => { td.classList.add('text-brand-accent', 'font-bold'); });
+      });
+    });
+
+    // Live stream value: cross-origin prevents reading iframe pixels from this page.
+    // Use window.updateStreamMw(value) or a backend/OCR service that POSTs or exposes /api/stream-mw to push the parsed MW.
+    window.updateStreamMw = function(mw) {
+      var mwC = (mw != null && !isNaN(Number(mw))) ? clampMw(mw) : null;
+      var el = document.getElementById('stream-mw');
+      if (el) el.textContent = mwC != null ? mwC.toFixed(3) : (mw != null ? String(mw) : '—');
+      var currentMw = document.getElementById('current-mw');
+      if (currentMw && mwC != null) {
+        currentMw.textContent = mwC.toFixed(3);
+        var pct = Math.min(100, (mwC / PLANT_MAX_MW) * 100);
+        var ub = document.getElementById('util-bar');
+        var ut = document.getElementById('util-text');
+        if (ub) ub.style.width = pct + '%';
+        if (ut) ut.textContent = pct.toFixed(1) + '% of ' + PLANT_MAX_MW + 'MW';
+      }
+    };
+    // Optional: set window.STREAM_MW_API = '/api/stream-mw' (or your OCR backend URL) to poll for stream-derived MW.
+    (function pollStreamMw() {
+      var url = window.STREAM_MW_API || '';
+      if (url) {
+        fetch(url).then(function(r) { return r.ok ? r.json() : null; }).then(function(d) {
+          if (d && typeof d.mw === 'number') window.updateStreamMw(d.mw);
+        }).catch(function() {});
+      }
+      setTimeout(pollStreamMw, 5000);
+    })();
+  </script>
+</body>
+</html>

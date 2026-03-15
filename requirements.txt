@@ -1,3 +1,0 @@
-# Day Ahead Nomination app – stdlib only (tkinter, xml, json, pathlib).
-# No extra packages required for basic run.
-# Optional: tkcalendar for date picker (not used by default).

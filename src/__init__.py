@@ -1,1 +1,0 @@
-# Nomination app package
