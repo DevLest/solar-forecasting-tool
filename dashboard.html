@@ -48,6 +48,7 @@
     #confirmation-modal[open] { display: flex; }
     #confirmation-modal { display: none; align-items: center; justify-content: center; position: fixed; inset: 0; z-index: 100; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(4px); }
     #confirmation-modal .modal-panel { background: #1e293b; border: 1px solid #334155; border-radius: 1rem; max-width: 28rem; width: 90%; max-height: 90vh; overflow: auto; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); }
+    .rev-stepper-btn { font-size: 0.5rem; line-height: 1; background: none; border: none; cursor: pointer; -webkit-appearance: none; appearance: none; }
   </style>
 </head>
 <body class="bg-brand-dark text-brand-text font-sans antialiased min-h-screen flex flex-col">
@@ -75,8 +76,18 @@
 
   <main class="flex-grow p-6 space-y-3 max-w-[1600px] mx-auto w-full">
     <div class="grid grid-cols-12 gap-6">
-      <section class="col-span-12 lg:col-span-3 self-start bg-brand-card rounded-xl border border-brand-border p-4 shadow-xl overflow-hidden flex flex-col min-h-0 h-[33.5rem]">
-        <h3 class="text-sm font-semibold mb-2 text-brand-muted uppercase tracking-wider">Interval Data</h3>
+      <section class="col-span-12 lg:col-span-3 self-start bg-brand-card rounded-xl border border-brand-border p-4 shadow-xl overflow-hidden flex flex-col min-h-0 h-[42rem]">
+        <div class="flex items-center justify-between gap-2 mb-2">
+          <h3 class="text-sm font-semibold text-brand-muted uppercase tracking-wider">Interval Data</h3>
+          <div class="flex items-center gap-0.5 shrink-0">
+            <span class="text-[10px] text-brand-muted uppercase">Rev#</span>
+            <span id="interval-rev-number" class="min-w-[1.5rem] text-center text-sm font-semibold text-brand-text tabular-nums">1</span>
+            <div class="flex flex-col ml-0.5">
+              <button type="button" id="interval-rev-up" class="rev-stepper-btn leading-none p-0.5 text-brand-muted hover:text-brand-accent focus:outline-none focus:text-brand-accent" title="Increase revision" aria-label="Increase revision">&#9650;</button>
+              <button type="button" id="interval-rev-down" class="rev-stepper-btn leading-none p-0.5 text-brand-muted hover:text-brand-accent focus:outline-none focus:text-brand-accent" title="Decrease revision" aria-label="Decrease revision">&#9660;</button>
+            </div>
+          </div>
+        </div>
         <p class="text-[9px] text-brand-muted mb-3">Only hours with day-ahead forecast. Manual nomination via RTD column.</p>
         <div class="flex items-center gap-2 mb-3">
           <label for="interval-hour-filter" class="text-[10px] text-brand-muted uppercase whitespace-nowrap">Hour</label>
@@ -231,12 +242,13 @@
                   <th class="px-4 py-2 font-semibold uppercase">Exported</th>
                   <th class="px-4 py-2 font-semibold uppercase">Forecast date</th>
                   <th class="px-4 py-2 font-semibold uppercase">Intervals</th>
+                  <th class="px-4 py-2 font-semibold uppercase">Rev#</th>
                   <th class="px-4 py-2 font-semibold uppercase">RTD %</th>
                   <th class="px-4 py-2 font-semibold uppercase">Mode</th>
                 </tr>
               </thead>
               <tbody id="history-tbody" class="divide-y divide-brand-border/30">
-                <tr><td colspan="5" class="px-4 py-4 text-brand-muted text-center">Loading…</td></tr>
+                <tr><td colspan="6" class="px-4 py-4 text-brand-muted text-center">Loading…</td></tr>
               </tbody>
             </table>
           </div>
@@ -685,6 +697,13 @@
         var radio = document.querySelector('input[name="forecast"][value="' + mode + '"]');
         if (radio) radio.checked = true;
       }
+      if (payload.intervalRev != null) {
+        var revSpan = document.getElementById('interval-rev-number');
+        if (revSpan) {
+          var r = Math.max(1, Math.min(999, parseInt(payload.intervalRev, 10) || 1));
+          revSpan.textContent = r;
+        }
+      }
       function getFixedIntervalSlots0505To1900() {
         var slots = [];
         for (var m = 5 * 60 + 5; m <= 19 * 60; m += 5) {
@@ -866,9 +885,10 @@
     function applyIntervalFilter() {
       var sel = document.getElementById('interval-hour-filter');
       var hour = (sel && sel.value) ? sel.value : 'all';
+      var nextHour00 = hour !== 'all' ? (String(parseInt(hour, 10) + 1).padStart(2, '0') + ':00') : '';
       document.querySelectorAll('.interval-data-tbody tr.interval-row').forEach(function(tr) {
         var interval = tr.getAttribute('data-interval') || '';
-        var match = hour === 'all' || interval.indexOf(hour + ':') === 0;
+        var match = hour === 'all' || interval.indexOf(hour + ':') === 0 || interval === nextHour00;
         tr.style.display = match ? '' : 'none';
       });
     }
@@ -943,12 +963,17 @@
       var modeVal = modeEl ? modeEl.value : 'custom';
       var vrePlantEl = document.getElementById('vre-plant-name');
       var plantNameForVre = (vrePlantEl && vrePlantEl.value && vrePlantEl.value.trim()) ? vrePlantEl.value.trim() : '';
+      var revEl = document.getElementById('interval-rev-number');
+      var revNum = (revEl && revEl.textContent) ? (parseInt(revEl.textContent, 10) || 1) : 1;
+      revNum = Math.max(1, Math.min(999, revNum));
+      if (extra.intervalRev != null) revNum = Math.max(1, Math.min(999, parseInt(extra.intervalRev, 10) || 1));
       return {
         forecastRefDate: extra.forecastRefDate || getForecastRefDateString(),
         nomination: extra.nomination || nomData.slice(),
         intervals: intervals,
         rtdPercent: extra.rtdPercent != null ? extra.rtdPercent : percentVal,
         rtdForecastMode: extra.rtdForecastMode != null ? extra.rtdForecastMode : modeVal,
+        intervalRev: extra.intervalRev != null ? extra.intervalRev : revNum,
         weatherHourly: extra.weatherHourly != null ? extra.weatherHourly : weatherData.slice(),
         weatherSummary: extra.weatherSummary != null ? extra.weatherSummary : weatherSummaryText,
         weatherDate: extra.weatherDate != null ? extra.weatherDate : weatherDateStr,
@@ -1264,7 +1289,7 @@
       var tbody = document.getElementById('history-tbody');
       if (!tbody) return;
       if (!records || records.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-4 text-brand-muted text-center">No history yet. Use EXPORT or Export CSV to save (when using the server).</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="px-4 py-4 text-brand-muted text-center">No history yet. Use EXPORT or Export CSV to save (when using the server).</td></tr>';
         return;
       }
       var list = records.slice();
@@ -1277,9 +1302,10 @@
         var exportedAt = formatHistoryExportedAt(rec.exportedAt || rec.savedAt);
         var forecastRef = formatDateForDisplay(rec.forecastRefDateIso || rec.forecastRefDate) || '—';
         var intervalCount = (rec.intervals && rec.intervals.length) ? rec.intervals.length : 0;
+        var revNum = rec.intervalRev != null ? (parseInt(rec.intervalRev, 10) || 1) : '—';
         var rtdPct = rec.rtdPercent != null ? rec.rtdPercent : '—';
         var mode = (rec.rtdForecastMode || '—').toString();
-        return '<tr class="history-row cursor-pointer hover:bg-brand-border/20 transition-colors" data-history-index="' + idx + '"><td class="px-4 py-2 text-brand-muted">' + exportedAt + '</td><td class="px-4 py-2 text-brand-accent">' + forecastRef + '</td><td class="px-4 py-2">' + intervalCount + '</td><td class="px-4 py-2">' + rtdPct + '</td><td class="px-4 py-2">' + mode + '</td></tr>';
+        return '<tr class="history-row cursor-pointer hover:bg-brand-border/20 transition-colors" data-history-index="' + idx + '"><td class="px-4 py-2 text-brand-muted">' + exportedAt + '</td><td class="px-4 py-2 text-brand-accent">' + forecastRef + '</td><td class="px-4 py-2">' + intervalCount + '</td><td class="px-4 py-2">' + revNum + '</td><td class="px-4 py-2">' + rtdPct + '</td><td class="px-4 py-2">' + mode + '</td></tr>';
       }).join('');
       list.forEach(function(rec, i) {
         var row = tbody.querySelector('[data-history-index="' + i + '"]');
@@ -1556,6 +1582,22 @@
     var intervalFilterEl = document.getElementById('interval-hour-filter');
     if (intervalFilterEl) intervalFilterEl.addEventListener('change', applyIntervalFilter);
 
+    (function initIntervalRevStepper() {
+      var revSpan = document.getElementById('interval-rev-number');
+      var revUp = document.getElementById('interval-rev-up');
+      var revDown = document.getElementById('interval-rev-down');
+      var revMin = 1;
+      var revMax = 999;
+      function getRev() { return parseInt(revSpan && revSpan.textContent ? revSpan.textContent : 1, 10) || revMin; }
+      function setRev(n) {
+        n = Math.max(revMin, Math.min(revMax, n));
+        if (revSpan) revSpan.textContent = n;
+        if (typeof saveForecastLocally === 'function') saveForecastLocally({ intervalRev: n });
+      }
+      if (revUp) revUp.addEventListener('click', function() { setRev(getRev() + 1); });
+      if (revDown) revDown.addEventListener('click', function() { setRev(getRev() - 1); });
+    })();
+
     attachIntervalRowHandlers();
 
     document.getElementById('forecast-file-input').addEventListener('change', function() {
@@ -1614,6 +1656,13 @@
     function restoreFromRecord(data) {
       if (!data) return;
       applyStoredRecord(data);
+      if (data.intervalRev != null) {
+        var revSpan = document.getElementById('interval-rev-number');
+        if (revSpan) {
+          var r = Math.max(1, Math.min(999, parseInt(data.intervalRev, 10) || 1));
+          revSpan.textContent = r;
+        }
+      }
       if (data.weatherHourly && data.weatherHourly.length) {
         weatherData = data.weatherHourly.slice(0, 25);
         while (weatherData.length < 25) weatherData.push(0);
