@@ -49,6 +49,42 @@
     #confirmation-modal { display: none; align-items: center; justify-content: center; position: fixed; inset: 0; z-index: 100; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(4px); }
     #confirmation-modal .modal-panel { background: #1e293b; border: 1px solid #334155; border-radius: 1rem; max-width: 28rem; width: 90%; max-height: 90vh; overflow: auto; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); }
     .rev-stepper-btn { font-size: 0.5rem; line-height: 1; background: none; border: none; cursor: pointer; -webkit-appearance: none; appearance: none; }
+    .interval-row-rtd-locked .rtd-input { opacity: 0.55; cursor: not-allowed; background: rgba(15, 23, 42, 0.9) !important; }
+    /* Locked row: keep interval & day-ahead readable (not “disabled grey”) */
+    .interval-row-rtd-locked .interval-cell-time { color: #cbd5e1 !important; font-weight: 600; }
+    .interval-row-rtd-locked .day-ahead-cell { color: #e2e8f0 !important; }
+    /* Interval table — larger, clear typography */
+    .interval-data-table thead th { padding: 0.5rem 0.35rem; font-size: 0.6875rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: #94a3b8; }
+    .interval-data-table tbody td { padding: 0.45rem 0.35rem; vertical-align: middle; }
+    .interval-data-table .interval-cell-time {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.9375rem;
+      font-weight: 600;
+      color: #f1f5f9;
+      letter-spacing: 0.03em;
+      font-variant-numeric: tabular-nums;
+    }
+    .interval-data-table .day-ahead-cell {
+      font-size: 0.9375rem;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      color: #f8fafc;
+    }
+    .interval-data-table .rtd-input {
+      padding: 0.4rem 0.45rem;
+      font-size: 0.9375rem !important;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      min-width: 4.5rem;
+      width: 4.75rem;
+    }
+    /* Ops meta: label | control (reference layout) */
+    .ops-meta-kv { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); column-gap: 0.75rem; row-gap: 0.5rem; align-items: center; font-size: 0.8125rem; }
+    .ops-meta-kv > label { color: #f8fafc; font-weight: 500; margin: 0; text-align: left; }
+    .ops-meta-kv select { width: 100%; background: #0f172a; border: 1px solid #334155; border-radius: 0.25rem; padding: 0.35rem 0.5rem; font-size: 0.8125rem; color: #f8fafc; }
+    /* Forecast band: real radios, button UI (segmented control) */
+    .forecast-mode-seg input:focus-visible + span { outline: 2px solid #10b981; outline-offset: 2px; }
+    .forecast-mode-seg label:hover input:not(:checked) + span { background: rgba(51, 65, 85, 0.45); }
   </style>
 </head>
 <body class="bg-brand-dark text-brand-text font-sans antialiased min-h-screen flex flex-col">
@@ -75,8 +111,8 @@
   </header>
 
   <main class="flex-grow p-6 space-y-3 max-w-[1600px] mx-auto w-full">
-    <div class="grid grid-cols-12 gap-6">
-      <section class="col-span-12 lg:col-span-3 self-start bg-brand-card rounded-xl border border-brand-border p-4 shadow-xl overflow-hidden flex flex-col min-h-0 h-[42rem]">
+    <div class="grid grid-cols-12 gap-6 lg:items-stretch">
+      <section class="col-span-12 lg:col-span-3 bg-brand-card rounded-xl border border-brand-border p-4 shadow-xl overflow-hidden flex flex-col min-h-0 h-[min(90vh,58rem)] max-h-[90vh]">
         <div class="flex items-center justify-between gap-2 mb-2">
           <h3 class="text-sm font-semibold text-brand-muted uppercase tracking-wider">Interval Data</h3>
           <div class="flex items-center gap-0.5 shrink-0">
@@ -88,7 +124,6 @@
             </div>
           </div>
         </div>
-        <p class="text-[9px] text-brand-muted mb-3">Only hours with day-ahead forecast. Manual nomination via RTD column.</p>
         <div class="flex items-center gap-2 mb-3">
           <label for="interval-hour-filter" class="text-[10px] text-brand-muted uppercase whitespace-nowrap">Hour</label>
           <select id="interval-hour-filter" class="flex-1 min-w-0 bg-brand-dark border border-brand-border rounded px-2 py-1.5 text-xs text-brand-text focus:ring-1 focus:ring-brand-accent">
@@ -102,7 +137,7 @@
           </select>
         </div>
         <div class="overflow-y-auto flex-1 min-h-0">
-          <table class="w-full text-sm text-left border-collapse">
+          <table class="interval-data-table w-full text-left border-collapse">
             <thead class="sticky top-0 bg-brand-card">
               <tr class="text-brand-muted border-b border-brand-border">
                 <th class="py-2">Interval</th>
@@ -111,54 +146,131 @@
               </tr>
             </thead>
             <tbody class="interval-data-tbody divide-y divide-brand-border/30">
-              <tr class="interval-row hover:bg-brand-border/20 transition-colors" data-interval="00:05"><td class="py-2 font-mono">00:05</td><td class="py-2 text-right pr-4">0.0</td><td class="py-2 text-right"><input type="number" class="rtd-input w-16 bg-brand-dark border border-brand-border rounded px-1 py-0.5 text-right text-sm font-mono" min="0" max="50" step="0.001" value="0"/></td></tr>
-              <tr class="interval-row hover:bg-brand-border/20 transition-colors" data-interval="00:10"><td class="py-2 font-mono">00:10</td><td class="py-2 text-right pr-4">0.0</td><td class="py-2 text-right"><input type="number" class="rtd-input w-16 bg-brand-dark border border-brand-border rounded px-1 py-0.5 text-right text-sm font-mono" min="0" max="50" step="0.001" value="0"/></td></tr>
-              <tr class="interval-row hover:bg-brand-border/20 transition-colors" data-interval="08:00"><td class="py-2 font-mono">08:00</td><td class="py-2 text-right pr-4">10.10</td><td class="py-2 text-right"><input type="number" class="rtd-input w-16 bg-brand-dark border border-brand-border rounded px-1 py-0.5 text-right text-sm font-mono" min="0" max="50" step="0.001" value="0"/></td></tr>
-              <tr class="interval-row interval-row-active hover:bg-brand-border/20 transition-colors" data-interval="09:00"><td class="py-2 font-mono text-brand-accent">09:00</td><td class="py-2 text-right pr-4 text-brand-accent font-bold">39.40</td><td class="py-2 text-right"><input type="number" class="rtd-input w-16 bg-brand-dark border border-brand-border rounded px-1 py-0.5 text-right text-sm font-mono" min="0" max="50" step="0.001" value="0"/></td></tr>
-              <tr class="interval-row hover:bg-brand-border/20 transition-colors" data-interval="12:00"><td class="py-2 font-mono">12:00</td><td class="py-2 text-right pr-4">48.50</td><td class="py-2 text-right"><input type="number" class="rtd-input w-16 bg-brand-dark border border-brand-border rounded px-1 py-0.5 text-right text-sm font-mono" min="0" max="50" step="0.001" value="0"/></td></tr>
-              <tr class="interval-row hover:bg-brand-border/20 transition-colors" data-interval="21:00"><td class="py-2 font-mono">21:00</td><td class="py-2 text-right pr-4">0.00</td><td class="py-2 text-right"><input type="number" class="rtd-input w-16 bg-brand-dark border border-brand-border rounded px-1 py-0.5 text-right text-sm font-mono" min="0" max="50" step="0.001" value="0"/></td></tr>
+              <tr class="interval-row hover:bg-brand-border/20 transition-colors" data-interval="00:05"><td class="interval-cell-time">00:05</td><td class="text-right pr-3 day-ahead-cell">0.0</td><td class="text-right"><input type="number" class="rtd-input bg-brand-dark border border-brand-border rounded text-right font-mono" min="0" max="50" step="0.001" value="0"/></td></tr>
+              <tr class="interval-row hover:bg-brand-border/20 transition-colors" data-interval="00:10"><td class="interval-cell-time">00:10</td><td class="text-right pr-3 day-ahead-cell">0.0</td><td class="text-right"><input type="number" class="rtd-input bg-brand-dark border border-brand-border rounded text-right font-mono" min="0" max="50" step="0.001" value="0"/></td></tr>
+              <tr class="interval-row hover:bg-brand-border/20 transition-colors" data-interval="08:00"><td class="interval-cell-time">08:00</td><td class="text-right pr-3 day-ahead-cell">10.10</td><td class="text-right"><input type="number" class="rtd-input bg-brand-dark border border-brand-border rounded text-right font-mono" min="0" max="50" step="0.001" value="0"/></td></tr>
+              <tr class="interval-row interval-row-active hover:bg-brand-border/20 transition-colors" data-interval="09:00"><td class="interval-cell-time text-brand-accent">09:00</td><td class="text-right pr-3 day-ahead-cell text-brand-accent font-bold">39.40</td><td class="text-right"><input type="number" class="rtd-input bg-brand-dark border border-brand-border rounded text-right font-mono" min="0" max="50" step="0.001" value="0"/></td></tr>
+              <tr class="interval-row hover:bg-brand-border/20 transition-colors" data-interval="12:00"><td class="interval-cell-time">12:00</td><td class="text-right pr-3 day-ahead-cell">48.50</td><td class="text-right"><input type="number" class="rtd-input bg-brand-dark border border-brand-border rounded text-right font-mono" min="0" max="50" step="0.001" value="0"/></td></tr>
+              <tr class="interval-row hover:bg-brand-border/20 transition-colors" data-interval="21:00"><td class="interval-cell-time">21:00</td><td class="text-right pr-3 day-ahead-cell">0.00</td><td class="text-right"><input type="number" class="rtd-input bg-brand-dark border border-brand-border rounded text-right font-mono" min="0" max="50" step="0.001" value="0"/></td></tr>
             </tbody>
           </table>
         </div>
+        <div class="mt-3 pt-3 border-t border-brand-border/50 space-y-2 shrink-0">
+          <div class="ops-meta-kv">
+            <label for="ops-weather-condition">Weather Condition:</label>
+            <select id="ops-weather-condition" class="focus:ring-1 focus:ring-brand-accent" title="Field condition for this nomination">
+              <option value="">—</option>
+              <option value="Partly Cloudy">Partly Cloudy</option>
+              <option value="Cloudy">Cloudy</option>
+              <option value="Intermittent Rain">Intermittent Rain</option>
+              <option value="Heavy Rain">Heavy Rain</option>
+              <option value="Sunny">Sunny</option>
+            </select>
+            <label for="ops-revision-reason">Reason for revision:</label>
+            <select id="ops-revision-reason" class="focus:ring-1 focus:ring-brand-accent" title="Why this nomination revision">
+              <option value="">—</option>
+              <option value="High Irradiance">High Irradiance</option>
+              <option value="Low Irradiance">Low Irradiance</option>
+              <option value="Weather change">Weather change</option>
+              <option value="Plant / SCADA">Plant / SCADA</option>
+              <option value="Market / instruction">Market / instruction</option>
+              <option value="Other">Other</option>
+            </select>
+            <label for="ops-trader-duty">On Duty:</label>
+            <select id="ops-trader-duty" class="focus:ring-1 focus:ring-brand-accent" title="Trader on duty">
+              <option value="">—</option>
+              <option value="DR COSAS">DR COSAS</option>
+              <option value="N Leal">N Leal</option>
+            </select>
+          </div>
+        </div>
       </section>
 
-      <div class="col-span-12 lg:col-span-6 space-y-6">
-        <section class="bg-brand-card rounded-xl border border-brand-border p-5 flex justify-between items-center shadow-lg">
-          <div class="flex items-center space-x-4">
-            <div class="bg-brand-dark border border-brand-border rounded px-3 py-1">
-              <span class="text-brand-muted text-xs block">Percent (RTD vs Day Ahead)</span>
-              <input type="number" id="percent-value" min="1" max="200" step="1" value="100" class="w-16 bg-transparent text-brand-accent font-bold text-lg border-0 p-0 focus:ring-0 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" title="Apply this % of Day Ahead to all RTD values"/>
-              <span class="text-brand-muted text-sm">%</span>
+      <!-- Right stack: row 1 = quick controls + live stream & actions; row 2 = nomination chart full width -->
+      <div class="col-span-12 lg:col-span-9 flex flex-col gap-6 min-w-0 lg:h-[min(90vh,58rem)] lg:max-h-[90vh] lg:min-h-0">
+        <div class="flex flex-col xl:flex-row gap-6 items-stretch shrink-0">
+          <section class="bg-brand-card rounded-xl border border-brand-border p-5 sm:p-6 xl:p-7 shadow-lg flex flex-col xl:flex-1 xl:min-w-0 xl:h-full xl:justify-between gap-5 xl:gap-6">
+            <div class="flex flex-row flex-wrap lg:flex-nowrap items-stretch gap-2 md:gap-3 w-full min-w-0">
+              <div class="bg-brand-dark border border-brand-border rounded-md px-2 py-1 shrink-0 flex flex-row flex-nowrap items-center gap-1.5 min-w-0 self-center" title="RTD vs Day Ahead %">
+                <span class="text-brand-muted text-[10px] sm:text-xs whitespace-nowrap shrink-0 leading-none">RTD %</span>
+                <div class="flex items-baseline gap-0.5 shrink-0">
+                  <input type="number" id="percent-value" min="1" max="200" step="1" value="100" class="w-10 sm:w-11 bg-transparent text-brand-accent font-bold text-base sm:text-lg border-0 p-0 focus:ring-0 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" title="Apply this % of Day Ahead to all RTD values"/>
+                  <span class="text-brand-muted text-xs font-medium">%</span>
+                </div>
+              </div>
+              <div class="forecast-mode-seg flex flex-1 min-w-0 w-full lg:min-w-[14rem] rounded-lg border border-brand-border overflow-hidden bg-brand-dark shadow-sm self-center" role="radiogroup" aria-label="Forecast band">
+                <label class="cursor-pointer border-r border-brand-border last:border-r-0 flex-1 min-w-0 flex" title="Low (P10)">
+                  <input name="forecast" type="radio" value="low" class="sr-only peer"/>
+                  <span class="flex-1 flex items-center justify-center py-2.5 sm:py-3 px-1 sm:px-2 text-xs sm:text-sm font-bold text-brand-muted text-center transition-colors peer-checked:bg-brand-accent peer-checked:text-brand-dark">P10</span>
+                </label>
+                <label class="cursor-pointer border-r border-brand-border last:border-r-0 flex-1 min-w-0 flex" title="Mid (P50)">
+                  <input name="forecast" type="radio" value="mid" class="sr-only peer"/>
+                  <span class="flex-1 flex items-center justify-center py-2.5 sm:py-3 px-1 sm:px-2 text-xs sm:text-sm font-bold text-brand-muted text-center transition-colors peer-checked:bg-brand-accent peer-checked:text-brand-dark">P50</span>
+                </label>
+                <label class="cursor-pointer border-r border-brand-border last:border-r-0 flex-1 min-w-0 flex" title="High (P90)">
+                  <input name="forecast" type="radio" value="high" class="sr-only peer"/>
+                  <span class="flex-1 flex items-center justify-center py-2.5 sm:py-3 px-1 sm:px-2 text-xs sm:text-sm font-bold text-brand-muted text-center transition-colors peer-checked:bg-brand-accent peer-checked:text-brand-dark">P90</span>
+                </label>
+                <label class="cursor-pointer border-r border-brand-border last:border-r-0 flex-1 min-w-0 flex" title="Custom RTD per interval">
+                  <input name="forecast" type="radio" value="custom" class="sr-only peer" checked/>
+                  <span class="flex-1 flex items-center justify-center py-2.5 sm:py-3 px-1 sm:px-2 text-xs sm:text-sm font-bold text-brand-muted text-center transition-colors peer-checked:bg-brand-accent peer-checked:text-brand-dark">Custom</span>
+                </label>
+              </div>
+              <div class="flex flex-row flex-nowrap items-center gap-2 shrink-0 min-w-0 w-full lg:w-auto self-center">
+                <span class="text-[10px] sm:text-xs text-brand-muted uppercase tracking-wide whitespace-nowrap shrink-0">Forecast Ref</span>
+                <input type="date" id="forecast-ref-date" class="text-xs sm:text-sm font-semibold bg-brand-dark border border-brand-border rounded-md px-2 py-1.5 text-right [color-scheme:dark] shrink-0 min-w-0" value="2026-03-15" title="Forecast date for this nomination. Past dates are not selectable."/>
+              </div>
             </div>
-            <div class="h-10 w-[1px] bg-brand-border mx-2"></div>
-            <div class="grid grid-cols-2 gap-x-4 gap-y-2">
-              <label class="flex items-center space-x-2 cursor-pointer">
-                <input name="forecast" type="radio" value="low" class="form-radio text-brand-accent focus:ring-brand-accent bg-brand-dark border-brand-border"/>
-                <span class="text-sm">Low (P10)</span>
-              </label>
-              <label class="flex items-center space-x-2 cursor-pointer">
-                <input name="forecast" type="radio" value="mid" class="form-radio text-brand-accent focus:ring-brand-accent bg-brand-dark border-brand-border"/>
-                <span class="text-sm">Mid (P50)</span>
-              </label>
-              <label class="flex items-center space-x-2 cursor-pointer">
-                <input name="forecast" type="radio" value="high" class="form-radio text-brand-accent focus:ring-brand-accent bg-brand-dark border-brand-border"/>
-                <span class="text-sm">High (P90)</span>
-              </label>
-              <label class="flex items-center space-x-2 cursor-pointer">
-                <input name="forecast" type="radio" value="custom" checked class="form-radio text-brand-accent focus:ring-brand-accent bg-brand-dark border-brand-border"/>
-                <span class="text-sm">Custom</span>
-              </label>
+            <div class="border-t border-brand-border/50 pt-5 xl:pt-6 flex flex-col gap-4 xl:gap-5">
+              <div class="grid grid-cols-2 gap-3">
+                <input type="file" id="forecast-file-input" accept=".csv,.xls,.xlsx" class="hidden"/>
+                <button type="button" id="btn-import" class="w-full py-4 border border-brand-border rounded-xl bg-brand-dark hover:bg-brand-border/40 text-brand-text font-bold uppercase text-sm tracking-wide transition-all flex items-center justify-center">
+                  <svg class="h-5 w-5 mr-1.5 text-brand-muted shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/></svg>
+                  IMPORT
+                </button>
+                <button type="button" id="btn-export" class="w-full py-4 rounded-xl font-bold uppercase text-sm tracking-wide transition-all bg-brand-accent hover:bg-brand-accent/80 text-brand-dark">EXPORT</button>
+              </div>
+              <p id="persist-hint" class="text-[10px] sm:text-xs text-amber-400/90 border border-amber-500/30 rounded-lg px-3 py-2 bg-amber-500/5 hidden"></p>
+              <p id="weather-coords-display" class="hidden" aria-hidden="true"></p>
+              <button type="button" id="btn-weather" class="w-full py-4 border-2 border-amber-500/50 rounded-xl bg-brand-dark hover:bg-amber-500/10 text-amber-400 font-bold uppercase text-sm tracking-wide transition-all">Weather forecast (1×/day)</button>
+              <p id="weather-summary" class="text-sm text-brand-muted leading-relaxed min-h-[3rem] xl:min-h-[5rem] max-h-[8rem] overflow-y-auto rounded-lg border border-brand-border/40 bg-brand-dark/40 px-3 py-2.5"></p>
             </div>
-            <p class="text-[9px] text-brand-muted max-w-[240px]">% is the source value. RTD = Day Ahead × (% × band). P10=×0.1, P50=×0.5, P90=×0.9. Custom: same as Mid or edit RTD per interval.</p>
-          </div>
-          <div class="text-right">
-            <div class="text-xs text-brand-muted uppercase">Forecast Ref</div>
-            <input type="date" id="forecast-ref-date" class="text-sm font-semibold bg-brand-dark border border-brand-border rounded px-2 py-1 text-right [color-scheme:dark]" value="2026-03-15" title="Forecast date for this nomination. Past dates are not selectable."/>
-          </div>
-        </section>
+          </section>
 
-        <section class="bg-brand-card rounded-xl border border-brand-border p-6 shadow-lg h-96 flex flex-col">
-          <div class="flex justify-between items-center mb-4">
+          <div class="flex flex-col xl:h-full xl:w-[min(100%,24rem)] xl:flex-shrink-0 xl:max-w-[42%] 2xl:max-w-[38%]">
+            <!-- Live plant output stream (VDO.Ninja) — height sets the row; controls card stretches to match -->
+            <div class="bg-brand-card rounded-xl border border-brand-border overflow-hidden shadow-2xl xl:h-full xl:flex xl:flex-col">
+              <div class="px-4 py-3 border-b border-brand-border flex justify-between items-center">
+                <h3 class="text-xs font-bold uppercase tracking-widest text-brand-muted">Live plant output</h3>
+                <span class="text-[10px] text-brand-muted">Actual generation</span>
+              </div>
+              <div class="px-4 py-2 border-b border-brand-border/50 flex flex-col gap-1.5">
+                <div class="flex flex-row flex-nowrap items-center gap-2 min-w-0">
+                  <label for="live-stream-url" class="text-[10px] text-brand-muted uppercase whitespace-nowrap shrink-0">Stream URL</label>
+                  <input type="url" id="live-stream-url" placeholder="https://vdo.ninja/?view=..." class="flex-1 min-w-0 bg-brand-dark border border-brand-border rounded px-2 py-1.5 text-xs text-brand-text placeholder:text-brand-muted/60 focus:ring-1 focus:ring-brand-accent focus:border-brand-accent" />
+                  <button type="button" id="live-stream-apply" class="shrink-0 px-3 py-1.5 bg-brand-accent text-brand-dark rounded text-xs font-bold uppercase hover:bg-brand-accent/90 transition-colors">Apply</button>
+                </div>
+                <p class="text-[9px] text-brand-muted/80">Change when the link expires; saved in this browser until you update it.</p>
+              </div>
+              <div class="aspect-video xl:aspect-auto xl:flex-1 xl:min-h-[12rem] bg-brand-dark relative min-h-[10rem]">
+                <iframe
+                  id="vdo-ninja-stream"
+                  src=""
+                  title="VDO.Ninja – Live plant output"
+                  class="absolute inset-0 w-full h-full border-0"
+                  allow="autoplay; fullscreen; picture-in-picture; display-capture"
+                  allowfullscreen
+                  loading="lazy"
+                ></iframe>
+              </div>
+              <!-- stream-mw kept for updateStreamMw() / console integrations (not shown) -->
+              <span id="stream-mw" hidden></span>
+            </div>
+          </div>
+        </div>
+
+        <section class="bg-brand-card rounded-xl border border-brand-border p-4 sm:p-6 shadow-lg flex flex-col flex-1 min-h-[18rem] lg:min-h-0 overflow-hidden">
+          <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-3 sm:mb-4 shrink-0">
             <h3 class="text-sm font-semibold uppercase text-brand-muted">ARECO WORKING NOMINATION</h3>
             <div class="flex flex-wrap gap-2 text-[10px] uppercase font-bold tracking-widest">
               <span class="legend-item text-brand-accent"><span class="w-3 h-1 bg-brand-accent mr-1 inline-block"></span> Import (CSV)</span>
@@ -169,62 +281,11 @@
               <span class="legend-item text-orange-300/80"><span class="w-3 h-[1px] border-t border-dashed border-orange-300/80 mr-1 inline-block"></span> High</span>
             </div>
           </div>
-          <div class="flex-grow relative">
+          <div class="flex-1 min-h-0 relative w-full">
             <canvas id="nominationChart"></canvas>
           </div>
         </section>
       </div>
-
-      <section class="col-span-12 lg:col-span-3 space-y-6">
-        <!-- Live plant output stream (VDO.Ninja) - actual generated value source -->
-        <div class="bg-brand-card rounded-xl border border-brand-border overflow-hidden shadow-2xl">
-          <div class="px-4 py-3 border-b border-brand-border flex justify-between items-center">
-            <h3 class="text-xs font-bold uppercase tracking-widest text-brand-muted">Live plant output</h3>
-            <span class="text-[10px] text-brand-muted">Actual generation</span>
-          </div>
-          <div class="px-4 py-2 border-b border-brand-border/50 flex flex-col gap-1.5">
-            <label for="live-stream-url" class="text-[10px] text-brand-muted uppercase">Stream URL</label>
-            <div class="flex gap-2">
-              <input type="url" id="live-stream-url" placeholder="https://vdo.ninja/?view=..." class="flex-1 min-w-0 bg-brand-dark border border-brand-border rounded px-2 py-1.5 text-xs text-brand-text placeholder:text-brand-muted/60 focus:ring-1 focus:ring-brand-accent focus:border-brand-accent" />
-              <button type="button" id="live-stream-apply" class="shrink-0 px-3 py-1.5 bg-brand-accent text-brand-dark rounded text-xs font-bold uppercase hover:bg-brand-accent/90 transition-colors">Apply</button>
-            </div>
-            <p class="text-[9px] text-brand-muted/80">Change when the link expires; saved in this browser until you update it.</p>
-          </div>
-          <div class="aspect-video bg-brand-dark relative">
-            <iframe
-              id="vdo-ninja-stream"
-              src=""
-              title="VDO.Ninja – Live plant output"
-              class="absolute inset-0 w-full h-full border-0"
-              allow="autoplay; fullscreen; picture-in-picture; display-capture"
-              allowfullscreen
-              loading="lazy"
-            ></iframe>
-          </div>
-          <div class="px-4 py-2 border-t border-brand-border flex flex-col gap-1">
-            <div class="flex items-center justify-between text-[10px] text-brand-muted">
-              <span>Stream: VDO.Ninja</span>
-              <span id="stream-value-label">Value from stream: <strong id="stream-mw" class="text-brand-accent">—</strong> MW</span>
-            </div>
-            <p class="text-[9px] text-brand-muted/80">Auto-parse from video requires a separate OCR service; use <code class="bg-brand-dark px-1 rounded">updateStreamMw(value)</code> or <code class="bg-brand-dark px-1 rounded">/api/stream-mw</code> to push the value.</p>
-          </div>
-        </div>
-        <div class="grid grid-cols-1 gap-3">
-          <div class="grid grid-cols-2 gap-2">
-            <input type="file" id="forecast-file-input" accept=".csv,.xls,.xlsx" class="hidden"/>
-            <button type="button" id="btn-import" class="w-full py-3 border border-brand-border rounded-xl bg-brand-card hover:bg-brand-border text-brand-text font-bold uppercase text-xs transition-all flex items-center justify-center">
-              <svg class="h-4 w-4 mr-1 text-brand-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/></svg>
-              IMPORT
-            </button>
-            <button type="button" id="btn-export" class="w-full py-3 rounded-xl font-bold uppercase text-xs transition-all bg-brand-accent hover:bg-brand-accent/80 text-brand-dark">EXPORT</button>
-          </div>
-          <p id="persist-hint" class="text-[9px] text-amber-400/90 border border-amber-500/30 rounded-lg px-2 py-1.5 bg-amber-500/5 hidden"></p>
-          <p id="weather-coords-display" class="text-[9px] text-brand-muted">Weather location: 10.6388, 123.0042</p>
-          <button type="button" id="btn-weather" class="w-full py-3 border border-amber-500/40 rounded-xl bg-brand-card hover:bg-amber-500/10 text-amber-400 font-bold uppercase text-xs transition-all">Weather forecast (1×/day)</button>
-          <p class="text-[9px] text-brand-muted">OpenAI once per day; multi-source weather (Open-Meteo, wttr.in). Max <strong class="text-amber-400">50 MW</strong> plant cap.</p>
-          <p id="weather-summary" class="text-[10px] text-brand-muted leading-snug min-h-[2rem]"></p>
-        </div>
-      </section>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-3 lg:items-stretch">
@@ -380,6 +441,74 @@
       if (isNaN(n) || n < 0) return 0;
       return Math.min(PLANT_MAX_MW, Math.round(n * 1000) / 1000);
     }
+
+    /** Minutes since midnight for interval label "HH:MM" (hour 0–23, or 24:00 = end of day). */
+    function intervalLabelToMinutes(s) {
+      if (!s || typeof s !== 'string') return NaN;
+      var parts = s.trim().split(':');
+      var h = parseInt(parts[0], 10);
+      var m = parts.length > 1 ? parseInt(parts[1], 10) : 0;
+      if (h === 24 && (isNaN(m) || m === 0)) return 24 * 60;
+      if (isNaN(h) || h < 0 || h > 23) return NaN;
+      if (isNaN(m)) m = 0;
+      return h * 60 + m;
+    }
+
+    function todayIsoLocal() {
+      var d = new Date();
+      return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    }
+
+    /** Local Date at interval end (label = end of 5-minute slot) on the given forecast ref day. */
+    function intervalEndLocalDate(refIso, intervalStr) {
+      if (!refIso || !/^\d{4}-\d{2}-\d{2}$/.test(refIso)) return null;
+      var p = refIso.split('-');
+      var y = parseInt(p[0], 10), mo = parseInt(p[1], 10), day = parseInt(p[2], 10);
+      var s = (intervalStr || '').trim();
+      if (/^24:00$/.test(s)) return new Date(y, mo - 1, day + 1, 0, 0, 0, 0);
+      var mins = intervalLabelToMinutes(intervalStr);
+      if (isNaN(mins)) return null;
+      var hh = Math.floor(mins / 60);
+      var mm = mins % 60;
+      return new Date(y, mo - 1, day, hh, mm, 0, 0);
+    }
+
+    /**
+     * RTD cell editable: past forecast calendar day = all locked; future forecast day = all editable;
+     * today = editable only while interval end is still in the future (past intervals locked).
+     */
+    function isIntervalRtdEditable(intervalStr, now) {
+      now = now || new Date();
+      var refIso = getForecastRefDateString();
+      if (!refIso) return true;
+      var today = todayIsoLocal();
+      if (refIso < today) return false;
+      if (refIso > today) return true;
+      var end = intervalEndLocalDate(refIso, intervalStr);
+      if (!end || isNaN(end.getTime())) return true;
+      return now.getTime() < end.getTime();
+    }
+
+    function updateRtdIntervalLocks() {
+      var refIso = getForecastRefDateString();
+      var today = todayIsoLocal();
+      document.querySelectorAll('.interval-data-tbody tr.interval-row').forEach(function(tr) {
+        var intervalStr = tr.getAttribute('data-interval') || '';
+        var inp = tr.querySelector('.rtd-input');
+        if (!inp) return;
+        var editable = isIntervalRtdEditable(intervalStr, new Date());
+        inp.readOnly = !editable;
+        var lockTitle = 'Locked';
+        if (!editable) {
+          if (refIso && refIso < today) lockTitle = 'Locked: Forecast Ref is before today';
+          else lockTitle = 'Locked: interval already ended for today’s date';
+        }
+        inp.title = editable ? ('RTD (MW), interval end ' + intervalStr) : lockTitle;
+        tr.classList.toggle('interval-row-rtd-locked', !editable);
+      });
+    }
+    window.updateRtdIntervalLocks = updateRtdIntervalLocks;
+
     const IDB_NAME = 'arecoSolarDB';
     const IDB_STORE = 'forecast';
     const IDB_KEY = 'main';
@@ -704,24 +833,43 @@
           revSpan.textContent = r;
         }
       }
-      function getFixedIntervalSlots0505To1900() {
+      if (payload.weatherCondition != null && document.getElementById('ops-weather-condition')) {
+        document.getElementById('ops-weather-condition').value = String(payload.weatherCondition);
+      }
+      if (payload.revisionReason != null && document.getElementById('ops-revision-reason')) {
+        document.getElementById('ops-revision-reason').value = String(payload.revisionReason);
+      }
+      if (payload.traderDuty != null && document.getElementById('ops-trader-duty')) {
+        var tdEl = document.getElementById('ops-trader-duty');
+        var tdv = String(payload.traderDuty);
+        if (tdv === 'DR Cosas') tdv = 'DR COSAS';
+        tdEl.value = tdv;
+      }
+      /** Full day: each hour HH has HH:05…HH:55 plus (HH+1):00 (last closes as 24:00). */
+      function getFixedIntervalSlotsFullDay() {
         var slots = [];
-        for (var m = 5 * 60 + 5; m <= 19 * 60; m += 5) {
-          var h = Math.floor(m / 60);
-          var min = m % 60;
-          slots.push((h < 10 ? '0' + h : '' + h) + ':' + (min < 10 ? '0' + min : '' + min));
+        function pad2(n) { return (n < 10 ? '0' : '') + n; }
+        for (var h = 0; h < 24; h++) {
+          for (var mm = 5; mm < 60; mm += 5) {
+            slots.push(pad2(h) + ':' + pad2(mm));
+          }
+          slots.push(h === 23 ? '24:00' : pad2(h + 1) + ':00');
         }
         return slots;
       }
       function normalizeIntervalStr(s) {
         if (!s || typeof s !== 'string') return '';
-        var p = s.trim().split(':');
+        var t = s.trim();
+        if (/^24\s*:\s*00$/i.test(t)) return '24:00';
+        var p = t.split(':');
         var h = parseInt(p[0], 10);
         var m = p.length > 1 ? parseInt(p[1], 10) : 0;
         if (isNaN(h)) return '';
+        if (h === 24) return '24:00';
+        if (h < 0 || h > 23) return '';
         return (h < 10 ? '0' + h : '' + h) + ':' + (isNaN(m) ? '00' : (m < 10 ? '0' + m : '' + m));
       }
-      var fixedSlots = getFixedIntervalSlots0505To1900();
+      var fixedSlots = getFixedIntervalSlotsFullDay();
       var lookup = {};
       if (payload.intervals && payload.intervals.length) {
         payload.intervals.forEach(function(r) {
@@ -743,7 +891,7 @@
           var dayAhead = typeof row.dayAhead === 'number' ? row.dayAhead.toFixed(3) : (row.dayAhead != null ? row.dayAhead : '0');
           var rtd = row.rtd != null ? Number(row.rtd) : 0;
           rtd = isNaN(rtd) ? 0 : clampMw(rtd);
-          return '<tr class="interval-row hover:bg-brand-border/20 transition-colors" data-interval="' + (row.interval || '') + '"><td class="py-2 font-mono">' + (row.interval || '') + '</td><td class="py-2 text-right pr-4 day-ahead-cell">' + dayAhead + '</td><td class="py-2 text-right"><input type="number" class="rtd-input w-16 bg-brand-dark border border-brand-border rounded px-1 py-0.5 text-right text-sm font-mono" min="0" max="50" step="0.001" value="' + rtd + '"/></td></tr>';
+          return '<tr class="interval-row hover:bg-brand-border/20 transition-colors" data-interval="' + (row.interval || '') + '"><td class="interval-cell-time">' + (row.interval || '') + '</td><td class="text-right pr-3 day-ahead-cell">' + dayAhead + '</td><td class="text-right"><input type="number" class="rtd-input bg-brand-dark border border-brand-border rounded text-right font-mono" min="0" max="50" step="0.001" value="' + rtd + '"/></td></tr>';
         }).join('');
         attachIntervalRowHandlers();
         populateIntervalHourFilter();
@@ -867,6 +1015,8 @@
       var effectivePct = (pct * mult) / 100;
       var rows = document.querySelectorAll('.interval-data-tbody tr.interval-row');
       rows.forEach(function(tr) {
+        var intervalStr = tr.getAttribute('data-interval') || '';
+        if (!isIntervalRtdEditable(intervalStr)) return;
         var dayAheadCell = tr.querySelector('.day-ahead-cell') || (tr.querySelectorAll('td')[1]);
         var dayAhead = dayAheadCell ? parseFloat(dayAheadCell.textContent) : 0;
         if (isNaN(dayAhead)) dayAhead = 0;
@@ -885,15 +1035,18 @@
     function applyIntervalFilter() {
       var sel = document.getElementById('interval-hour-filter');
       var hour = (sel && sel.value) ? sel.value : 'all';
-      var nextHour00 = hour !== 'all' ? (String(parseInt(hour, 10) + 1).padStart(2, '0') + ':00') : '';
+      var nextHour00 = hour !== 'all' && hour !== '24' ? (String(parseInt(hour, 10) + 1).padStart(2, '0') + ':00') : '';
       document.querySelectorAll('.interval-data-tbody tr.interval-row').forEach(function(tr) {
         var interval = tr.getAttribute('data-interval') || '';
-        var match = hour === 'all' || interval.indexOf(hour + ':') === 0 || interval === nextHour00;
+        var match = false;
+        if (hour === 'all') match = true;
+        else if (hour === '24') match = interval === '24:00';
+        else match = interval.indexOf(hour + ':') === 0 || interval === nextHour00;
         tr.style.display = match ? '' : 'none';
       });
     }
 
-    /** Rebuild hour filter to only show hours that appear in the interval table (e.g. 05:05–19:00 → 05, 06, … 19). */
+    /** Rebuild hour filter from interval rows (00–23 plus 24 when 24:00 exists). */
     function populateIntervalHourFilter() {
       try {
         var sel = document.getElementById('interval-hour-filter');
@@ -902,10 +1055,18 @@
         var hours = {};
         for (var i = 0; i < rows.length; i++) {
           var interval = (rows[i].getAttribute && rows[i].getAttribute('data-interval')) || '';
+          if (interval === '24:00') {
+            hours['24'] = true;
+            continue;
+          }
           var part = (interval.split(':')[0] || '').trim();
           if (part && /^\d{1,2}$/.test(part)) hours[('0' + part).slice(-2)] = true;
         }
-        var hourList = Object.keys(hours).sort();
+        var hourList = Object.keys(hours).sort(function(a, b) {
+          var na = a === '24' ? 24 : parseInt(a, 10);
+          var nb = b === '24' ? 24 : parseInt(b, 10);
+          return na - nb;
+        });
         var currentVal = sel.value;
         sel.innerHTML = '<option value="all">All</option>' + hourList.map(function(h) { return '<option value="' + h + '">' + h + '</option>'; }).join('');
         if (currentVal !== 'all' && hourList.indexOf(currentVal) === -1) sel.value = 'all';
@@ -951,6 +1112,7 @@
       updateRtdChartSeries();
       renderVreTable();
       applyIntervalFilter();
+      if (typeof updateRtdIntervalLocks === 'function') updateRtdIntervalLocks();
       if (window.updateNavbarTimeAndInterval) window.updateNavbarTimeAndInterval();
     }
 
@@ -967,6 +1129,9 @@
       var revNum = (revEl && revEl.textContent) ? (parseInt(revEl.textContent, 10) || 1) : 1;
       revNum = Math.max(1, Math.min(999, revNum));
       if (extra.intervalRev != null) revNum = Math.max(1, Math.min(999, parseInt(extra.intervalRev, 10) || 1));
+      var weatherCondEl = document.getElementById('ops-weather-condition');
+      var revisionReasonEl = document.getElementById('ops-revision-reason');
+      var traderEl = document.getElementById('ops-trader-duty');
       return {
         forecastRefDate: extra.forecastRefDate || getForecastRefDateString(),
         nomination: extra.nomination || nomData.slice(),
@@ -977,6 +1142,9 @@
         weatherHourly: extra.weatherHourly != null ? extra.weatherHourly : weatherData.slice(),
         weatherSummary: extra.weatherSummary != null ? extra.weatherSummary : weatherSummaryText,
         weatherDate: extra.weatherDate != null ? extra.weatherDate : weatherDateStr,
+        weatherCondition: extra.weatherCondition != null ? extra.weatherCondition : (weatherCondEl ? weatherCondEl.value : ''),
+        revisionReason: extra.revisionReason != null ? extra.revisionReason : (revisionReasonEl ? revisionReasonEl.value : ''),
+        traderDuty: extra.traderDuty != null ? extra.traderDuty : (traderEl ? traderEl.value : ''),
         plantNameForVreExport: extra.plantNameForVreExport != null ? extra.plantNameForVreExport : plantNameForVre,
         savedAt: new Date().toISOString()
       };
@@ -1022,6 +1190,18 @@
         }
       }
     });
+
+    (function syncNominationChartSize() {
+      var canvas = document.getElementById('nominationChart');
+      var section = canvas && canvas.closest('section');
+      if (!section || typeof ResizeObserver === 'undefined') {
+        requestAnimationFrame(function() { chart.resize(); });
+        return;
+      }
+      var ro = new ResizeObserver(function() { chart.resize(); });
+      ro.observe(section);
+      requestAnimationFrame(function() { chart.resize(); });
+    })();
 
     document.querySelectorAll('input[name="forecast"]').forEach(function(radio) {
       radio.addEventListener('change', function() {
@@ -1099,6 +1279,11 @@
         var interval = (row.interval || '').trim();
         var parts = interval.split(':');
         var hour = parseInt(parts[0], 10);
+        var minute = parts.length > 1 ? parseInt(parts[1], 10) : 0;
+        if (hour === 24 && minute === 0) {
+          byHour[24].push(clampMw(Number(row.dayAhead) || 0));
+          return;
+        }
         if (hour >= 0 && hour <= 23) {
           var deliveryHour = hour === 0 ? 24 : hour;
           byHour[deliveryHour].push(clampMw(Number(row.dayAhead) || 0));
@@ -1153,11 +1338,16 @@
         var parts = interval.split(':');
         var hour = parseInt(parts[0], 10);
         var minute = parts.length > 1 ? parseInt(parts[1], 10) : 0;
-        if (isNaN(hour) || hour < 0 || hour > 23) return;
         if (isNaN(minute)) minute = 0;
         var rtd = Number(row.rtd) || 0;
         var dayAhead = Number(row.dayAhead) || 0;
-        map[hour + ',' + minute] = clampMw(rtd > 0 ? rtd : dayAhead);
+        var val = clampMw(rtd > 0 ? rtd : dayAhead);
+        if (hour === 24 && minute === 0) {
+          map['24,0'] = val;
+          return;
+        }
+        if (isNaN(hour) || hour < 0 || hour > 23) return;
+        map[hour + ',' + minute] = val;
       });
       return map;
     }
@@ -1179,6 +1369,7 @@
 
       function getMw(hour, minute) {
         if (minute === 60) {
+          if (hour === 23 && rtdLookup['24,0'] != null) return rtdLookup['24,0'];
           return rtdLookup[hour + ',55'] != null ? rtdLookup[hour + ',55'] : (rtdLookup[hour + ',0'] != null ? rtdLookup[hour + ',0'] : 0);
         }
         return rtdLookup[hour + ',' + minute] != null ? rtdLookup[hour + ',' + minute] : 0;
@@ -1577,7 +1768,17 @@
       forecastRefDateEl.addEventListener('blur', function() {
         saveForecastLocally({ forecastRefDate: getForecastRefDateString() });
       });
+      forecastRefDateEl.addEventListener('change', function() {
+        if (typeof window.updateRtdIntervalLocks === 'function') window.updateRtdIntervalLocks();
+      });
     }
+
+    var opsWeatherEl = document.getElementById('ops-weather-condition');
+    var opsRevisionEl = document.getElementById('ops-revision-reason');
+    var opsTraderEl = document.getElementById('ops-trader-duty');
+    if (opsWeatherEl) opsWeatherEl.addEventListener('change', function() { saveForecastLocally({}); });
+    if (opsRevisionEl) opsRevisionEl.addEventListener('change', function() { saveForecastLocally({}); });
+    if (opsTraderEl) opsTraderEl.addEventListener('change', function() { saveForecastLocally({}); });
 
     var intervalFilterEl = document.getElementById('interval-hour-filter');
     if (intervalFilterEl) intervalFilterEl.addEventListener('change', applyIntervalFilter);
@@ -1693,6 +1894,7 @@
       showPersistHint();
       loadHistory();
       initWeatherLocation();
+      if (typeof window.updateRtdIntervalLocks === 'function') window.updateRtdIntervalLocks();
     });
 
     (function initNavbarTimeAndDateMin() {
@@ -1702,16 +1904,6 @@
       }
       var timeEl = document.getElementById('navbar-current-time');
       var rtdEl = document.getElementById('navbar-rtd-mw');
-      /** Interval string "HH:MM" to minutes since midnight. */
-      function intervalToMinutes(s) {
-        if (!s || typeof s !== 'string') return NaN;
-        var parts = s.trim().split(':');
-        var h = parseInt(parts[0], 10);
-        var m = parts.length > 1 ? parseInt(parts[1], 10) : 0;
-        if (isNaN(h) || h < 0 || h > 23) return NaN;
-        if (isNaN(m)) m = 0;
-        return h * 60 + m;
-      }
       function updateNavbarTimeAndInterval() {
         if (timeEl) timeEl.textContent = new Date().toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
         var now = new Date();
@@ -1720,7 +1912,7 @@
         var entries = [];
         for (var i = 0; i < rows.length; i++) {
           var intervalStr = rows[i].getAttribute('data-interval');
-          var intervalMins = intervalToMinutes(intervalStr);
+          var intervalMins = intervalLabelToMinutes(intervalStr);
           if (isNaN(intervalMins)) continue;
           var rtdInput = rows[i].querySelector('.rtd-input');
           var raw = rtdInput && rtdInput.value !== '' ? parseFloat(rtdInput.value) : NaN;
@@ -1735,20 +1927,14 @@
           if (entries[j].mins >= currentMins) { next = entries[j]; break; }
         }
         var displayVal = null;
-        if (prev && next) {
-          if (prev.mins === next.mins) {
-            displayVal = prev.rtd;
-          } else {
-            var ratio = (currentMins - prev.mins) / (next.mins - prev.mins);
-            ratio = Math.max(0, Math.min(1, ratio));
-            displayVal = prev.rtd * (1 - ratio) + next.rtd * ratio;
-          }
-        } else if (prev) {
+        /* Interval-aligned (step): show RTD for the last row at or before current clock — no linear blend between rows */
+        if (prev) {
           displayVal = prev.rtd;
         } else if (next) {
           displayVal = next.rtd;
         }
         if (rtdEl) rtdEl.textContent = displayVal != null ? displayVal.toFixed(3) : '—';
+        if (typeof window.updateRtdIntervalLocks === 'function') window.updateRtdIntervalLocks();
       }
       if (timeEl || rtdEl) {
         updateNavbarTimeAndInterval();
