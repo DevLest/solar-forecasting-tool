@@ -44,6 +44,59 @@
       font-size: 0.8125rem;
     }
     .matrix-table-vre .text-brand-accent { color: #10b981; }
+    /* VRE day-ahead matrix — matches dashboard dark theme (display only; CSV unchanged) */
+    .vre-paste-matrix-wrapper {
+      background: rgba(15, 23, 42, 0.65);
+      color: #f8fafc;
+      border: 1px solid #334155;
+      border-radius: 0.5rem;
+      overflow: hidden;
+      box-shadow: inset 0 1px 0 rgba(16, 185, 129, 0.12);
+    }
+    .vre-paste-matrix {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+      font-variant-numeric: tabular-nums;
+    }
+    .vre-paste-matrix th,
+    .vre-paste-matrix td {
+      border: 1px solid #334155;
+      padding: 0.3rem 0.45rem;
+      text-align: center;
+      background: rgba(15, 23, 42, 0.45);
+    }
+    .vre-paste-matrix thead th {
+      font-weight: 700;
+      color: #94a3b8;
+      background: rgba(51, 65, 85, 0.45) !important;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-size: 0.75rem;
+    }
+    .vre-paste-matrix tbody tr:nth-child(even) td {
+      background: rgba(51, 65, 85, 0.28);
+    }
+    .vre-paste-matrix .vre-col-vre {
+      font-weight: 600;
+      text-align: center;
+      color: #10b981;
+      background: rgba(15, 23, 42, 0.55) !important;
+      min-width: 2.75rem;
+    }
+    .vre-paste-matrix tbody tr:nth-child(even) .vre-col-vre {
+      background: rgba(15, 23, 42, 0.65) !important;
+    }
+    .vre-paste-matrix .vre-col-mw {
+      text-align: right;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      color: #e2e8f0;
+    }
+    /* Zero MW — warm highlight that reads on dark UI */
+    .vre-paste-matrix .vre-cell-zero {
+      background: rgba(251, 146, 60, 0.22) !important;
+      color: #fdba74;
+    }
     .legend-dash { border-style: dashed; }
     #confirmation-modal[open] { display: flex; }
     #confirmation-modal { display: none; align-items: center; justify-content: center; position: fixed; inset: 0; z-index: 100; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(4px); }
@@ -54,7 +107,22 @@
     .interval-row-rtd-locked .interval-cell-time { color: #cbd5e1 !important; font-weight: 600; }
     .interval-row-rtd-locked .day-ahead-cell { color: #e2e8f0 !important; }
     /* Interval table — larger, clear typography */
-    .interval-data-table thead th { padding: 0.5rem 0.35rem; font-size: 0.6875rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: #94a3b8; }
+    /* Sticky header must stack above tbody (inputs are replaced elements and can paint over without z-index + opaque th bg) */
+    .interval-data-table thead {
+      position: sticky;
+      top: 0;
+      z-index: 30;
+    }
+    .interval-data-table thead th {
+      padding: 0.5rem 0.35rem;
+      font-size: 0.6875rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #94a3b8;
+      background-color: #1e293b;
+      box-shadow: 0 1px 0 #334155;
+    }
     .interval-data-table tbody td { padding: 0.45rem 0.35rem; vertical-align: middle; }
     .interval-data-table .interval-cell-time {
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
@@ -77,6 +145,8 @@
       font-variant-numeric: tabular-nums;
       min-width: 4.5rem;
       width: 4.75rem;
+      position: relative;
+      z-index: 0;
     }
     /* Ops meta: label | control (reference layout) */
     .ops-meta-kv { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); column-gap: 0.75rem; row-gap: 0.5rem; align-items: center; font-size: 0.8125rem; }
@@ -136,9 +206,9 @@
             <option value="20">20</option><option value="21">21</option><option value="22">22</option><option value="23">23</option>
           </select>
         </div>
-        <div class="overflow-y-auto flex-1 min-h-0">
+        <div class="overflow-y-auto flex-1 min-h-0 relative isolate">
           <table class="interval-data-table w-full text-left border-collapse">
-            <thead class="sticky top-0 bg-brand-card">
+            <thead>
               <tr class="text-brand-muted border-b border-brand-border">
                 <th class="py-2">Interval</th>
                 <th class="py-2">Day Ahead (MW)</th>
@@ -335,23 +405,32 @@
             <button type="button" id="btn-export-vre-csv" class="bg-brand-accent hover:bg-brand-accent/80 text-brand-dark px-4 py-2 rounded font-bold text-sm uppercase tracking-tighter">Export CSV</button>
           </div>
         </div>
-        <p class="text-[10px] text-brand-muted mb-3">VRE_NOM = average per hour from Day Ahead data. Hours 1–24.</p>
+        <p class="text-[10px] text-brand-muted mb-3">Preview: Day Ahead MW by 5‑minute slots (hours 1–24). <span class="text-brand-text/90">CSV export</span> stays the original layout: PLT_CODE, DELIVERY_DATE, DELIVERY_HOUR, UNIT_NO, VRE_NOM, DEPENDABLE_CAPACITY (hourly VRE_NOM average).</p>
         <div class="overflow-x-auto">
-          <table class="w-full border-collapse matrix-table matrix-table-vre text-sm" id="vre-table">
-            <thead>
-              <tr class="bg-brand-dark/50">
-                <th class="text-brand-muted py-2">PLT_CODE</th>
-                <th class="text-brand-muted py-2">DELIVERY_DATE</th>
-                <th class="text-brand-muted py-2">DELIVERY_HOUR</th>
-                <th class="text-brand-muted py-2">UNIT_NO</th>
-                <th class="text-brand-muted py-2">VRE_NOM</th>
-                <th class="text-brand-muted py-2">DEPENDABLE_CAPACITY</th>
-              </tr>
-            </thead>
-            <tbody id="vre-tbody">
-              <!-- filled by JS from Day Ahead hourly averages -->
-            </tbody>
-          </table>
+          <div class="vre-paste-matrix-wrapper max-w-full inline-block min-w-full">
+            <table class="vre-paste-matrix" id="vre-table" aria-label="Day ahead MW matrix by delivery hour">
+              <thead>
+                <tr>
+                  <th scope="col" class="vre-col-vre">VRE</th>
+                  <th scope="col" class="vre-col-mw">5</th>
+                  <th scope="col" class="vre-col-mw">10</th>
+                  <th scope="col" class="vre-col-mw">15</th>
+                  <th scope="col" class="vre-col-mw">20</th>
+                  <th scope="col" class="vre-col-mw">25</th>
+                  <th scope="col" class="vre-col-mw">30</th>
+                  <th scope="col" class="vre-col-mw">35</th>
+                  <th scope="col" class="vre-col-mw">40</th>
+                  <th scope="col" class="vre-col-mw">45</th>
+                  <th scope="col" class="vre-col-mw">50</th>
+                  <th scope="col" class="vre-col-mw">55</th>
+                  <th scope="col" class="vre-col-mw">60</th>
+                </tr>
+              </thead>
+              <tbody id="vre-tbody">
+                <!-- filled by JS from Day Ahead intervals + hourly VRE_NOM -->
+              </tbody>
+            </table>
+          </div>
         </div>
       </section>
     </div>
@@ -1298,6 +1377,53 @@
       return out;
     }
 
+    /** 5-minute columns within each delivery hour (display matrix only). */
+    var VRE_MINUTE_COLUMNS = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60];
+
+    /** Interval map for Day Ahead MW only — same key rules as nomination export lookup. */
+    function getDayAheadLookupForDisplay() {
+      var intervals = getIntervalsFromTable().length ? getIntervalsFromTable() : intervalsData;
+      var map = {};
+      intervals.forEach(function(row) {
+        var interval = (row.interval || '').trim();
+        var parts = interval.split(':');
+        var hour = parseInt(parts[0], 10);
+        var minute = parts.length > 1 ? parseInt(parts[1], 10) : 0;
+        if (isNaN(minute)) minute = 0;
+        var val = clampMw(Number(row.dayAhead) || 0);
+        if (hour === 24 && minute === 0) {
+          map['24,0'] = val;
+          return;
+        }
+        if (isNaN(hour) || hour < 0 || hour > 23) return;
+        map[hour + ',' + minute] = val;
+      });
+      return map;
+    }
+
+    function getDayAheadMwAt(map, clockHour, minuteOfHour) {
+      if (minuteOfHour === 60) {
+        if (clockHour === 23 && map['24,0'] != null) return map['24,0'];
+        return map[clockHour + ',55'] != null ? map[clockHour + ',55'] : (map[clockHour + ',0'] != null ? map[clockHour + ',0'] : 0);
+      }
+      return map[clockHour + ',' + minuteOfHour] != null ? map[clockHour + ',' + minuteOfHour] : 0;
+    }
+
+    /** Delivery hour 1–24 → clock hour in interval keys (matches getVreHourlyAverages: hour 0 → delivery 24). */
+    function deliveryHourToClockHour(dh) {
+      return dh === 24 ? 0 : dh;
+    }
+
+    function formatMinuteMwForVreGrid(n) {
+      var x = Number(n);
+      if (!isFinite(x)) return '';
+      if (x === 0) return '0';
+      var s = x.toFixed(3);
+      s = s.replace(/0+$/, '');
+      s = s.replace(/\.$/, '');
+      return s;
+    }
+
     function getVreDeliveryDate() {
       var refStr = getForecastRefDateString();
       var d = refStr ? new Date(refStr) : new Date();
@@ -1312,9 +1438,17 @@
       var tbody = document.getElementById('vre-tbody');
       if (!tbody) return;
       var vreRows = getVreHourlyAverages();
-      var deliveryDate = getVreDeliveryDate();
+      var daMap = getDayAheadLookupForDisplay();
       tbody.innerHTML = vreRows.map(function(r) {
-        return '<tr><td class="font-mono">' + PLT_CODE_VRE + '</td><td>' + deliveryDate + '</td><td class="font-mono">' + r.deliveryHour + '</td><td>1</td><td class="font-mono text-brand-accent font-semibold">' + r.vreNom + '</td><td class="font-mono">' + DEPENDABLE_CAPACITY_MW + '</td></tr>';
+        var clockH = deliveryHourToClockHour(r.deliveryHour);
+        var vreCell = '<td class="vre-col-vre">' + String(r.vreNom) + '</td>';
+        var dataCells = VRE_MINUTE_COLUMNS.map(function(min) {
+          var mw = getDayAheadMwAt(daMap, clockH, min);
+          var isZero = mw === 0;
+          var cls = 'vre-col-mw' + (isZero ? ' vre-cell-zero' : '');
+          return '<td class="' + cls + '">' + formatMinuteMwForVreGrid(mw) + '</td>';
+        }).join('');
+        return '<tr>' + vreCell + dataCells + '</tr>';
       }).join('');
     }
 
