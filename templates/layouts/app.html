@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html class="h-full" lang="en">
+<head>
+  {% include 'components/head_base.html' %}
+  <title>{% block title %}ARECO 65 SOLAR - Operations{% endblock %}</title>
+  {% block head_extra %}{% endblock %}
+</head>
+<body class="bg-brand-dark text-brand-text font-sans antialiased h-full min-h-screen max-h-screen flex flex-col overflow-hidden">
+  {% include 'components/app_header.html' %}
+  {# Grid: sidebar + main share one row on md so the rail stretches full height (flex+h-full is unreliable). #}
+  <div class="flex-1 min-h-0 w-full overflow-hidden grid grid-cols-1 grid-rows-[auto_minmax(0,1fr)] md:grid-cols-[14rem_minmax(0,1fr)] md:grid-rows-1">
+    {% include 'components/app_sidebar.html' %}
+    <main id="app-main" class="min-w-0 min-h-0 overflow-y-auto overflow-x-hidden flex flex-col md:min-h-0">
+      {% block main_inner %}{% endblock %}
+    </main>
+  </div>
+  {% include 'components/modal_confirmation.html' %}
+  {% include 'components/app_footer.html' %}
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+  <script src="{{ url_for('static', filename='js/app-shell.js') }}" defer></script>
+  {% block page_scripts %}{% endblock %}
+</body>
+</html>

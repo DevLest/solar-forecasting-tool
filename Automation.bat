@@ -17,6 +17,7 @@ where py >nul 2>nul
 if %errorlevel% equ 0 (
   py -3 -c "import sys; sys.exit(0 if sys.version_info >= (3, 7) else 1)" 2>nul
   if %errorlevel% equ 0 (
+    py -3 -m pip install -q -r "%~dp0requirements.txt" 2>nul
     py -3 "%~dp0run_dashboard.py"
     goto end
   )
@@ -57,10 +58,12 @@ pause
 exit /b 1
 
 :run
+python -m pip install -q -r "%~dp0requirements.txt" 2>nul
 python "%~dp0run_dashboard.py"
 goto end
 
 :run_embed
+"%PY_EMBED_DIR%\python.exe" -m pip install -q -r "%~dp0requirements.txt" 2>nul
 "%PY_EMBED_DIR%\python.exe" "%~dp0run_dashboard.py"
 goto end
 

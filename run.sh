@@ -86,4 +86,5 @@ if [ -z "$PY" ]; then
 fi
 
 echo "Using: $PY"
+$PY -m pip install -q -r "$DIR/requirements.txt" 2>/dev/null || true
 exec $PY "$DIR/run_dashboard.py"

@@ -1,0 +1,6 @@
+{% from 'components/ui_macros.html' import nav_tile %}
+<aside class="flex w-full flex-row md:flex-col md:h-full min-h-0 gap-2 p-3 md:p-4 border-b md:border-b-0 md:border-r border-brand-border bg-brand-card/95 backdrop-blur-sm shrink-0 md:overflow-y-auto md:z-30" aria-label="Main navigation">
+  <p class="hidden md:block text-[10px] font-bold uppercase tracking-widest text-brand-muted mb-1 px-2">Sections</p>
+  {{ nav_tile('nomination', 'Nomination', current=True) }}
+  {{ nav_tile('billing', 'Billing & Invoice') }}
+</aside>

@@ -1,0 +1,132 @@
+::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #475569; }
+    .matrix-table td, .matrix-table th {
+      padding: 0.25rem 0.5rem;
+      font-size: 0.75rem;
+      text-align: center;
+      border: 1px solid #334155;
+    }
+    .matrix-table tr:nth-child(even) { background-color: rgba(51, 65, 85, 0.3); }
+    .matrix-table-vre td, .matrix-table-vre th {
+      padding: 0.4rem 0.6rem;
+      font-size: 0.8125rem;
+    }
+    .matrix-table-vre .text-brand-accent { color: #10b981; }
+    /* VRE day-ahead matrix — matches dashboard dark theme (display only; CSV unchanged) */
+    .vre-paste-matrix-wrapper {
+      background: rgba(15, 23, 42, 0.65);
+      color: #f8fafc;
+      border: 1px solid #334155;
+      border-radius: 0.5rem;
+      overflow: hidden;
+      box-shadow: inset 0 1px 0 rgba(16, 185, 129, 0.12);
+    }
+    .vre-paste-matrix {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+      font-variant-numeric: tabular-nums;
+    }
+    .vre-paste-matrix th,
+    .vre-paste-matrix td {
+      border: 1px solid #334155;
+      padding: 0.3rem 0.45rem;
+      text-align: center;
+      background: rgba(15, 23, 42, 0.45);
+    }
+    .vre-paste-matrix thead th {
+      font-weight: 700;
+      color: #94a3b8;
+      background: rgba(51, 65, 85, 0.45) !important;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-size: 0.75rem;
+    }
+    .vre-paste-matrix tbody tr:nth-child(even) td {
+      background: rgba(51, 65, 85, 0.28);
+    }
+    .vre-paste-matrix .vre-col-vre {
+      font-weight: 600;
+      text-align: center;
+      color: #10b981;
+      background: rgba(15, 23, 42, 0.55) !important;
+      min-width: 2.75rem;
+    }
+    .vre-paste-matrix tbody tr:nth-child(even) .vre-col-vre {
+      background: rgba(15, 23, 42, 0.65) !important;
+    }
+    .vre-paste-matrix .vre-col-mw {
+      text-align: right;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      color: #e2e8f0;
+    }
+    /* Zero MW — warm highlight that reads on dark UI */
+    .vre-paste-matrix .vre-cell-zero {
+      background: rgba(251, 146, 60, 0.22) !important;
+      color: #fdba74;
+    }
+    .legend-dash { border-style: dashed; }
+    #confirmation-modal[open] { display: flex; }
+    #confirmation-modal { display: none; align-items: center; justify-content: center; position: fixed; inset: 0; z-index: 100; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(4px); }
+    #confirmation-modal .modal-panel { background: #1e293b; border: 1px solid #334155; border-radius: 1rem; max-width: 28rem; width: 90%; max-height: 90vh; overflow: auto; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); }
+    .rev-stepper-btn { font-size: 0.5rem; line-height: 1; background: none; border: none; cursor: pointer; -webkit-appearance: none; appearance: none; }
+    .interval-row-rtd-locked .rtd-input { opacity: 0.55; cursor: not-allowed; background: rgba(15, 23, 42, 0.9) !important; }
+    /* Locked row: keep interval & day-ahead readable (not “disabled grey”) */
+    .interval-row-rtd-locked .interval-cell-time { color: #cbd5e1 !important; font-weight: 600; }
+    .interval-row-rtd-locked .day-ahead-cell { color: #e2e8f0 !important; }
+    /* Interval table — larger, clear typography */
+    /* Sticky header must stack above tbody (inputs are replaced elements and can paint over without z-index + opaque th bg) */
+    .interval-data-table thead {
+      position: sticky;
+      top: 0;
+      z-index: 30;
+    }
+    .interval-data-table thead th {
+      padding: 0.5rem 0.35rem;
+      font-size: 0.6875rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #94a3b8;
+      background-color: #1e293b;
+      box-shadow: 0 1px 0 #334155;
+    }
+    .interval-data-table tbody td { padding: 0.45rem 0.35rem; vertical-align: middle; }
+    .interval-data-table .interval-cell-time {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.9375rem;
+      font-weight: 600;
+      color: #f1f5f9;
+      letter-spacing: 0.03em;
+      font-variant-numeric: tabular-nums;
+    }
+    .interval-data-table .day-ahead-cell {
+      font-size: 0.9375rem;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      color: #f8fafc;
+    }
+    .interval-data-table .rtd-input {
+      padding: 0.4rem 0.45rem;
+      font-size: 0.9375rem !important;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      min-width: 4.5rem;
+      width: 4.75rem;
+      position: relative;
+      z-index: 0;
+    }
+    /* Ops meta: label | control (reference layout) */
+    .ops-meta-kv { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); column-gap: 0.75rem; row-gap: 0.5rem; align-items: center; font-size: 0.8125rem; }
+    .ops-meta-kv > label { color: #f8fafc; font-weight: 500; margin: 0; text-align: left; }
+    .ops-meta-kv select { width: 100%; background: #0f172a; border: 1px solid #334155; border-radius: 0.25rem; padding: 0.35rem 0.5rem; font-size: 0.8125rem; color: #f8fafc; }
+    /* Forecast band: real radios, button UI (segmented control) */
+    .forecast-mode-seg input:focus-visible + span { outline: 2px solid #10b981; outline-offset: 2px; }
+    .forecast-mode-seg label:hover input:not(:checked) + span { background: rgba(51, 65, 85, 0.45); }
+    .nav-panel-btn[aria-current="page"] {
+      background: rgba(16, 185, 129, 0.12);
+      border-color: #10b981;
+      color: #10b981;
+    }

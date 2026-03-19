@@ -1,0 +1,26 @@
+{# Reusable UI primitives — import: {% from 'components/ui_macros.html' import nav_tile, page_hero %} #}
+
+{% macro nav_tile(panel_id, label, current=False) %}
+<button type="button" data-nav-panel="{{ panel_id }}" class="nav-panel-btn flex-1 md:flex-none text-left px-4 py-3 rounded-lg border border-transparent text-sm font-semibold text-brand-text hover:bg-brand-border/30 transition-colors"{% if current %} aria-current="page"{% endif %}>{{ label }}</button>
+{% endmacro %}
+
+{% macro page_hero(title, subtitle=None) %}
+<div class="rounded-xl border border-brand-border bg-brand-card/80 px-6 py-5 shadow-lg mb-6">
+  <h2 class="text-lg font-bold uppercase tracking-wider text-brand-accent">{{ title }}</h2>
+  {% if subtitle %}
+  <p class="text-sm text-brand-muted mt-1">{{ subtitle }}</p>
+  {% endif %}
+</div>
+{% endmacro %}
+
+{% macro empty_state_card(heading, body) %}
+<div class="bg-brand-card rounded-xl border border-brand-border border-dashed p-12 sm:p-16 shadow-xl min-h-[min(70vh,36rem)] flex flex-col items-center justify-center text-center">
+  <div class="rounded-full bg-brand-dark border border-brand-border p-4 mb-6" aria-hidden="true">
+    <svg class="h-10 w-10 text-brand-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+    </svg>
+  </div>
+  <h2 class="text-xl sm:text-2xl font-bold uppercase tracking-wider text-brand-accent mb-3">{{ heading }}</h2>
+  <p class="text-sm text-brand-muted max-w-md leading-relaxed">{{ body }}</p>
+</div>
+{% endmacro %}
