@@ -1,13 +1,17 @@
 """HTTP routes and JSON API (same contract as legacy ``run_dashboard.py``)."""
 from __future__ import annotations
 
+import io
 import json
 import os
 from datetime import date, datetime
+from pathlib import Path
 
 from flask import Blueprint, Response, jsonify, render_template, request, send_from_directory
+from werkzeug.utils import secure_filename
 
-from app.config import ROOT
+from app.config import DATA_DIR, ROOT, settlement_zip_passwords_from_env
+from app.services.billing_settlement_extract import extract_settlement_master
 from app.services.history import load_historical_exports, save_historical_export
 from app.services.nomination_accuracy import analyze_uploads
 from app.services.nomination_accuracy_dates import resolve_storage_trade_date
@@ -20,6 +24,44 @@ from app.services.nomination_accuracy_store import (
 from app.services.weather import get_weather_forecast
 
 bp = Blueprint("main", __name__)
+
+
+def _settlement_export_subdir_from_upload(filename: str) -> str:
+    """
+    Folder name placed under the user-chosen export path, derived from the master zip name
+    (stem only, no .zip). Safe for a single path segment on Windows.
+    """
+    base = os.path.splitext(os.path.basename(filename or ""))[0].strip()
+    slug = secure_filename(base) if base else ""
+    if not slug:
+        slug = "settlement_master"
+    max_len = 120
+    if len(slug) > max_len:
+        slug = slug[:max_len].rstrip("._- ")
+    if not slug:
+        slug = "settlement_master"
+    return slug
+
+
+def _merge_settlement_zip_passwords(form) -> list[str]:
+    """Env defaults (B2/B3 order); optional form fields override slot 1 and/or 2."""
+    env = settlement_zip_passwords_from_env()
+    o1 = (form.get("zip_password1") or "").strip()
+    o2 = (form.get("zip_password2") or "").strip()
+    legacy = (form.get("zip_password") or "").strip()
+    if legacy and not o1 and not o2:
+        return [legacy]
+    if not o1 and not o2:
+        return env
+    b1 = o1 or (env[0] if len(env) > 0 else "")
+    b2 = o2 or (env[1] if len(env) > 1 else "")
+    seen: set[str] = set()
+    out: list[str] = []
+    for p in (b1, b2):
+        if p and p not in seen:
+            seen.add(p)
+            out.append(p)
+    return out
 
 
 @bp.after_request
@@ -167,6 +209,113 @@ def api_nomination_accuracy_analytics_annual():
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
     return jsonify({"ok": True, **payload})
+
+
+@bp.route("/api/billing/settlement-config", methods=["GET"])
+def api_billing_settlement_config():
+    p = settlement_zip_passwords_from_env()
+    return jsonify(
+        {
+            "ok": True,
+            "zip_password_slots_from_env": len(p),
+            "has_zip_passwords": len(p) > 0,
+        }
+    )
+
+
+@bp.route("/api/billing/default-export-dir", methods=["GET"])
+def api_billing_default_export_dir():
+    default = os.path.join(DATA_DIR, "billing_settlement_export")
+    try:
+        os.makedirs(default, exist_ok=True)
+    except OSError as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+    return jsonify({"ok": True, "path": os.path.abspath(default)})
+
+
+@bp.route("/api/billing/user-export-shortcuts", methods=["GET"])
+def api_billing_user_export_shortcuts():
+    """
+    Real folder paths on the machine running Flask (same as Copy-as-path in Explorer).
+    Browsers cannot fill these from a native picker; use these buttons instead.
+    """
+    shortcuts: list[dict[str, str]] = []
+    seen: set[str] = set()
+    home = Path.home()
+
+    def add(label: str, folder: Path) -> None:
+        try:
+            if not folder.is_dir():
+                return
+            p = os.path.abspath(str(folder.resolve()))
+        except OSError:
+            return
+        if p not in seen:
+            seen.add(p)
+            shortcuts.append({"label": label, "path": p})
+
+    if os.name == "nt":
+        for env_key in ("OneDrive", "OneDriveConsumer", "OneDriveCommercial"):
+            base = os.environ.get(env_key)
+            if not base:
+                continue
+            add("Desktop (OneDrive)", Path(base) / "Desktop")
+            add("Downloads (OneDrive)", Path(base) / "Downloads")
+            add("Documents (OneDrive)", Path(base) / "Documents")
+
+    add("Desktop", home / "Desktop")
+    add("Downloads", home / "Downloads")
+    add("Documents", home / "Documents")
+
+    return jsonify({"ok": True, "shortcuts": shortcuts})
+
+
+@bp.route("/api/billing/settlement-extract", methods=["POST", "OPTIONS"])
+def api_billing_settlement_extract():
+    if request.method == "OPTIONS":
+        return "", 204
+    zf = request.files.get("settlement_zip")
+    output_dir = (request.form.get("output_dir") or "").strip()
+    zip_passwords = _merge_settlement_zip_passwords(request.form)
+    if not zf or not zf.filename:
+        return jsonify({"ok": False, "error": "Missing settlement master .zip upload."}), 400
+    if not output_dir:
+        return jsonify({"ok": False, "error": "Missing export folder path."}), 400
+    if not os.path.isabs(output_dir):
+        return jsonify(
+            {
+                "ok": False,
+                "error": "Export path must be absolute (full path on the PC running this app), e.g. C:\\Users\\You\\Desktop\\Settlement.",
+            }
+        ), 400
+    parent_abs = os.path.abspath(output_dir)
+    subdir = _settlement_export_subdir_from_upload(zf.filename)
+    out_abs = os.path.join(parent_abs, subdir)
+    if not zf.filename.lower().endswith(".zip"):
+        return jsonify({"ok": False, "error": "Master file must be a .zip archive."}), 400
+    try:
+        raw = zf.read()
+        if not raw:
+            return jsonify({"ok": False, "error": "Uploaded zip is empty."}), 400
+        result = extract_settlement_master(io.BytesIO(raw), out_abs, zip_passwords=zip_passwords)
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+    payload = {
+        "ok": result.ok,
+        "output_dir": result.output_dir,
+        "export_parent": parent_abs,
+        "export_subdir": subdir,
+        "errors": result.errors,
+        "warnings": result.warnings,
+        "areco_days": result.areco_days,
+        "arecoss_days": result.arecoss_days,
+        "files_placed": result.files_placed,
+        "files_count": len(result.files_placed),
+        "zip_password_slots_used": len(zip_passwords),
+        "zip_password_attempts_per_daily": len(zip_passwords) + 1 if zip_passwords else 1,
+    }
+    status = 200 if result.ok else 422
+    return jsonify(payload), status
 
 
 @bp.route("/api/weather-forecast", methods=["POST", "OPTIONS"])

@@ -15,7 +15,8 @@ def create_app() -> Flask:
         static_folder=os.path.join(ROOT, "static"),
         static_url_path="/static",
     )
-    app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024
+    # Settlement master zips can be large (nested monthly bundles).
+    app.config["MAX_CONTENT_LENGTH"] = 256 * 1024 * 1024
     app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
 
     from app.routes import bp as main_bp

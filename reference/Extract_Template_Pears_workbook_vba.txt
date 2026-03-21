@@ -1,0 +1,224 @@
+# Reference only — the Flask app does NOT read this file. Logic lives in
+# app/services/billing_settlement_extract.py. Safe to delete this export when you no longer need it.
+#
+# Extracted VBA from Extract Template_Pears_.xlsm (oletools). Not a round-trip to the workbook.
+
+========================================================================
+# File: xl/vbaProject.bin  Stream: VBA/ThisWorkbook  Module: ThisWorkbook.cls
+========================================================================
+Attribute VB_Name = "ThisWorkbook"
+Attribute VB_Base = "0{00020819-0000-0000-C000-000000000046}"
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = False
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = True
+Attribute VB_TemplateDerived = False
+Attribute VB_Customizable = True
+
+========================================================================
+# File: xl/vbaProject.bin  Stream: VBA/Sheet1  Module: Sheet1.cls
+========================================================================
+Attribute VB_Name = "Sheet1"
+Attribute VB_Base = "0{00020820-0000-0000-C000-000000000046}"
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = False
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = True
+Attribute VB_TemplateDerived = False
+Attribute VB_Customizable = True
+
+========================================================================
+# File: xl/vbaProject.bin  Stream: VBA/Module2  Module: Module2.bas
+========================================================================
+Attribute VB_Name = "Module2"
+Sub CreateBatFile()
+
+    Dim fso As Object
+    Dim ts As Object
+    Dim FilePath As String
+    Dim FolderPath As String
+    
+    ' === READ SETTINGS FROM EXCEL ===
+    Dim PASSWORD1 As String
+    Dim PASSWORD2 As String
+    Dim WINRAR As String
+    Dim OUTPUTFOLDER As String
+    Dim BATNAME As String
+    
+    With Sheets("Sheet1")
+        PASSWORD1 = .Range("B2").Value
+        PASSWORD2 = .Range("B3").Value
+        WINRAR = .Range("B4").Value
+        OUTPUTFOLDER = .Range("B5").Value
+        BATNAME = .Range("B6").Value
+    End With
+
+    ' Default fallback values
+    If OUTPUTFOLDER = "" Then OUTPUTFOLDER = "_EXTRACTED"
+    If BATNAME = "" Then BATNAME = "auto_extract.bat"
+    
+    ' Ensure file has .bat extension
+    If LCase(Right(BATNAME, 4)) <> ".bat" Then
+        BATNAME = BATNAME & ".bat"
+    End If
+    
+    ' === Save BAT in the same folder as this Excel workbook ===
+    FolderPath = ThisWorkbook.Path & "\"
+    FilePath = FolderPath & BATNAME
+    
+    Set fso = CreateObject("Scripting.FileSystemObject")
+    Set ts = fso.CreateTextFile(FilePath, True)
+    
+    ' === WRITE BAT FILE CONTENTS ===
+    ts.WriteLine "@echo off"
+    ts.WriteLine "setlocal enabledelayedexpansion"
+    ts.WriteLine ""
+    ts.WriteLine ":: === SETTINGS ==="
+    ts.WriteLine "set ""PASSWORD1=" & PASSWORD1 & """"
+    ts.WriteLine "set ""PASSWORD2=" & PASSWORD2 & """"
+    ts.WriteLine ""
+    ts.WriteLine ":: Folder where the BAT file is located"
+    ts.WriteLine "set ""TARGET_FOLDER=%~dp0"""
+    ts.WriteLine ""
+    ts.WriteLine ":: Extract to a separate folder to avoid infinite loop"
+    ts.WriteLine "set ""OUT_FOLDER=%~dp0" & OUTPUTFOLDER & """"
+    ts.WriteLine ""
+    ts.WriteLine ":: WinRAR path"
+    ts.WriteLine "set ""WINRAR=" & WINRAR & """"
+    ts.WriteLine ""
+    ts.WriteLine ":: Log file"
+    ts.WriteLine "set ""LOG_FILE=%~dp0extraction_log.txt"""
+    ts.WriteLine ""
+    ts.WriteLine ":: Nested ZIP loop protection"
+    ts.WriteLine "set ""NESTCOUNT=0"""
+    ts.WriteLine "set ""NEST_LIMIT=5"""
+    ts.WriteLine ""
+    ts.WriteLine "if not exist ""%OUT_FOLDER%"" mkdir ""%OUT_FOLDER%"""
+    ts.WriteLine ""
+    ts.WriteLine "echo =========================== > ""%LOG_FILE%"""
+    ts.WriteLine "echo STARTING EXTRACTION >> ""%LOG_FILE%"""
+    ts.WriteLine "echo =========================== >> ""%LOG_FILE%"""
+    ts.WriteLine ""
+    ts.WriteLine ":REPEAT"
+    ts.WriteLine "set ""FOUNDZIP=0"""
+    ts.WriteLine ""
+    ts.WriteLine "for /r ""%TARGET_FOLDER%"" %%A in (*.zip) do ("
+    ts.WriteLine "    echo ---------------------------------------"
+    ts.WriteLine "    echo Processing ZIP: %%A"
+    ts.WriteLine "    echo ---------------------------------------"
+    ts.WriteLine "    echo Processing ZIP: %%A >> ""%LOG_FILE%"""
+    ts.WriteLine ""
+    ts.WriteLine "    set ""OK=0"""
+    ts.WriteLine ""
+    ts.WriteLine "    ""%WINRAR%"" x -p%PASSWORD1% -y ""%%A"" ""%OUT_FOLDER%\"" >nul 2>&1"
+    ts.WriteLine "    if !errorlevel! equ 0 ("
+    ts.WriteLine "        echo ? Extracted with PASSWORD1"
+    ts.WriteLine "        echo Extracted with PASSWORD1 >> ""%LOG_FILE%"""
+    ts.WriteLine "        set ""OK=1"""
+    ts.WriteLine "    ) else ("
+    ts.WriteLine "        ""%WINRAR%"" x -p%PASSWORD2% -y ""%%A"" ""%OUT_FOLDER%\"" >nul 2>&1"
+    ts.WriteLine "        if !errorlevel! equ 0 ("
+    ts.WriteLine "            echo ? Extracted with PASSWORD2"
+    ts.WriteLine "            echo Extracted with PASSWORD2 >> ""%LOG_FILE%"""
+    ts.WriteLine "            set ""OK=1"""
+    ts.WriteLine "        )"
+    ts.WriteLine "    )"
+    ts.WriteLine ""
+    ts.WriteLine "    if !OK! equ 1 ("
+    ts.WriteLine "        echo Deleting processed ZIP: %%A"
+    ts.WriteLine "        echo ZIP deleted after extraction >> ""%LOG_FILE%"""
+    ts.WriteLine "        del ""%%A"""
+    ts.WriteLine "    ) else ("
+    ts.WriteLine "        echo ? Failed extracting (wrong password or corrupted)"
+    ts.WriteLine "        echo Failed extraction >> ""%LOG_FILE%"""
+    ts.WriteLine "        echo %%~nxA | findstr /i ""_FAILED"" >nul"
+    ts.WriteLine "        if errorlevel 1 ("
+    ts.WriteLine "            ren ""%%A"" ""%%~nA_FAILED%%~xA"""
+    ts.WriteLine "            echo ZIP renamed to prevent loop >> ""%LOG_FILE%"""
+    ts.WriteLine "        )"
+    ts.WriteLine "    )"
+    ts.WriteLine ""
+    ts.WriteLine "    set FOUNDZIP=1"
+    ts.WriteLine ")"
+    
+    ts.WriteLine ""
+    ts.WriteLine "if ""%FOUNDZIP%""==""1"" ("
+    ts.WriteLine "    set /a NESTCOUNT+=1"
+    ts.WriteLine "    echo Looking for nested ZIPs... (Attempt !NESTCOUNT!)"
+    ts.WriteLine "    echo Looking for nested ZIPs... (Attempt !NESTCOUNT!) >> ""%LOG_FILE%"""
+    ts.WriteLine ""
+    ts.WriteLine "    if !NESTCOUNT! GEQ !NEST_LIMIT! ("
+    ts.WriteLine "        echo Maximum nested attempts reached. Exiting..."
+    ts.WriteLine "        echo Maximum nested attempts reached. Exiting... >> ""%LOG_FILE%"""
+    ts.WriteLine "        goto :EOF"
+    ts.WriteLine "    )"
+    ts.WriteLine ""
+    ts.WriteLine "    goto REPEAT"
+    ts.WriteLine ")"
+    ts.WriteLine ""
+    ts.WriteLine "echo ==========================="
+    ts.WriteLine "echo        ALL DONE!"
+    ts.WriteLine "echo ==========================="
+    ts.WriteLine "echo =========================== >> ""%LOG_FILE%"""
+    ts.WriteLine "echo ALL DONE >> ""%LOG_FILE%"""
+    ts.WriteLine "echo =========================== >> ""%LOG_FILE%"""
+    ts.WriteLine "pause"
+    
+    ts.Close
+    
+    MsgBox "BAT file created successfully:" & vbCrLf & FilePath, vbInformation
+    
+End Sub
+
+========================================================================
+# File: xl/vbaProject.bin  Stream: VBA/Module1  Module: Module1.bas
+========================================================================
+Attribute VB_Name = "Module1"
+Sub ExportRangeToBat_Auto()
+    Dim fileName As String
+    Dim FilePath As String
+    Dim fso As Object, file As Object
+    Dim ws As Worksheet
+    Dim lastRow As Long
+    Dim i As Long
+    Dim lineText As String
+
+    ' Set worksheet for BAT content
+    Set ws = Sheets("Sheet2")
+
+    ' Determine last used row in column B
+    lastRow = ws.Cells(ws.Rows.Count, "B").End(xlUp).Row
+
+    ' Get file name from Sheet1 B2
+    fileName = Sheets("Sheet1").Range("B2").Value
+    If LCase(Right(fileName, 4)) <> ".bat" Then fileName = fileName & ".bat"
+
+    ' Output file path
+    FilePath = ThisWorkbook.Path & "\" & fileName
+
+    ' Create text file
+    Set fso = CreateObject("Scripting.FileSystemObject")
+    Set file = fso.CreateTextFile(FilePath, True)
+
+    ' Write each line
+    For i = 1 To lastRow
+        lineText = CStr(ws.Range("B" & i).Value)
+
+        ' Clean dangerous characters (invisible unicode)
+        lineText = Replace(lineText, Chr(0), "")
+        lineText = Replace(lineText, Chr(10), "")
+        lineText = Replace(lineText, Chr(13), "")
+        lineText = Replace(lineText, "?", "[OK]")
+        lineText = Replace(lineText, "?", "[FAILED]")
+        lineText = Replace(lineText, "“", """")
+        lineText = Replace(lineText, "”", """")
+        lineText = Replace(lineText, "‘", "'")
+        lineText = Replace(lineText, "’", "'")
+
+        file.WriteLine lineText
+    Next i
+
+    file.Close
+
+    MsgBox "BAT file created at:" & vbCrLf & FilePath, vbInformation
+End Sub

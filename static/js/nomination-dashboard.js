@@ -1614,7 +1614,7 @@
         .then(function(_ref) {
           var j = _ref.j;
           if (j.error) {
-            alert('Weather error: ' + j.error + '\n\nIf OpenAI failed, the server tries AccuWeather then Open-Meteo. Ensure the Flask app is running (python run_dashboard.py) and accuweather_api_key.txt exists if using fallback.');
+            alert('Weather error: ' + j.error + '\n\nIf OpenAI failed, the server tries AccuWeather then Open-Meteo. Ensure the Flask app is running (python run_dashboard.py) and set OPENAI_API_KEY / ACCUWEATHER_API_KEY in .env (see .env.example) or use the key txt files.');
             return;
           }
           if (!j.hourly_mw || !j.hourly_mw.length) {

@@ -36,9 +36,12 @@ Legacy **`dashboard.html`** is only a short note if you open it from disk; the r
 
 ### Environment
 
-- `OPENAI_API_KEY` or `openai_api_key.txt`
-- Optional: `ACCUWEATHER_API_KEY` or `accuweather_api_key.txt`
-- `ARECO_PORT` — override default `8765`
+Copy **`.env.example`** to **`.env`** and set variables (see comments in that file). The app loads `.env` on startup.
+
+- **`OPENAI_API_KEY`** — or a one-line **`openai_api_key.txt`** in the project root (gitignored)
+- **`ACCUWEATHER_API_KEY`** — optional fallback; or **`accuweather_api_key.txt`**
+- **`ARECO_SETTLEMENT_ZIP_PASSWORD1`** / **`ARECO_SETTLEMENT_ZIP_PASSWORD2`** — optional, for the Billing settlement extractor
+- **`ARECO_PORT`** — override default `8765`
 
 ## Development notes
 

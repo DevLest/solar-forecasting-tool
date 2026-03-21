@@ -71,6 +71,17 @@
     #confirmation-modal[open] { display: flex; }
     #confirmation-modal { display: none; align-items: center; justify-content: center; position: fixed; inset: 0; z-index: 100; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(4px); }
     #confirmation-modal .modal-panel { background: #1e293b; border: 1px solid #334155; border-radius: 1rem; max-width: 28rem; width: 90%; max-height: 90vh; overflow: auto; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); }
+    #billing-export-modal::backdrop { background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(4px); }
+    #billing-export-modal { border: none; padding: 0; background: transparent; max-width: none; max-height: none; width: 100%; height: 100%; align-items: center; justify-content: center; }
+    #billing-export-modal[open] { display: flex; }
+    #billing-export-modal:not([open]) { display: none; }
+    #billing-export-modal .modal-panel { background: #1e293b; border: 1px solid #334155; border-radius: 1rem; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); max-height: 90vh; overflow: auto; }
+    #billing-extract-progress-modal::backdrop { background: rgba(15, 23, 42, 0.92); backdrop-filter: blur(4px); }
+    #billing-extract-progress-modal { border: none; padding: 0; background: transparent; max-width: none; max-height: none; width: 100%; height: 100%; align-items: center; justify-content: center; z-index: 120; }
+    #billing-extract-progress-modal[open] { display: flex; }
+    #billing-extract-progress-modal:not([open]) { display: none; }
+    #billing-extract-progress-modal .modal-panel { background: #1e293b; border: 1px solid #334155; border-radius: 1rem; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); max-height: 90vh; overflow: auto; }
+    #confirmation-modal-body { white-space: pre-wrap; }
     .rev-stepper-btn { font-size: 0.5rem; line-height: 1; background: none; border: none; cursor: pointer; -webkit-appearance: none; appearance: none; }
     .interval-row-rtd-locked .rtd-input { opacity: 0.55; cursor: not-allowed; background: rgba(15, 23, 42, 0.9) !important; }
     /* Locked row: keep interval & day-ahead readable (not “disabled grey”) */

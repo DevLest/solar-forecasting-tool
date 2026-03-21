@@ -233,7 +233,7 @@ def cache_path_for(target_date: str, lat: float = None, lon: float = None) -> st
 def openai_weather_forecast(target_date: str, weather_digest: str) -> dict:
     api_key = get_openai_key()
     if not api_key:
-        return {"error": "Missing API key. Set OPENAI_API_KEY or create openai_api_key.txt"}
+        return {"error": "Missing API key. Set OPENAI_API_KEY in .env (see .env.example) or create openai_api_key.txt"}
 
     cap = int(PLANT_MAX_MW)
     system = (

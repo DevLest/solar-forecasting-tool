@@ -5,8 +5,7 @@
   {% include 'partials/_panel_nomination_accuracy.html' %}
 {% endblock %}
 {% block page_scripts %}
-  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
   <script src="{{ url_for('static', filename='js/nomination-dashboard.js') }}" defer></script>
   <script src="{{ url_for('static', filename='js/nomination-accuracy.js') }}" defer></script>
-  <script src="{{ url_for('static', filename='js/billing-extract.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/billing-settlement.js') }}" defer></script>
 {% endblock %}

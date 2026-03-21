@@ -2,8 +2,17 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_ROOT_PATH = Path(__file__).resolve().parent.parent
+ROOT = str(_ROOT_PATH)
+
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv(_ROOT_PATH / ".env")
+except ImportError:
+    pass
 
 PORT = int(os.environ.get("ARECO_PORT", "8765"))
 
@@ -18,3 +27,15 @@ PLANT_MAX_MW = 50.0
 DEFAULT_LAT = 10.638755644610793
 DEFAULT_LON = 123.00417639451439
 LAT, LON = DEFAULT_LAT, DEFAULT_LON
+
+
+def settlement_zip_passwords_from_env() -> list[str]:
+    """Password 1 then 2, matching Excel ``Sheet1`` B2 / B3 and the generated WinRAR batch."""
+    p1 = os.environ.get("ARECO_SETTLEMENT_ZIP_PASSWORD1", "").strip()
+    p2 = os.environ.get("ARECO_SETTLEMENT_ZIP_PASSWORD2", "").strip()
+    out: list[str] = []
+    if p1:
+        out.append(p1)
+    if p2 and p2 != p1:
+        out.append(p2)
+    return out
