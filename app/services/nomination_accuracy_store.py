@@ -1,9 +1,11 @@
 """SQLite persistence: one row per trade day (upsert), billing period 26th–25th."""
 from __future__ import annotations
 
+import calendar
 import json
 import os
 import sqlite3
+from collections import defaultdict
 from datetime import date, datetime, timezone
 from typing import Any
 
@@ -226,3 +228,76 @@ def list_runs_with_billing_meta(
             "label": billing_period_label(p0, p1),
         }
     return out
+
+
+def calendar_monthly_rollup(year: int, limit_per_year: int = 8000) -> dict[str, Any]:
+    """
+    Roll up saved runs by **calendar month** (trade date ``compliance_day``), for one year.
+    Always returns 12 rows (Jan–Dec); months with no data have zero days and null averages.
+    """
+    if year < 1990 or year > 2100:
+        raise ValueError("year out of range")
+    runs = list_runs(year=year, month=None, limit=limit_per_year)
+    by_month: dict[int, list[dict[str, Any]]] = defaultdict(list)
+    for r in runs:
+        cd = str(r.get("compliance_day") or "")
+        if len(cd) < 7:
+            continue
+        try:
+            y = int(cd[:4])
+            mo = int(cd[5:7])
+        except ValueError:
+            continue
+        if y == year and 1 <= mo <= 12:
+            by_month[mo].append(r)
+
+    months: list[dict[str, Any]] = []
+    for m in range(1, 13):
+        chunk = by_month.get(m, [])
+        st = aggregate_run_stats(chunk)
+        months.append(
+            {
+                "month": m,
+                "label": calendar.month_name[m],
+                "key": f"{year:04d}-{m:02d}",
+                "stats": st,
+            }
+        )
+    return {
+        "year": year,
+        "months": months,
+        "year_totals": aggregate_run_stats(runs),
+    }
+
+
+def calendar_annual_rollup(limit_all: int = 50000) -> dict[str, Any]:
+    """One summary row per **calendar year** present in the database (by ``compliance_day``)."""
+    runs = list_runs(
+        year=None,
+        month=None,
+        billing_period_year=None,
+        billing_period_month=None,
+        limit=limit_all,
+    )
+    by_year: dict[int, list[dict[str, Any]]] = defaultdict(list)
+    for r in runs:
+        cd = str(r.get("compliance_day") or "")
+        if len(cd) < 4:
+            continue
+        try:
+            y = int(cd[:4])
+        except ValueError:
+            continue
+        by_year[y].append(r)
+
+    years_out: list[dict[str, Any]] = []
+    for y in sorted(by_year.keys()):
+        chunk = by_year[y]
+        years_out.append(
+            {
+                "year": y,
+                "label": str(y),
+                "stats": aggregate_run_stats(chunk),
+            }
+        )
+    return {"years": years_out}

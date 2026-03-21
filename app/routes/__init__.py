@@ -11,7 +11,12 @@ from app.config import ROOT
 from app.services.history import load_historical_exports, save_historical_export
 from app.services.nomination_accuracy import analyze_uploads
 from app.services.nomination_accuracy_dates import resolve_storage_trade_date
-from app.services.nomination_accuracy_store import list_runs_with_billing_meta, save_run
+from app.services.nomination_accuracy_store import (
+    calendar_annual_rollup,
+    calendar_monthly_rollup,
+    list_runs_with_billing_meta,
+    save_run,
+)
 from app.services.weather import get_weather_forecast
 
 bp = Blueprint("main", __name__)
@@ -136,6 +141,29 @@ def api_nomination_accuracy_runs():
             billing_period_month=billing_period_month,
             limit=limit,
         )
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+    return jsonify({"ok": True, **payload})
+
+
+@bp.route("/api/nomination-accuracy/analytics/monthly", methods=["GET"])
+def api_nomination_accuracy_analytics_monthly():
+    year = request.args.get("year", type=int)
+    if year is None:
+        return jsonify({"ok": False, "error": "Query parameter year is required (calendar year, e.g. 2026)."}), 400
+    try:
+        payload = calendar_monthly_rollup(year)
+    except ValueError as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+    return jsonify({"ok": True, **payload})
+
+
+@bp.route("/api/nomination-accuracy/analytics/annual", methods=["GET"])
+def api_nomination_accuracy_analytics_annual():
+    try:
+        payload = calendar_annual_rollup()
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
     return jsonify({"ok": True, **payload})

@@ -1,6 +1,6 @@
 @echo off
 :: Icon for shortcut: right-click shortcut -> Properties -> Change Icon -> browse to:
-::   %~dp0assets\solar-automation-icon.png  (or use an .ico converted from it)
+::   %~dp0assets\areco-pwa-192.png  or  areco-favicon-48.png  (or convert to .ico)
 setlocal
 cd /d "%~dp0"
 set "PY_EMBED_URL=https://www.python.org/ftp/python/3.12.9/python-3.12.9-embed-amd64.zip"

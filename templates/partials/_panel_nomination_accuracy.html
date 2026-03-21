@@ -1,142 +1,312 @@
 {% from 'components/ui_macros.html' import page_hero %}
     <div id="panel-nomination-accuracy" class="hidden flex-grow p-6 max-w-[1600px] mx-auto w-full space-y-6">
-      {{ page_hero('Nomination accuracy', 'Replaces the ARECO Daily Trading Summary paste steps: upload the MPI compliance CSV and the MIRF Daily MQ workbook (same sources you use today).') }}
+      {{ page_hero('Nomination accuracy', 'State of the art app from Daniel Rex Cosas') }}
 
       <div class="grid gap-6 md:grid-cols-2">
-        <section class="bg-brand-card rounded-xl border border-brand-border p-5 sm:p-6 shadow-lg flex flex-col gap-4" aria-labelledby="accuracy-upload-compliance-heading">
+        <section class="bg-brand-card rounded-xl border border-brand-border p-5 sm:p-6 shadow-lg flex flex-col gap-4 group transition-shadow hover:shadow-xl hover:border-brand-border/80" aria-labelledby="accuracy-upload-compliance-heading">
           <div>
             <h3 id="accuracy-upload-compliance-heading" class="text-sm font-semibold text-brand-muted uppercase tracking-wider">MPI compliance export</h3>
             <p class="text-sm text-brand-muted mt-1 leading-relaxed">CSV (e.g. <span class="font-mono text-[11px]">mpi_areco_01_Compliance-Output … .csv</span>). Uses <span class="font-mono">Interval End</span>, <span class="font-mono">Market DOT</span>, <span class="font-mono">Actual Output</span>. Rows from 05:05–19:00 on the dominant day are mapped into the 5‑minute grid like your Trading Report paste.</p>
           </div>
-          <input type="file" id="accuracy-file-compliance" accept=".csv,text/csv" class="hidden" />
-          <div class="flex flex-col sm:flex-row sm:items-center gap-3">
-            <button type="button" id="accuracy-btn-compliance" class="shrink-0 py-3 px-4 rounded-xl border border-brand-border bg-brand-dark hover:bg-brand-border/40 text-brand-text font-bold uppercase text-xs tracking-wide transition-colors text-center">
-              Choose CSV
-            </button>
-            <p id="accuracy-name-compliance" class="text-xs text-brand-muted font-mono truncate min-w-0" title="">No file selected</p>
+          <input type="file" id="accuracy-file-compliance" accept=".csv,text/csv" class="sr-only" />
+          <div
+            id="accuracy-drop-compliance"
+            class="accuracy-dropzone relative rounded-xl border-2 border-dashed border-brand-border/70 bg-brand-dark/25 px-4 py-8 sm:py-10 text-center transition-all duration-200 hover:border-brand-accent/45 hover:bg-brand-dark/40 focus-within:border-brand-accent/50 focus-within:ring-2 focus-within:ring-brand-accent/25 outline-none cursor-pointer"
+            role="button"
+            tabindex="0"
+            aria-label="Choose or drop compliance CSV file"
+          >
+            <div class="pointer-events-none absolute inset-0 rounded-xl opacity-0 transition-opacity duration-200 bg-brand-accent/5 accuracy-drop-overlay" aria-hidden="true"></div>
+            <p class="text-xs text-brand-muted mb-3"><span class="text-brand-text font-semibold">Drop file here</span> or use the button — <kbd class="px-1.5 py-0.5 rounded border border-brand-border/80 bg-brand-dark font-mono text-[10px] text-brand-muted">Enter</kbd> when focused also opens the picker</p>
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-center gap-3 relative z-[1]">
+              <button type="button" id="accuracy-btn-compliance" class="shrink-0 py-3 px-4 rounded-xl border border-brand-border bg-brand-dark hover:bg-brand-border/40 active:scale-[0.98] text-brand-text font-bold uppercase text-xs tracking-wide transition-all text-center focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent/50">
+                Choose CSV
+              </button>
+              <p id="accuracy-name-compliance" class="text-xs text-brand-muted font-mono truncate min-w-0 max-w-full sm:max-w-[14rem] text-left sm:text-center" title="">No file selected</p>
+            </div>
+            <p id="accuracy-ready-compliance" class="mt-3 text-[11px] font-semibold uppercase tracking-wider text-brand-muted transition-colors" aria-live="polite">○ Waiting for file</p>
           </div>
         </section>
 
-        <section class="bg-brand-card rounded-xl border border-brand-border p-5 sm:p-6 shadow-lg flex flex-col gap-4" aria-labelledby="accuracy-upload-mq-heading">
+        <section class="bg-brand-card rounded-xl border border-brand-border p-5 sm:p-6 shadow-lg flex flex-col gap-4 group transition-shadow hover:shadow-xl hover:border-brand-border/80" aria-labelledby="accuracy-upload-mq-heading">
           <div>
             <h3 id="accuracy-upload-mq-heading" class="text-sm font-semibold text-brand-muted uppercase tracking-wider">MIRF Daily MQ workbook</h3>
             <p class="text-sm text-brand-muted mt-1 leading-relaxed">XLSX (e.g. <span class="font-mono text-[11px]">ARECO_YYYYMMDD_MIRF_MT_WESM_DailyMQ.xlsx</span>). Reads sheet <span class="font-mono">06VISTASOL_G01_BCLVASP01_DEL</span>, range <span class="font-mono">B13:Y36</span> — DEL kWh ÷ 1000 → MW, same as your MQ sheet paste.</p>
           </div>
-          <input type="file" id="accuracy-file-mq" accept=".xlsx,.xlsm,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" class="hidden" />
-          <div class="flex flex-col sm:flex-row sm:items-center gap-3">
-            <button type="button" id="accuracy-btn-mq" class="shrink-0 py-3 px-4 rounded-xl border border-brand-border bg-brand-dark hover:bg-brand-border/40 text-brand-text font-bold uppercase text-xs tracking-wide transition-colors text-center">
-              Choose workbook
-            </button>
-            <p id="accuracy-name-mq" class="text-xs text-brand-muted font-mono truncate min-w-0" title="">No file selected</p>
+          <input type="file" id="accuracy-file-mq" accept=".xlsx,.xlsm,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" class="sr-only" />
+          <div
+            id="accuracy-drop-mq"
+            class="accuracy-dropzone relative rounded-xl border-2 border-dashed border-brand-border/70 bg-brand-dark/25 px-4 py-8 sm:py-10 text-center transition-all duration-200 hover:border-brand-accent/45 hover:bg-brand-dark/40 focus-within:border-brand-accent/50 focus-within:ring-2 focus-within:ring-brand-accent/25 outline-none cursor-pointer"
+            role="button"
+            tabindex="0"
+            aria-label="Choose or drop MIRF Daily MQ workbook"
+          >
+            <div class="pointer-events-none absolute inset-0 rounded-xl opacity-0 transition-opacity duration-200 bg-brand-accent/5 accuracy-drop-overlay" aria-hidden="true"></div>
+            <p class="text-xs text-brand-muted mb-3"><span class="text-brand-text font-semibold">Drop file here</span> or use the button — <kbd class="px-1.5 py-0.5 rounded border border-brand-border/80 bg-brand-dark font-mono text-[10px] text-brand-muted">Enter</kbd> when focused also opens the picker</p>
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-center gap-3 relative z-[1]">
+              <button type="button" id="accuracy-btn-mq" class="shrink-0 py-3 px-4 rounded-xl border border-brand-border bg-brand-dark hover:bg-brand-border/40 active:scale-[0.98] text-brand-text font-bold uppercase text-xs tracking-wide transition-all text-center focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent/50">
+                Choose workbook
+              </button>
+              <p id="accuracy-name-mq" class="text-xs text-brand-muted font-mono truncate min-w-0 max-w-full sm:max-w-[14rem] text-left sm:text-center" title="">No file selected</p>
+            </div>
+            <p id="accuracy-ready-mq" class="mt-3 text-[11px] font-semibold uppercase tracking-wider text-brand-muted transition-colors" aria-live="polite">○ Waiting for file</p>
           </div>
         </section>
       </div>
 
       <div class="flex flex-wrap items-center gap-3">
-        <button type="button" id="accuracy-btn-run" class="py-3 px-6 rounded-xl border border-brand-accent/60 bg-brand-accent/20 hover:bg-brand-accent/30 text-brand-accent font-bold uppercase text-xs tracking-wide transition-colors disabled:opacity-40 disabled:pointer-events-none">
-          Run analysis
+        <button type="button" id="accuracy-btn-run" class="inline-flex items-center justify-center gap-2 py-3 px-6 rounded-xl border border-brand-accent/60 bg-brand-accent/20 hover:bg-brand-accent/30 text-brand-accent font-bold uppercase text-xs tracking-wide transition-all disabled:opacity-40 disabled:pointer-events-none focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent/50 active:scale-[0.98]">
+          <svg id="accuracy-run-spinner" class="hidden h-4 w-4 animate-spin text-brand-accent" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          <span id="accuracy-run-label">Run analysis</span>
         </button>
-        <button type="button" id="accuracy-btn-load-runs" class="py-3 px-4 rounded-xl border border-brand-border bg-brand-dark hover:bg-brand-border/40 text-brand-muted font-semibold uppercase text-xs tracking-wide transition-colors">
+        <button type="button" id="accuracy-btn-load-runs" class="py-3 px-4 rounded-xl border border-brand-border bg-brand-dark hover:bg-brand-border/40 text-brand-muted font-semibold uppercase text-xs tracking-wide transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent/40 active:scale-[0.98]" aria-expanded="false" aria-controls="accuracy-saved-runs-panel">
           Saved runs
         </button>
-        <p id="accuracy-run-status" class="text-xs text-brand-muted" role="status"></p>
+        <button type="button" id="accuracy-btn-calendar-rollups" class="py-3 px-4 rounded-xl border border-brand-accent/40 bg-brand-accent/10 hover:bg-brand-accent/20 text-brand-accent font-semibold uppercase text-xs tracking-wide transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent/40 active:scale-[0.98]" aria-expanded="false" aria-controls="accuracy-calendar-panel">
+          Monthly &amp; annual
+        </button>
+        <p id="accuracy-run-status" class="text-xs text-brand-muted min-h-[1.25rem]" role="status"></p>
       </div>
 
-      <div id="accuracy-policy-banner" class="hidden rounded-xl border-2 p-4 sm:p-5" role="status">
-        <p id="accuracy-policy-headline" class="text-base sm:text-lg font-bold uppercase tracking-wide"></p>
-        <p id="accuracy-policy-sub" class="text-xs text-brand-muted mt-2">Policy: MAPE must stay <span class="text-brand-text font-semibold">below 18%</span>; PERC95 must stay <span class="text-brand-text font-semibold">below 30%</span>. At or above either limit counts as non-compliance for that day.</p>
-        <ul id="accuracy-policy-notes" class="mt-3 text-sm text-brand-text list-disc pl-5 space-y-1"></ul>
-        <div id="accuracy-date-warnings-wrap" class="hidden mt-3 rounded-lg border border-amber-500/40 bg-amber-950/20 px-3 py-2">
-          <p class="text-[10px] font-bold uppercase tracking-wider text-amber-200/90">Date / filename</p>
-          <ul id="accuracy-date-warnings" class="mt-1 text-xs text-amber-100/95 list-disc pl-4 space-y-1"></ul>
+      <div id="accuracy-output-region" class="hidden space-y-4" aria-label="Analysis output">
+        <div class="flex flex-wrap gap-1.5 p-1.5 rounded-xl bg-brand-dark/35 border border-brand-border/80 shadow-inner" role="tablist" aria-label="Result views">
+          <button type="button" role="tab" id="accuracy-tab-compliance" aria-selected="true" aria-controls="accuracy-tabpanel-compliance" class="accuracy-result-tab py-2.5 px-4 rounded-lg text-xs font-bold uppercase tracking-wide border border-transparent transition-all duration-200 bg-brand-accent/20 text-brand-accent border-brand-accent/40 shadow-sm">
+            Compliance &amp; policy
+          </button>
+          <button type="button" role="tab" id="accuracy-tab-trading" aria-selected="false" aria-controls="accuracy-tabpanel-trading" class="accuracy-result-tab py-2.5 px-4 rounded-lg text-xs font-bold uppercase tracking-wide border border-transparent transition-all duration-200 text-brand-muted hover:text-brand-text hover:bg-brand-border/25">
+            Trading analytics
+          </button>
         </div>
-        <p id="accuracy-run-saved" class="mt-3 text-xs font-mono text-brand-muted"></p>
+
+        <div id="accuracy-tabpanel-compliance" role="tabpanel" aria-labelledby="accuracy-tab-compliance" class="space-y-4">
+          <div id="accuracy-policy-banner" class="hidden rounded-xl border-2 p-4 sm:p-5 transition-all duration-200" role="status">
+            <p id="accuracy-policy-headline" class="text-base sm:text-lg font-bold uppercase tracking-wide"></p>
+            <p id="accuracy-policy-sub" class="text-xs text-brand-muted mt-2">Policy: MAPE must stay <span class="text-brand-text font-semibold">below 18%</span>; PERC95 must stay <span class="text-brand-text font-semibold">below 30%</span>. At or above either limit counts as non-compliance for that day.</p>
+            <ul id="accuracy-policy-notes" class="mt-3 text-sm text-brand-text list-disc pl-5 space-y-1"></ul>
+            <div id="accuracy-date-warnings-wrap" class="hidden mt-3 rounded-lg border border-amber-500/40 bg-amber-950/20 px-3 py-2">
+              <p class="text-[10px] font-bold uppercase tracking-wider text-amber-200/90">Date / filename</p>
+              <ul id="accuracy-date-warnings" class="mt-1 text-xs text-amber-100/95 list-disc pl-4 space-y-1"></ul>
+            </div>
+            <p id="accuracy-run-saved" class="mt-3 text-xs font-mono text-brand-muted"></p>
+          </div>
+
+          <section id="accuracy-results" class="hidden rounded-xl border border-brand-border bg-brand-card/80 p-5 sm:p-6 shadow-lg transition-all duration-200 hover:border-brand-border" aria-live="polite">
+            <h3 class="text-sm font-semibold text-brand-muted uppercase tracking-wider mb-4">Compliance-style metrics</h3>
+            <p class="text-xs text-brand-muted mb-4">Same definitions as your <span class="font-mono">Compliance</span> sheet: FPE = ABS((G-E)/Hmax) with G = (F+RTD)/24, E = MQ, F = lagged RTD.</p>
+            <dl class="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4 text-sm">
+              <div class="rounded-lg border border-brand-border/60 bg-brand-dark/40 px-4 py-3 transition-all duration-200 hover:border-brand-accent/35 hover:bg-brand-dark/55 cursor-default">
+                <dt class="text-[10px] font-bold uppercase tracking-wider text-brand-muted">MAPE</dt>
+                <dd id="accuracy-out-mape" class="mt-1 text-xl font-bold font-mono text-brand-accent tabular-nums">—</dd>
+              </div>
+              <div class="rounded-lg border border-brand-border/60 bg-brand-dark/40 px-4 py-3 transition-all duration-200 hover:border-brand-accent/35 hover:bg-brand-dark/55 cursor-default">
+                <dt class="text-[10px] font-bold uppercase tracking-wider text-brand-muted">PERC95</dt>
+                <dd id="accuracy-out-perc95" class="mt-1 text-xl font-bold font-mono text-brand-accent tabular-nums">—</dd>
+              </div>
+              <div class="rounded-lg border border-brand-border/60 bg-brand-dark/40 px-4 py-3 transition-all duration-200 hover:border-brand-accent/30 hover:bg-brand-dark/55 cursor-default">
+                <dt class="text-[10px] font-bold uppercase tracking-wider text-brand-muted">Intervals (N)</dt>
+                <dd id="accuracy-out-n" class="mt-1 text-xl font-bold font-mono text-brand-text tabular-nums">—</dd>
+              </div>
+              <div class="rounded-lg border border-brand-border/60 bg-brand-dark/40 px-4 py-3 transition-all duration-200 hover:border-brand-accent/30 hover:bg-brand-dark/55 cursor-default">
+                <dt class="text-[10px] font-bold uppercase tracking-wider text-brand-muted">Maximum MQ</dt>
+                <dd id="accuracy-out-maxmq" class="mt-1 text-xl font-bold font-mono text-brand-text tabular-nums">—</dd>
+              </div>
+            </dl>
+            <p class="mt-4 text-xs text-brand-muted"><span class="font-semibold text-brand-text">Dominant day in CSV:</span> <span id="accuracy-out-day">—</span> · <span class="font-semibold text-brand-text">Compliance rows in window:</span> <span id="accuracy-out-rows">—</span> · <span class="font-semibold text-brand-text">MQ sheet:</span> <span id="accuracy-out-sheet" class="font-mono text-[11px]">—</span></p>
+            <p class="mt-2 text-xs text-brand-muted"><span class="font-semibold text-brand-text">Saved trade date (DB key):</span> <button type="button" id="accuracy-btn-copy-storage" class="font-mono text-brand-text underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent/50 rounded px-0.5" title="Copy ISO date">—</button> <span class="text-brand-muted">(from MIRF MQ filename <span class="font-mono">ARECO_YYYYMMDD_…</span> when present)</span></p>
+          </section>
+        </div>
+
+        <div id="accuracy-tabpanel-trading" role="tabpanel" aria-labelledby="accuracy-tab-trading" class="hidden">
+          <section id="accuracy-analytics" class="rounded-xl border border-brand-border bg-brand-card/80 p-5 sm:p-6 shadow-lg overflow-x-auto transition-all duration-200 hover:border-brand-border">
+            <h3 class="text-sm font-semibold text-brand-muted uppercase tracking-wider mb-2">Daily trading-style analytics</h3>
+            <p class="text-xs text-brand-muted mb-4 max-w-3xl">Aligned with <span class="font-mono">Summary</span> / <span class="font-mono">Summary_for print</span>: MW totals (Trading-style SUM over 288 intervals), min / average / max, daily MWh (each interval MWh = MW÷12), and hourly MWh blocks (12 intervals per hour).</p>
+            <h4 class="text-xs font-bold uppercase tracking-wider text-brand-muted mb-2">MW — total, min, average, max</h4>
+            <div class="rounded-lg border border-brand-border/50 overflow-hidden mb-6">
+              <table class="w-full text-xs sm:text-sm border-collapse">
+                <thead>
+                  <tr class="text-left text-brand-muted border-b border-brand-border bg-brand-dark/30">
+                    <th class="py-2.5 px-3">Series</th>
+                    <th class="py-2.5 px-3 text-right">Total (sum MW)</th>
+                    <th class="py-2.5 px-3 text-right">Min</th>
+                    <th class="py-2.5 px-3 text-right">Average</th>
+                    <th class="py-2.5 px-3 text-right">Max</th>
+                  </tr>
+                </thead>
+                <tbody id="accuracy-tbody-mw" class="font-mono tabular-nums"></tbody>
+              </table>
+            </div>
+            <h4 class="text-xs font-bold uppercase tracking-wider text-brand-muted mb-2">MWh — full day</h4>
+            <div class="rounded-lg border border-brand-border/50 overflow-hidden mb-6">
+              <table class="w-full text-xs sm:text-sm border-collapse">
+                <tbody id="accuracy-tbody-mwh-day" class="font-mono tabular-nums"></tbody>
+              </table>
+            </div>
+            <details class="group rounded-lg border border-brand-border/60 bg-brand-dark/30 transition-colors open:border-brand-accent/25 open:bg-brand-dark/40">
+              <summary class="cursor-pointer list-none flex items-center justify-between gap-2 px-4 py-3 text-sm font-semibold text-brand-text marker:content-none [&::-webkit-details-marker]:hidden">
+                <span>Hour 1–24 MWh (per hour SUM of MW÷12)</span>
+                <span class="text-brand-muted text-xs font-normal transition-transform group-open:rotate-180" aria-hidden="true">▼</span>
+              </summary>
+              <div class="px-2 pb-3 overflow-x-auto border-t border-brand-border/40">
+                <table class="w-full text-xs border-collapse min-w-[36rem]">
+                  <thead>
+                    <tr class="text-left text-brand-muted border-b border-brand-border bg-brand-dark/20">
+                      <th class="py-2 px-2">Hour</th>
+                      <th class="py-2 px-2 text-right">RTD MWh</th>
+                      <th class="py-2 px-2 text-right">Actual MWh</th>
+                      <th class="py-2 px-2 text-right">MQ DEL MWh</th>
+                    </tr>
+                  </thead>
+                  <tbody id="accuracy-tbody-hourly" class="font-mono tabular-nums"></tbody>
+                </table>
+              </div>
+            </details>
+            <p id="accuracy-fpe-extra" class="mt-4 text-xs text-brand-muted font-mono"></p>
+          </section>
+        </div>
       </div>
 
-      <section id="accuracy-results" class="hidden rounded-xl border border-brand-border bg-brand-card/80 p-5 sm:p-6 shadow-lg" aria-live="polite">
-        <h3 class="text-sm font-semibold text-brand-muted uppercase tracking-wider mb-4">Compliance-style metrics</h3>
-        <p class="text-xs text-brand-muted mb-4">Same definitions as your <span class="font-mono">Compliance</span> sheet: FPE = ABS((G-E)/Hmax) with G = (F+RTD)/24, E = MQ, F = lagged RTD.</p>
-        <dl class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 text-sm">
-          <div class="rounded-lg border border-brand-border/60 bg-brand-dark/40 px-4 py-3">
-            <dt class="text-[10px] font-bold uppercase tracking-wider text-brand-muted">MAPE</dt>
-            <dd id="accuracy-out-mape" class="mt-1 text-xl font-bold font-mono text-brand-accent tabular-nums">—</dd>
+      <section id="accuracy-saved-runs-panel" class="hidden rounded-xl border border-brand-border bg-brand-card/60 p-5 sm:p-6 shadow-lg transition-all duration-200" aria-label="Saved nomination accuracy runs">
+        <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
+          <div>
+            <h3 class="text-sm font-semibold text-brand-muted uppercase tracking-wider">Saved runs (database)</h3>
+            <p class="text-xs text-brand-muted mt-1 max-w-3xl leading-relaxed">File: <span class="font-mono">data/nomination_accuracy.sqlite3</span>. <span class="text-brand-text font-semibold">One row per trade day</span>: the date is taken from the MIRF MQ filename (<span class="font-mono">ARECO_YYYYMMDD_…</span>) when possible; uploading again for that day <span class="text-brand-text font-semibold">overwrites</span> the row.</p>
+            <p class="text-xs text-brand-muted mt-2"><span class="font-semibold text-brand-text">Billing period</span> for filters: <span class="font-semibold">26</span> of month M through <span class="font-semibold">25</span> of month M+1 (e.g. start month <span class="font-mono">3</span> / year <span class="font-mono">2026</span> → <span class="font-mono">2026-03-26</span> … <span class="font-mono">2026-04-25</span>).</p>
           </div>
-          <div class="rounded-lg border border-brand-border/60 bg-brand-dark/40 px-4 py-3">
-            <dt class="text-[10px] font-bold uppercase tracking-wider text-brand-muted">PERC95</dt>
-            <dd id="accuracy-out-perc95" class="mt-1 text-xl font-bold font-mono text-brand-accent tabular-nums">—</dd>
-          </div>
-          <div class="rounded-lg border border-brand-border/60 bg-brand-dark/40 px-4 py-3">
-            <dt class="text-[10px] font-bold uppercase tracking-wider text-brand-muted">Intervals (N)</dt>
-            <dd id="accuracy-out-n" class="mt-1 text-xl font-bold font-mono text-brand-text tabular-nums">—</dd>
-          </div>
-          <div class="rounded-lg border border-brand-border/60 bg-brand-dark/40 px-4 py-3">
-            <dt class="text-[10px] font-bold uppercase tracking-wider text-brand-muted">Maximum MQ</dt>
-            <dd id="accuracy-out-maxmq" class="mt-1 text-xl font-bold font-mono text-brand-text tabular-nums">—</dd>
-          </div>
-        </dl>
-        <p class="mt-4 text-xs text-brand-muted"><span class="font-semibold text-brand-text">Dominant day in CSV:</span> <span id="accuracy-out-day">—</span> · <span class="font-semibold text-brand-text">Compliance rows in window:</span> <span id="accuracy-out-rows">—</span> · <span class="font-semibold text-brand-text">MQ sheet:</span> <span id="accuracy-out-sheet" class="font-mono text-[11px]">—</span></p>
-        <p class="mt-2 text-xs text-brand-muted"><span class="font-semibold text-brand-text">Saved trade date (DB key):</span> <span id="accuracy-out-storage" class="font-mono text-brand-text">—</span> <span class="text-brand-muted">(from MIRF MQ filename <span class="font-mono">ARECO_YYYYMMDD_…</span> when present)</span></p>
-      </section>
+        </div>
 
-      <section id="accuracy-analytics" class="hidden rounded-xl border border-brand-border bg-brand-card/80 p-5 sm:p-6 shadow-lg overflow-x-auto">
-        <h3 class="text-sm font-semibold text-brand-muted uppercase tracking-wider mb-2">Daily trading-style analytics</h3>
-        <p class="text-xs text-brand-muted mb-4 max-w-3xl">Aligned with <span class="font-mono">Summary</span> / <span class="font-mono">Summary_for print</span>: MW totals (Trading-style SUM over 288 intervals), min / average / max, daily MWh (each interval MWh = MW÷12), and hourly MWh blocks (12 intervals per hour).</p>
-        <h4 class="text-xs font-bold uppercase tracking-wider text-brand-muted mb-2">MW — total, min, average, max</h4>
-        <table class="w-full text-xs sm:text-sm border-collapse mb-6">
-          <thead>
-            <tr class="text-left text-brand-muted border-b border-brand-border">
-              <th class="py-2 pr-3">Series</th>
-              <th class="py-2 pr-3 text-right">Total (sum MW)</th>
-              <th class="py-2 pr-3 text-right">Min</th>
-              <th class="py-2 pr-3 text-right">Average</th>
-              <th class="py-2 pr-3 text-right">Max</th>
-            </tr>
-          </thead>
-          <tbody id="accuracy-tbody-mw" class="font-mono tabular-nums"></tbody>
-        </table>
-        <h4 class="text-xs font-bold uppercase tracking-wider text-brand-muted mb-2">MWh — full day</h4>
-        <table class="w-full text-xs sm:text-sm border-collapse mb-6">
-          <tbody id="accuracy-tbody-mwh-day" class="font-mono tabular-nums"></tbody>
-        </table>
-        <details class="rounded-lg border border-brand-border/60 bg-brand-dark/30">
-          <summary class="cursor-pointer px-4 py-3 text-sm font-semibold text-brand-text">Hour 1–24 MWh (per hour SUM of MW÷12)</summary>
-          <div class="px-2 pb-3 overflow-x-auto">
-            <table class="w-full text-xs border-collapse min-w-[36rem]">
-              <thead>
-                <tr class="text-left text-brand-muted border-b border-brand-border">
-                  <th class="py-2 px-2">Hour</th>
-                  <th class="py-2 px-2 text-right">RTD MWh</th>
-                  <th class="py-2 px-2 text-right">Actual MWh</th>
-                  <th class="py-2 px-2 text-right">MQ DEL MWh</th>
-                </tr>
-              </thead>
-              <tbody id="accuracy-tbody-hourly" class="font-mono tabular-nums"></tbody>
-            </table>
-          </div>
-        </details>
-        <p id="accuracy-fpe-extra" class="mt-4 text-xs text-brand-muted font-mono"></p>
-      </section>
-
-      <section id="accuracy-saved-runs-panel" class="hidden rounded-xl border border-brand-border bg-brand-card/60 p-5 sm:p-6">
-        <h3 class="text-sm font-semibold text-brand-muted uppercase tracking-wider mb-3">Saved runs (database)</h3>
-        <p class="text-xs text-brand-muted mb-2">File: <span class="font-mono">data/nomination_accuracy.sqlite3</span>. <span class="text-brand-text font-semibold">One row per trade day</span>: the date is taken from the MIRF MQ filename (<span class="font-mono">ARECO_YYYYMMDD_…</span>) when possible; uploading again for that day <span class="text-brand-text font-semibold">overwrites</span> the row.</p>
-        <p class="text-xs text-brand-muted mb-3"><span class="font-semibold text-brand-text">Billing period</span> for filters: <span class="font-semibold">26</span> of month M through <span class="font-semibold">25</span> of month M+1 (e.g. start month <span class="font-mono">3</span> / year <span class="font-mono">2026</span> → <span class="font-mono">2026-03-26</span> … <span class="font-mono">2026-04-25</span>).</p>
-        <div class="flex flex-wrap items-end gap-2 mb-3">
+        <div class="flex flex-wrap items-end gap-3 mb-4">
           <div class="flex flex-col gap-0.5">
             <label for="accuracy-bill-year" class="text-[10px] uppercase tracking-wider text-brand-muted">Billing start year</label>
-            <input type="number" id="accuracy-bill-year" min="2000" max="2100" placeholder="2026" class="w-[5.5rem] bg-brand-dark border border-brand-border rounded px-2 py-1.5 text-sm text-brand-text font-mono" />
+            <input type="number" id="accuracy-bill-year" min="2000" max="2100" placeholder="2026" class="w-[5.5rem] bg-brand-dark border border-brand-border rounded-lg px-2 py-1.5 text-sm text-brand-text font-mono transition-colors focus:outline-none focus:ring-2 focus:ring-brand-accent/40" />
           </div>
           <div class="flex flex-col gap-0.5">
             <label for="accuracy-bill-month" class="text-[10px] uppercase tracking-wider text-brand-muted">Start month (1–12)</label>
-            <input type="number" id="accuracy-bill-month" min="1" max="12" placeholder="3" class="w-[3.5rem] bg-brand-dark border border-brand-border rounded px-2 py-1.5 text-sm text-brand-text font-mono" />
+            <input type="number" id="accuracy-bill-month" min="1" max="12" placeholder="3" class="w-[3.5rem] bg-brand-dark border border-brand-border rounded-lg px-2 py-1.5 text-sm text-brand-text font-mono transition-colors focus:outline-none focus:ring-2 focus:ring-brand-accent/40" />
           </div>
-          <button type="button" id="accuracy-btn-load-billing" class="py-2 px-3 rounded-lg border border-brand-accent/50 bg-brand-accent/15 text-brand-accent text-xs font-bold uppercase tracking-wide hover:bg-brand-accent/25">Load billing period</button>
+          <button type="button" id="accuracy-btn-load-billing" class="py-2 px-3 rounded-lg border border-brand-accent/50 bg-brand-accent/15 text-brand-accent text-xs font-bold uppercase tracking-wide hover:bg-brand-accent/25 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent/40 active:scale-[0.98]">
+            Load billing period
+          </button>
+          <p id="accuracy-bill-preview" class="text-[11px] font-mono text-brand-muted self-center max-w-full" aria-live="polite">Enter year &amp; month to preview range</p>
         </div>
-        <p id="accuracy-saved-stats" class="text-xs text-brand-muted mb-2 font-mono hidden" role="status"></p>
-        <div id="accuracy-saved-runs-body" class="text-xs sm:text-sm max-h-64 overflow-y-auto font-mono"></div>
+
+        <div id="accuracy-billing-stats" class="hidden grid gap-2 sm:grid-cols-2 lg:grid-cols-5 mb-4"></div>
+        <p id="accuracy-saved-stats" class="text-xs text-brand-muted mb-3 font-mono hidden leading-relaxed" role="status"></p>
+
+        <div class="rounded-lg border border-brand-border/80 overflow-hidden max-h-72 overflow-y-auto shadow-inner bg-brand-dark/20">
+          <table class="w-full text-left text-xs sm:text-sm border-collapse">
+            <thead class="sticky top-0 z-[1] bg-brand-dark/95 backdrop-blur-sm border-b border-brand-border">
+              <tr class="text-brand-muted">
+                <th scope="col" class="py-2.5 px-3 font-bold uppercase tracking-wider text-[10px] sm:text-xs">
+                  <button type="button" class="accuracy-sort-btn inline-flex items-center gap-1 hover:text-brand-text transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent/40 rounded" data-sort="day" title="Sort by date">Trade day <span class="accuracy-sort-ind text-brand-accent opacity-0" aria-hidden="true">↓</span></button>
+                </th>
+                <th scope="col" class="py-2.5 px-3 font-bold uppercase tracking-wider text-[10px] sm:text-xs text-right">
+                  <button type="button" class="accuracy-sort-btn inline-flex items-center gap-1 ml-auto hover:text-brand-text transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent/40 rounded" data-sort="mape" title="Sort by MAPE">MAPE <span class="accuracy-sort-ind text-brand-accent opacity-0" aria-hidden="true">↓</span></button>
+                </th>
+                <th scope="col" class="py-2.5 px-3 font-bold uppercase tracking-wider text-[10px] sm:text-xs text-right hidden sm:table-cell">
+                  <button type="button" class="accuracy-sort-btn inline-flex items-center gap-1 ml-auto hover:text-brand-text transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent/40 rounded" data-sort="p95" title="Sort by PERC95">P95 <span class="accuracy-sort-ind text-brand-accent opacity-0" aria-hidden="true">↓</span></button>
+                </th>
+                <th scope="col" class="py-2.5 px-3 font-bold uppercase tracking-wider text-[10px] sm:text-xs text-center">Status</th>
+                <th scope="col" class="py-2.5 px-3 font-bold uppercase tracking-wider text-[10px] sm:text-xs text-right font-mono">ID</th>
+              </tr>
+            </thead>
+            <tbody id="accuracy-saved-runs-tbody" class="font-mono tabular-nums text-brand-text"></tbody>
+          </table>
+          <p id="accuracy-saved-empty" class="hidden py-8 text-center text-sm text-brand-muted">No rows in this selection.</p>
+        </div>
       </section>
 
-      <section id="accuracy-analysis-placeholder" class="rounded-xl border border-dashed border-brand-border bg-brand-card/40 px-6 py-6 text-center">
+      <section id="accuracy-calendar-panel" class="hidden rounded-xl border border-brand-border bg-brand-card/70 p-5 sm:p-6 shadow-lg space-y-8" aria-label="Calendar month and year rollups">
+        <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+          <div>
+            <h3 class="text-sm font-semibold text-brand-muted uppercase tracking-wider">Monthly &amp; annual analysis</h3>
+            <p class="text-xs text-brand-muted mt-1 max-w-3xl leading-relaxed">Rollups use the <span class="font-semibold text-brand-text">saved trade date</span> (<span class="font-mono">compliance_day</span>) — <span class="font-semibold text-brand-text">calendar months and years</span>, not billing periods (26th–25th). Charts use Chart.js on the same theme as the rest of the app.</p>
+          </div>
+          <button type="button" id="accuracy-btn-rollup-refresh" class="shrink-0 py-2 px-3 rounded-lg border border-brand-border bg-brand-dark hover:bg-brand-border/40 text-brand-text text-xs font-bold uppercase tracking-wide transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent/40">
+            Refresh data
+          </button>
+        </div>
+
+        <div class="rounded-xl border border-brand-border/80 bg-brand-dark/25 p-4 sm:p-5 space-y-4">
+          <div class="flex flex-wrap items-end gap-3">
+            <div class="flex flex-col gap-0.5">
+              <label for="accuracy-rollup-year" class="text-[10px] uppercase tracking-wider text-brand-muted">Calendar year (monthly table &amp; charts)</label>
+              <input type="number" id="accuracy-rollup-year" min="2000" max="2100" class="w-[5.5rem] bg-brand-dark border border-brand-border rounded-lg px-2 py-1.5 text-sm text-brand-text font-mono focus:outline-none focus:ring-2 focus:ring-brand-accent/40" />
+            </div>
+            <button type="button" id="accuracy-btn-load-rollup-year" class="py-2 px-3 rounded-lg border border-brand-accent/50 bg-brand-accent/15 text-brand-accent text-xs font-bold uppercase tracking-wide hover:bg-brand-accent/25 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent/40">
+              Load year
+            </button>
+            <p id="accuracy-rollup-status" class="text-xs text-brand-muted self-center" role="status"></p>
+          </div>
+
+          <h4 class="text-xs font-bold uppercase tracking-wider text-brand-accent">Monthly — <span id="accuracy-rollup-year-label" class="font-mono text-brand-text">—</span></h4>
+          <div class="overflow-x-auto rounded-lg border border-brand-border/60">
+            <table class="w-full text-left text-xs sm:text-sm border-collapse min-w-[44rem]">
+              <thead class="bg-brand-dark/90 border-b border-brand-border">
+                <tr class="text-brand-muted">
+                  <th class="py-2.5 px-3 font-bold uppercase tracking-wider text-[10px] sm:text-xs">Month</th>
+                  <th class="py-2.5 px-3 font-bold uppercase tracking-wider text-[10px] sm:text-xs text-right">Days</th>
+                  <th class="py-2.5 px-3 font-bold uppercase tracking-wider text-[10px] sm:text-xs text-right">Compliant</th>
+                  <th class="py-2.5 px-3 font-bold uppercase tracking-wider text-[10px] sm:text-xs text-right">Non-comp.</th>
+                  <th class="py-2.5 px-3 font-bold uppercase tracking-wider text-[10px] sm:text-xs text-right">Avg MAPE</th>
+                  <th class="py-2.5 px-3 font-bold uppercase tracking-wider text-[10px] sm:text-xs text-right">Avg P95</th>
+                  <th class="py-2.5 px-3 font-bold uppercase tracking-wider text-[10px] sm:text-xs text-right">Compliance %</th>
+                </tr>
+              </thead>
+              <tbody id="accuracy-monthly-rollup-tbody" class="font-mono tabular-nums text-brand-text"></tbody>
+            </table>
+          </div>
+          <div class="grid gap-4 lg:grid-cols-2">
+            <div class="rounded-lg border border-brand-border/60 bg-brand-card/50 p-3">
+              <p class="text-[10px] font-bold uppercase tracking-wider text-brand-muted mb-2">Avg MAPE &amp; PERC95 by month (%)</p>
+              <div class="h-56 min-h-[14rem] relative">
+                <canvas id="accuracy-chart-monthly-errors" aria-label="Line chart of average MAPE and PERC95 percent by month"></canvas>
+              </div>
+            </div>
+            <div class="rounded-lg border border-brand-border/60 bg-brand-card/50 p-3">
+              <p class="text-[10px] font-bold uppercase tracking-wider text-brand-muted mb-2">Compliance rate by month (% of days)</p>
+              <div class="h-56 min-h-[14rem] relative">
+                <canvas id="accuracy-chart-monthly-compliance" aria-label="Bar chart of monthly compliance rate"></canvas>
+              </div>
+            </div>
+          </div>
+          <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-4 text-xs" id="accuracy-year-totals-strip" aria-live="polite"></div>
+        </div>
+
+        <div class="rounded-xl border border-brand-border/80 bg-brand-dark/25 p-4 sm:p-5 space-y-4">
+          <h4 class="text-xs font-bold uppercase tracking-wider text-brand-accent">Annual — all years in database</h4>
+          <div class="overflow-x-auto rounded-lg border border-brand-border/60">
+            <table class="w-full text-left text-xs sm:text-sm border-collapse min-w-[40rem]">
+              <thead class="bg-brand-dark/90 border-b border-brand-border">
+                <tr class="text-brand-muted">
+                  <th class="py-2.5 px-3 font-bold uppercase tracking-wider text-[10px] sm:text-xs">Year</th>
+                  <th class="py-2.5 px-3 font-bold uppercase tracking-wider text-[10px] sm:text-xs text-right">Days</th>
+                  <th class="py-2.5 px-3 font-bold uppercase tracking-wider text-[10px] sm:text-xs text-right">Compliant</th>
+                  <th class="py-2.5 px-3 font-bold uppercase tracking-wider text-[10px] sm:text-xs text-right">Non-comp.</th>
+                  <th class="py-2.5 px-3 font-bold uppercase tracking-wider text-[10px] sm:text-xs text-right">Avg MAPE</th>
+                  <th class="py-2.5 px-3 font-bold uppercase tracking-wider text-[10px] sm:text-xs text-right">Avg P95</th>
+                  <th class="py-2.5 px-3 font-bold uppercase tracking-wider text-[10px] sm:text-xs text-right">Compliance %</th>
+                </tr>
+              </thead>
+              <tbody id="accuracy-annual-rollup-tbody" class="font-mono tabular-nums text-brand-text"></tbody>
+            </table>
+          </div>
+          <div class="rounded-lg border border-brand-border/60 bg-brand-card/50 p-3">
+            <p class="text-[10px] font-bold uppercase tracking-wider text-brand-muted mb-2">Days per year &amp; average MAPE (%)</p>
+            <div class="h-64 min-h-[16rem] relative">
+              <canvas id="accuracy-chart-annual-overview" aria-label="Bar and line chart of annual days and MAPE"></canvas>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="accuracy-analysis-placeholder" class="rounded-xl border border-dashed border-brand-border bg-brand-card/40 px-6 py-8 text-center transition-colors hover:border-brand-accent/25">
         <p class="text-sm text-brand-muted max-w-lg mx-auto leading-relaxed">Upload both files and choose <span class="text-brand-text font-semibold">Run analysis</span>. Results are saved once per trade day (by MQ filename date when present) and can be rolled up by billing period (26th–25th).</p>
+        <ul class="mt-4 flex flex-wrap justify-center gap-4 text-xs text-brand-muted" aria-label="Upload readiness">
+          <li id="accuracy-placeholder-li-c" class="flex items-center gap-2"><span class="accuracy-ph-dot inline-block h-2 w-2 rounded-full bg-brand-border" aria-hidden="true"></span> Compliance CSV</li>
+          <li id="accuracy-placeholder-li-m" class="flex items-center gap-2"><span class="accuracy-ph-dot inline-block h-2 w-2 rounded-full bg-brand-border" aria-hidden="true"></span> MQ workbook</li>
+        </ul>
       </section>
     </div>

@@ -1,5 +1,8 @@
 <footer class="shrink-0 border-t border-brand-border/80 bg-brand-dark/40 py-1.5 px-4 flex flex-wrap items-center justify-center gap-x-3 gap-y-0.5 text-[9px] text-brand-muted uppercase tracking-wide">
-  <span class="whitespace-nowrap">© 2024 ARECO · Real-time data</span>
+  <span class="flex items-center gap-2 whitespace-nowrap">
+    <img src="{{ url_for('main.assets', filename='areco-logo.jpg') }}" alt="" width="20" height="20" class="h-5 w-5 object-contain opacity-90" decoding="async" aria-hidden="true"/>
+    <span>© 2024 ARECO · Real-time data</span>
+  </span>
   <span class="text-brand-border/80 hidden sm:inline" aria-hidden="true">·</span>
   <nav class="flex items-center gap-3 whitespace-nowrap">
     <a id="link-privacy" class="hover:text-brand-accent transition-colors cursor-pointer">Privacy</a>
