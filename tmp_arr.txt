@@ -1,0 +1,2 @@
+﻿B15 type <class 'openpyxl.worksheet.formula.ArrayFormula'>
+array text =TRANSPOSE(Summary!H19:AE19)

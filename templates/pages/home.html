@@ -2,7 +2,9 @@
 {% block main_inner %}
   {% include 'partials/_panel_nomination.html' %}
   {% include 'partials/_panel_billing.html' %}
+  {% include 'partials/_panel_nomination_accuracy.html' %}
 {% endblock %}
 {% block page_scripts %}
   <script src="{{ url_for('static', filename='js/nomination-dashboard.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/nomination-accuracy.js') }}" defer></script>
 {% endblock %}

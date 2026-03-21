@@ -1,12 +1,18 @@
     (function initAppPanels() {
       var panelNom = document.getElementById('panel-nomination');
       var panelBill = document.getElementById('panel-billing');
+      var panelAcc = document.getElementById('panel-nomination-accuracy');
       var subtitleEl = document.getElementById('app-subtitle');
-      var titles = { nomination: 'WESM Nomination', billing: 'Billing & Invoice' };
+      var titles = {
+        nomination: 'WESM Nomination',
+        billing: 'Billing & Invoice',
+        'nomination-accuracy': 'Nomination accuracy'
+      };
       function showPanel(id) {
-        id = (id === 'billing') ? 'billing' : 'nomination';
+        if (id !== 'billing' && id !== 'nomination-accuracy') id = 'nomination';
         if (panelNom) panelNom.classList.toggle('hidden', id !== 'nomination');
         if (panelBill) panelBill.classList.toggle('hidden', id !== 'billing');
+        if (panelAcc) panelAcc.classList.toggle('hidden', id !== 'nomination-accuracy');
         document.querySelectorAll('[data-nav-panel]').forEach(function(btn) {
           var active = btn.getAttribute('data-nav-panel') === id;
           btn.setAttribute('aria-current', active ? 'page' : 'false');
@@ -21,7 +27,8 @@
       });
       var saved = '';
       try { saved = sessionStorage.getItem('areco_app_panel') || ''; } catch (e2) {}
-      showPanel(saved === 'billing' ? 'billing' : 'nomination');
+      if (saved === 'billing' || saved === 'nomination-accuracy') showPanel(saved);
+      else showPanel('nomination');
     })();
 
     (function confirmationModal() {

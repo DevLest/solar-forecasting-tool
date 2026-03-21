@@ -1,0 +1,142 @@
+{% from 'components/ui_macros.html' import page_hero %}
+    <div id="panel-nomination-accuracy" class="hidden flex-grow p-6 max-w-[1600px] mx-auto w-full space-y-6">
+      {{ page_hero('Nomination accuracy', 'Replaces the ARECO Daily Trading Summary paste steps: upload the MPI compliance CSV and the MIRF Daily MQ workbook (same sources you use today).') }}
+
+      <div class="grid gap-6 md:grid-cols-2">
+        <section class="bg-brand-card rounded-xl border border-brand-border p-5 sm:p-6 shadow-lg flex flex-col gap-4" aria-labelledby="accuracy-upload-compliance-heading">
+          <div>
+            <h3 id="accuracy-upload-compliance-heading" class="text-sm font-semibold text-brand-muted uppercase tracking-wider">MPI compliance export</h3>
+            <p class="text-sm text-brand-muted mt-1 leading-relaxed">CSV (e.g. <span class="font-mono text-[11px]">mpi_areco_01_Compliance-Output … .csv</span>). Uses <span class="font-mono">Interval End</span>, <span class="font-mono">Market DOT</span>, <span class="font-mono">Actual Output</span>. Rows from 05:05–19:00 on the dominant day are mapped into the 5‑minute grid like your Trading Report paste.</p>
+          </div>
+          <input type="file" id="accuracy-file-compliance" accept=".csv,text/csv" class="hidden" />
+          <div class="flex flex-col sm:flex-row sm:items-center gap-3">
+            <button type="button" id="accuracy-btn-compliance" class="shrink-0 py-3 px-4 rounded-xl border border-brand-border bg-brand-dark hover:bg-brand-border/40 text-brand-text font-bold uppercase text-xs tracking-wide transition-colors text-center">
+              Choose CSV
+            </button>
+            <p id="accuracy-name-compliance" class="text-xs text-brand-muted font-mono truncate min-w-0" title="">No file selected</p>
+          </div>
+        </section>
+
+        <section class="bg-brand-card rounded-xl border border-brand-border p-5 sm:p-6 shadow-lg flex flex-col gap-4" aria-labelledby="accuracy-upload-mq-heading">
+          <div>
+            <h3 id="accuracy-upload-mq-heading" class="text-sm font-semibold text-brand-muted uppercase tracking-wider">MIRF Daily MQ workbook</h3>
+            <p class="text-sm text-brand-muted mt-1 leading-relaxed">XLSX (e.g. <span class="font-mono text-[11px]">ARECO_YYYYMMDD_MIRF_MT_WESM_DailyMQ.xlsx</span>). Reads sheet <span class="font-mono">06VISTASOL_G01_BCLVASP01_DEL</span>, range <span class="font-mono">B13:Y36</span> — DEL kWh ÷ 1000 → MW, same as your MQ sheet paste.</p>
+          </div>
+          <input type="file" id="accuracy-file-mq" accept=".xlsx,.xlsm,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" class="hidden" />
+          <div class="flex flex-col sm:flex-row sm:items-center gap-3">
+            <button type="button" id="accuracy-btn-mq" class="shrink-0 py-3 px-4 rounded-xl border border-brand-border bg-brand-dark hover:bg-brand-border/40 text-brand-text font-bold uppercase text-xs tracking-wide transition-colors text-center">
+              Choose workbook
+            </button>
+            <p id="accuracy-name-mq" class="text-xs text-brand-muted font-mono truncate min-w-0" title="">No file selected</p>
+          </div>
+        </section>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-3">
+        <button type="button" id="accuracy-btn-run" class="py-3 px-6 rounded-xl border border-brand-accent/60 bg-brand-accent/20 hover:bg-brand-accent/30 text-brand-accent font-bold uppercase text-xs tracking-wide transition-colors disabled:opacity-40 disabled:pointer-events-none">
+          Run analysis
+        </button>
+        <button type="button" id="accuracy-btn-load-runs" class="py-3 px-4 rounded-xl border border-brand-border bg-brand-dark hover:bg-brand-border/40 text-brand-muted font-semibold uppercase text-xs tracking-wide transition-colors">
+          Saved runs
+        </button>
+        <p id="accuracy-run-status" class="text-xs text-brand-muted" role="status"></p>
+      </div>
+
+      <div id="accuracy-policy-banner" class="hidden rounded-xl border-2 p-4 sm:p-5" role="status">
+        <p id="accuracy-policy-headline" class="text-base sm:text-lg font-bold uppercase tracking-wide"></p>
+        <p id="accuracy-policy-sub" class="text-xs text-brand-muted mt-2">Policy: MAPE must stay <span class="text-brand-text font-semibold">below 18%</span>; PERC95 must stay <span class="text-brand-text font-semibold">below 30%</span>. At or above either limit counts as non-compliance for that day.</p>
+        <ul id="accuracy-policy-notes" class="mt-3 text-sm text-brand-text list-disc pl-5 space-y-1"></ul>
+        <div id="accuracy-date-warnings-wrap" class="hidden mt-3 rounded-lg border border-amber-500/40 bg-amber-950/20 px-3 py-2">
+          <p class="text-[10px] font-bold uppercase tracking-wider text-amber-200/90">Date / filename</p>
+          <ul id="accuracy-date-warnings" class="mt-1 text-xs text-amber-100/95 list-disc pl-4 space-y-1"></ul>
+        </div>
+        <p id="accuracy-run-saved" class="mt-3 text-xs font-mono text-brand-muted"></p>
+      </div>
+
+      <section id="accuracy-results" class="hidden rounded-xl border border-brand-border bg-brand-card/80 p-5 sm:p-6 shadow-lg" aria-live="polite">
+        <h3 class="text-sm font-semibold text-brand-muted uppercase tracking-wider mb-4">Compliance-style metrics</h3>
+        <p class="text-xs text-brand-muted mb-4">Same definitions as your <span class="font-mono">Compliance</span> sheet: FPE = ABS((G-E)/Hmax) with G = (F+RTD)/24, E = MQ, F = lagged RTD.</p>
+        <dl class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 text-sm">
+          <div class="rounded-lg border border-brand-border/60 bg-brand-dark/40 px-4 py-3">
+            <dt class="text-[10px] font-bold uppercase tracking-wider text-brand-muted">MAPE</dt>
+            <dd id="accuracy-out-mape" class="mt-1 text-xl font-bold font-mono text-brand-accent tabular-nums">—</dd>
+          </div>
+          <div class="rounded-lg border border-brand-border/60 bg-brand-dark/40 px-4 py-3">
+            <dt class="text-[10px] font-bold uppercase tracking-wider text-brand-muted">PERC95</dt>
+            <dd id="accuracy-out-perc95" class="mt-1 text-xl font-bold font-mono text-brand-accent tabular-nums">—</dd>
+          </div>
+          <div class="rounded-lg border border-brand-border/60 bg-brand-dark/40 px-4 py-3">
+            <dt class="text-[10px] font-bold uppercase tracking-wider text-brand-muted">Intervals (N)</dt>
+            <dd id="accuracy-out-n" class="mt-1 text-xl font-bold font-mono text-brand-text tabular-nums">—</dd>
+          </div>
+          <div class="rounded-lg border border-brand-border/60 bg-brand-dark/40 px-4 py-3">
+            <dt class="text-[10px] font-bold uppercase tracking-wider text-brand-muted">Maximum MQ</dt>
+            <dd id="accuracy-out-maxmq" class="mt-1 text-xl font-bold font-mono text-brand-text tabular-nums">—</dd>
+          </div>
+        </dl>
+        <p class="mt-4 text-xs text-brand-muted"><span class="font-semibold text-brand-text">Dominant day in CSV:</span> <span id="accuracy-out-day">—</span> · <span class="font-semibold text-brand-text">Compliance rows in window:</span> <span id="accuracy-out-rows">—</span> · <span class="font-semibold text-brand-text">MQ sheet:</span> <span id="accuracy-out-sheet" class="font-mono text-[11px]">—</span></p>
+        <p class="mt-2 text-xs text-brand-muted"><span class="font-semibold text-brand-text">Saved trade date (DB key):</span> <span id="accuracy-out-storage" class="font-mono text-brand-text">—</span> <span class="text-brand-muted">(from MIRF MQ filename <span class="font-mono">ARECO_YYYYMMDD_…</span> when present)</span></p>
+      </section>
+
+      <section id="accuracy-analytics" class="hidden rounded-xl border border-brand-border bg-brand-card/80 p-5 sm:p-6 shadow-lg overflow-x-auto">
+        <h3 class="text-sm font-semibold text-brand-muted uppercase tracking-wider mb-2">Daily trading-style analytics</h3>
+        <p class="text-xs text-brand-muted mb-4 max-w-3xl">Aligned with <span class="font-mono">Summary</span> / <span class="font-mono">Summary_for print</span>: MW totals (Trading-style SUM over 288 intervals), min / average / max, daily MWh (each interval MWh = MW÷12), and hourly MWh blocks (12 intervals per hour).</p>
+        <h4 class="text-xs font-bold uppercase tracking-wider text-brand-muted mb-2">MW — total, min, average, max</h4>
+        <table class="w-full text-xs sm:text-sm border-collapse mb-6">
+          <thead>
+            <tr class="text-left text-brand-muted border-b border-brand-border">
+              <th class="py-2 pr-3">Series</th>
+              <th class="py-2 pr-3 text-right">Total (sum MW)</th>
+              <th class="py-2 pr-3 text-right">Min</th>
+              <th class="py-2 pr-3 text-right">Average</th>
+              <th class="py-2 pr-3 text-right">Max</th>
+            </tr>
+          </thead>
+          <tbody id="accuracy-tbody-mw" class="font-mono tabular-nums"></tbody>
+        </table>
+        <h4 class="text-xs font-bold uppercase tracking-wider text-brand-muted mb-2">MWh — full day</h4>
+        <table class="w-full text-xs sm:text-sm border-collapse mb-6">
+          <tbody id="accuracy-tbody-mwh-day" class="font-mono tabular-nums"></tbody>
+        </table>
+        <details class="rounded-lg border border-brand-border/60 bg-brand-dark/30">
+          <summary class="cursor-pointer px-4 py-3 text-sm font-semibold text-brand-text">Hour 1–24 MWh (per hour SUM of MW÷12)</summary>
+          <div class="px-2 pb-3 overflow-x-auto">
+            <table class="w-full text-xs border-collapse min-w-[36rem]">
+              <thead>
+                <tr class="text-left text-brand-muted border-b border-brand-border">
+                  <th class="py-2 px-2">Hour</th>
+                  <th class="py-2 px-2 text-right">RTD MWh</th>
+                  <th class="py-2 px-2 text-right">Actual MWh</th>
+                  <th class="py-2 px-2 text-right">MQ DEL MWh</th>
+                </tr>
+              </thead>
+              <tbody id="accuracy-tbody-hourly" class="font-mono tabular-nums"></tbody>
+            </table>
+          </div>
+        </details>
+        <p id="accuracy-fpe-extra" class="mt-4 text-xs text-brand-muted font-mono"></p>
+      </section>
+
+      <section id="accuracy-saved-runs-panel" class="hidden rounded-xl border border-brand-border bg-brand-card/60 p-5 sm:p-6">
+        <h3 class="text-sm font-semibold text-brand-muted uppercase tracking-wider mb-3">Saved runs (database)</h3>
+        <p class="text-xs text-brand-muted mb-2">File: <span class="font-mono">data/nomination_accuracy.sqlite3</span>. <span class="text-brand-text font-semibold">One row per trade day</span>: the date is taken from the MIRF MQ filename (<span class="font-mono">ARECO_YYYYMMDD_…</span>) when possible; uploading again for that day <span class="text-brand-text font-semibold">overwrites</span> the row.</p>
+        <p class="text-xs text-brand-muted mb-3"><span class="font-semibold text-brand-text">Billing period</span> for filters: <span class="font-semibold">26</span> of month M through <span class="font-semibold">25</span> of month M+1 (e.g. start month <span class="font-mono">3</span> / year <span class="font-mono">2026</span> → <span class="font-mono">2026-03-26</span> … <span class="font-mono">2026-04-25</span>).</p>
+        <div class="flex flex-wrap items-end gap-2 mb-3">
+          <div class="flex flex-col gap-0.5">
+            <label for="accuracy-bill-year" class="text-[10px] uppercase tracking-wider text-brand-muted">Billing start year</label>
+            <input type="number" id="accuracy-bill-year" min="2000" max="2100" placeholder="2026" class="w-[5.5rem] bg-brand-dark border border-brand-border rounded px-2 py-1.5 text-sm text-brand-text font-mono" />
+          </div>
+          <div class="flex flex-col gap-0.5">
+            <label for="accuracy-bill-month" class="text-[10px] uppercase tracking-wider text-brand-muted">Start month (1–12)</label>
+            <input type="number" id="accuracy-bill-month" min="1" max="12" placeholder="3" class="w-[3.5rem] bg-brand-dark border border-brand-border rounded px-2 py-1.5 text-sm text-brand-text font-mono" />
+          </div>
+          <button type="button" id="accuracy-btn-load-billing" class="py-2 px-3 rounded-lg border border-brand-accent/50 bg-brand-accent/15 text-brand-accent text-xs font-bold uppercase tracking-wide hover:bg-brand-accent/25">Load billing period</button>
+        </div>
+        <p id="accuracy-saved-stats" class="text-xs text-brand-muted mb-2 font-mono hidden" role="status"></p>
+        <div id="accuracy-saved-runs-body" class="text-xs sm:text-sm max-h-64 overflow-y-auto font-mono"></div>
+      </section>
+
+      <section id="accuracy-analysis-placeholder" class="rounded-xl border border-dashed border-brand-border bg-brand-card/40 px-6 py-6 text-center">
+        <p class="text-sm text-brand-muted max-w-lg mx-auto leading-relaxed">Upload both files and choose <span class="text-brand-text font-semibold">Run analysis</span>. Results are saved once per trade day (by MQ filename date when present) and can be rolled up by billing period (26th–25th).</p>
+      </section>
+    </div>
