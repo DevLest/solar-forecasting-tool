@@ -15,10 +15,12 @@
     </main>
   </div>
   {% include 'components/modal_confirmation.html' %}
+  {% include 'partials/_settings_drawer.html' %}
   {% include 'components/app_footer.html' %}
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
   <script src="{{ url_for('static', filename='js/app-shell.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/settings-config.js') }}" defer></script>
   {% block page_scripts %}{% endblock %}
 </body>
 </html>

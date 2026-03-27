@@ -270,6 +270,61 @@ def calendar_monthly_rollup(year: int, limit_per_year: int = 8000) -> dict[str, 
     }
 
 
+def calendar_month_detail(year: int, month: int) -> dict[str, Any]:
+    """
+    Per calendar day in ``year``-``month``: which trade days have a saved run and which are missing.
+    One saved row per ``compliance_day`` (re-uploads replace the same day).
+    """
+    if year < 1990 or year > 2100:
+        raise ValueError("year out of range")
+    if month < 1 or month > 12:
+        raise ValueError("month must be 1–12")
+    init_nomination_accuracy_db()
+    last_day = calendar.monthrange(year, month)[1]
+    runs = list_runs(year=year, month=month, limit=8000)
+    by_day: dict[str, dict[str, Any]] = {}
+    for r in runs:
+        cd = str(r.get("compliance_day") or "")
+        if not cd:
+            continue
+        by_day[cd] = {
+            "compliance_day": cd,
+            "id": r.get("id"),
+            "created_at": r.get("created_at"),
+            "n_intervals": r.get("n_intervals"),
+            "compliance_rows_in_window": r.get("compliance_rows_in_window"),
+        }
+    missing_dates: list[str] = []
+    rows: list[dict[str, Any]] = []
+    for d in range(1, last_day + 1):
+        iso = date(year, month, d).isoformat()
+        if iso in by_day:
+            info = by_day[iso]
+            rows.append(
+                {
+                    "date": iso,
+                    "has_data": True,
+                    "saved_run_id": info.get("id"),
+                    "created_at": info.get("created_at"),
+                    "n_intervals": info.get("n_intervals"),
+                    "compliance_rows_in_window": info.get("compliance_rows_in_window"),
+                }
+            )
+        else:
+            missing_dates.append(iso)
+            rows.append({"date": iso, "has_data": False})
+    return {
+        "year": year,
+        "month": month,
+        "label": f"{calendar.month_name[month]} {year}",
+        "calendar_days": last_day,
+        "days_with_saved": len(by_day),
+        "days_missing": len(missing_dates),
+        "missing_dates": missing_dates,
+        "rows": rows,
+    }
+
+
 def calendar_annual_rollup(limit_all: int = 50000) -> dict[str, Any]:
     """One summary row per **calendar year** present in the database (by ``compliance_day``)."""
     runs = list_runs(

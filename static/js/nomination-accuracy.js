@@ -796,6 +796,13 @@
   var monthlyTbody = document.getElementById('accuracy-monthly-rollup-tbody');
   var annualTbody = document.getElementById('accuracy-annual-rollup-tbody');
   var yearTotalsStrip = document.getElementById('accuracy-year-totals-strip');
+  var monthDetailPanel = document.getElementById('accuracy-month-detail');
+  var monthDetailTitle = document.getElementById('accuracy-month-detail-title');
+  var monthDetailSummary = document.getElementById('accuracy-month-detail-summary');
+  var monthDetailMissing = document.getElementById('accuracy-month-detail-missing');
+  var monthDetailTbody = document.getElementById('accuracy-month-detail-tbody');
+  var monthDetailClose = document.getElementById('accuracy-month-detail-close');
+  var lastRollupYearForCalendar = null;
 
   var chartRefs = { monthlyErr: null, monthlyComp: null, annual: null };
 
@@ -866,9 +873,148 @@
     yearTotalsStrip.appendChild(mini('Year avg PERC95', fmtPctFromFraction(yt.perc95_avg)));
   }
 
+  function hideMonthDetail() {
+    if (monthDetailPanel) monthDetailPanel.classList.add('hidden');
+    if (monthlyTbody) {
+      monthlyTbody.querySelectorAll('[data-accuracy-month-selected="1"]').forEach(function(el) {
+        el.removeAttribute('data-accuracy-month-selected');
+        el.classList.remove('ring-1', 'ring-brand-accent/50', 'bg-brand-accent/10');
+      });
+    }
+  }
+
+  function fmtMonthDetailUtc(iso) {
+    if (!iso || typeof iso !== 'string') return '—';
+    var t = Date.parse(iso);
+    if (!isFinite(t)) return iso;
+    var d = new Date(t);
+    return d.toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
+  }
+
+  function renderMonthDetailTable(rows) {
+    if (!monthDetailTbody) return;
+    monthDetailTbody.innerHTML = '';
+    (rows || []).forEach(function(r, i) {
+      var tr = document.createElement('tr');
+      tr.className =
+        (i % 2 === 0 ? 'bg-brand-dark/10 ' : '') +
+        'border-b border-brand-border/30' +
+        (!r.has_data ? ' opacity-75' : '');
+      if (r.has_data) {
+        tr.innerHTML =
+          '<td class="py-1.5 px-2 text-brand-text">' +
+          r.date +
+          '</td>' +
+          '<td class="py-1.5 px-2 text-right text-emerald-300/90">1</td>' +
+          '<td class="py-1.5 px-2 text-right">' +
+          (r.n_intervals != null ? String(r.n_intervals) : '—') +
+          '</td>' +
+          '<td class="py-1.5 px-2 text-right">' +
+          (r.compliance_rows_in_window != null ? String(r.compliance_rows_in_window) : '—') +
+          '</td>' +
+          '<td class="py-1.5 px-2 text-[10px] sm:text-[11px]">' +
+          fmtMonthDetailUtc(r.created_at) +
+          '</td>';
+      } else {
+        tr.innerHTML =
+          '<td class="py-1.5 px-2 text-brand-muted">' +
+          r.date +
+          '</td>' +
+          '<td class="py-1.5 px-2 text-right text-rose-300/80">0</td>' +
+          '<td class="py-1.5 px-2 text-right">—</td>' +
+          '<td class="py-1.5 px-2 text-right">—</td>' +
+          '<td class="py-1.5 px-2 text-brand-muted">—</td>';
+      }
+      monthDetailTbody.appendChild(tr);
+    });
+  }
+
+  function openMonthDetail(year, month) {
+    if (!monthDetailPanel) return;
+    hideMonthDetail();
+    if (monthlyTbody) {
+      var prev = monthlyTbody.querySelector('button[data-accuracy-month="' + String(month) + '"]');
+      if (prev) {
+        prev.setAttribute('data-accuracy-month-selected', '1');
+        prev.classList.add('ring-1', 'ring-brand-accent/50', 'bg-brand-accent/10');
+      }
+    }
+    monthDetailPanel.classList.remove('hidden');
+    if (monthDetailTitle) monthDetailTitle.textContent = 'Loading…';
+    if (monthDetailSummary) monthDetailSummary.textContent = '';
+    if (monthDetailMissing) {
+      monthDetailMissing.classList.add('hidden');
+      monthDetailMissing.textContent = '';
+    }
+    if (monthDetailTbody) monthDetailTbody.innerHTML = '';
+    if (rollupStatus) rollupStatus.textContent = 'Loading day coverage…';
+    fetch(
+      '/api/nomination-accuracy/analytics/month-detail?year=' +
+        encodeURIComponent(String(year)) +
+        '&month=' +
+        encodeURIComponent(String(month))
+    )
+      .then(function(r) {
+        return r.json();
+      })
+      .then(function(j) {
+        if (rollupStatus) rollupStatus.textContent = '';
+        if (!j.ok) {
+          if (monthDetailTitle) monthDetailTitle.textContent = 'Day coverage';
+          if (monthDetailSummary) monthDetailSummary.textContent = j.error || 'Failed to load.';
+          return;
+        }
+        if (monthDetailTitle) monthDetailTitle.textContent = j.label || 'Day coverage';
+        if (monthDetailSummary) {
+          monthDetailSummary.textContent =
+            String(j.calendar_days != null ? j.calendar_days : '—') +
+            ' calendar days · ' +
+            String(j.days_with_saved != null ? j.days_with_saved : 0) +
+            ' with saved run · ' +
+            String(j.days_missing != null ? j.days_missing : 0) +
+            ' missing';
+        }
+        if (monthDetailMissing) {
+          var miss = j.missing_dates || [];
+          if (miss.length) {
+            monthDetailMissing.classList.remove('hidden');
+            monthDetailMissing.innerHTML =
+              '<span class="font-semibold text-brand-text">Missing dates:</span> ' +
+              miss.join(', ');
+          } else {
+            monthDetailMissing.classList.add('hidden');
+            monthDetailMissing.textContent = '';
+          }
+        }
+        renderMonthDetailTable(j.rows || []);
+      })
+      .catch(function() {
+        if (rollupStatus) rollupStatus.textContent = '';
+        if (monthDetailTitle) monthDetailTitle.textContent = 'Day coverage';
+        if (monthDetailSummary) monthDetailSummary.textContent = 'Network error.';
+      });
+  }
+
+  if (monthlyTbody) {
+    monthlyTbody.addEventListener('click', function(ev) {
+      var btn = ev.target.closest('button[data-accuracy-month]');
+      if (!btn || !monthlyTbody.contains(btn)) return;
+      var m = parseInt(btn.getAttribute('data-accuracy-month'), 10);
+      if (!isFinite(m) || m < 1 || m > 12) return;
+      var y = lastRollupYearForCalendar;
+      if (y == null || !isFinite(y)) return;
+      openMonthDetail(y, m);
+    });
+  }
+  if (monthDetailClose) {
+    monthDetailClose.addEventListener('click', hideMonthDetail);
+  }
+
   function renderMonthlyTable(months, year) {
     if (!monthlyTbody) return;
     monthlyTbody.innerHTML = '';
+    hideMonthDetail();
+    lastRollupYearForCalendar = year;
     if (rollupYearLabel) rollupYearLabel.textContent = String(year);
     (months || []).forEach(function(row, i) {
       var st = row.stats || {};
@@ -877,9 +1023,14 @@
       var tr = document.createElement('tr');
       tr.className =
         (i % 2 === 0 ? 'bg-brand-dark/10 ' : '') + 'border-b border-brand-border/30';
+      var mo = row.month != null ? String(row.month) : '';
       tr.innerHTML =
         '<td class="py-2 px-3 text-brand-text">' +
+        '<button type="button" class="text-left font-medium text-brand-accent hover:underline hover:text-emerald-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent/40 rounded px-0.5 -mx-0.5" data-accuracy-month="' +
+        mo +
+        '" title="Show per-day uploads and gaps for this month">' +
         row.label +
+        '</button>' +
         '</td>' +
         '<td class="py-2 px-3 text-right">' +
         String(days) +

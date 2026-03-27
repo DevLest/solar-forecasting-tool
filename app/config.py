@@ -29,6 +29,19 @@ DEFAULT_LON = 123.00417639451439
 LAT, LON = DEFAULT_LAT, DEFAULT_LON
 
 
+def nomination_export_dir() -> str:
+    """
+    Folder where nomination XML / VRE CSV are written by the server (default: ``<project>/automate``).
+    Set ``ARECO_NOMINATION_EXPORT_DIR`` in ``.env`` to an absolute path or a path relative to the project root.
+    """
+    raw = os.environ.get("ARECO_NOMINATION_EXPORT_DIR", "").strip()
+    if not raw:
+        return os.path.join(ROOT, "automate")
+    if os.path.isabs(raw):
+        return os.path.abspath(os.path.normpath(raw))
+    return os.path.abspath(os.path.normpath(os.path.join(ROOT, raw)))
+
+
 def settlement_zip_passwords_from_env() -> list[str]:
     """Password 1 then 2, matching Excel ``Sheet1`` B2 / B3 and the generated WinRAR batch."""
     p1 = os.environ.get("ARECO_SETTLEMENT_ZIP_PASSWORD1", "").strip()

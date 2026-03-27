@@ -17,7 +17,8 @@
     </div>
   </div>
   {% block header_trailing %}
-  <div class="flex items-center gap-6">
+  <div class="flex items-center gap-3 sm:gap-6">
+    <button type="button" data-open-settings class="md:hidden shrink-0 rounded-lg border border-brand-border px-2.5 py-1.5 text-[10px] sm:text-xs font-semibold uppercase tracking-wide text-brand-muted hover:text-brand-accent hover:bg-brand-border/20" title="App settings">Settings</button>
     <div id="navbar-current-time" class="text-2xl font-bold font-mono text-brand-accent tabular-nums" title="Current time"></div>
     <div class="flex items-baseline gap-2 border-l border-brand-border pl-6">
       <span class="text-xs text-brand-muted uppercase tracking-wider">RTD Nomination</span>

@@ -4,19 +4,22 @@ from __future__ import annotations
 import io
 import json
 import os
+import re
 from datetime import date, datetime
 from pathlib import Path
 
 from flask import Blueprint, Response, jsonify, render_template, request, send_from_directory
 from werkzeug.utils import secure_filename
 
-from app.config import DATA_DIR, ROOT, settlement_zip_passwords_from_env
+from app.config import DATA_DIR, ROOT, nomination_export_dir, settlement_zip_passwords_from_env
+from app.services.env_config import ALLOWED_ENV_KEYS, merge_env_updates, read_env_file_dict
 from app.services.billing_settlement_extract import extract_settlement_master
 from app.services.history import load_historical_exports, save_historical_export
 from app.services.nomination_accuracy import analyze_uploads
 from app.services.nomination_accuracy_dates import resolve_storage_trade_date
 from app.services.nomination_accuracy_store import (
     calendar_annual_rollup,
+    calendar_month_detail,
     calendar_monthly_rollup,
     list_runs_with_billing_meta,
     save_run,
@@ -24,6 +27,19 @@ from app.services.nomination_accuracy_store import (
 from app.services.weather import get_weather_forecast
 
 bp = Blueprint("main", __name__)
+
+_NOM_XML_FILENAME = re.compile(r"^ARECO_\d{2}_\d{2}_\d{4}\.xml$")
+
+
+def _valid_nomination_export_filename(name: str) -> bool:
+    bn = os.path.basename(name or "")
+    if _NOM_XML_FILENAME.match(bn):
+        return True
+    if bn.startswith("VRE_NOM_") and bn.endswith(".csv"):
+        if ".." in bn or "/" in bn or "\\" in bn:
+            return False
+        return True
+    return False
 
 
 def _settlement_export_subdir_from_upload(filename: str) -> str:
@@ -117,6 +133,63 @@ def api_save_export():
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
+@bp.route("/api/nomination-save-file", methods=["POST", "OPTIONS"])
+def api_nomination_save_file():
+    if request.method == "OPTIONS":
+        return "", 204
+    data = request.get_json(silent=True) or {}
+    filename = (data.get("filename") or "").strip()
+    content = data.get("content")
+    if not filename or content is None:
+        return jsonify({"ok": False, "error": "Missing filename or content."}), 400
+    if not isinstance(content, str):
+        return jsonify({"ok": False, "error": "Content must be a string."}), 400
+    if not _valid_nomination_export_filename(filename):
+        return jsonify({"ok": False, "error": "Invalid export filename."}), 400
+    out_dir = nomination_export_dir()
+    try:
+        os.makedirs(out_dir, exist_ok=True)
+    except OSError as e:
+        return jsonify({"ok": False, "error": f"Cannot create export folder: {e}"}), 500
+    safe_name = os.path.basename(filename)
+    out_path = os.path.join(out_dir, safe_name)
+    try:
+        with open(out_path, "w", encoding="utf-8", newline="\n") as f:
+            f.write(content)
+    except OSError as e:
+        return jsonify({"ok": False, "error": f"Could not write file: {e}"}), 500
+    return jsonify({"ok": True, "path": out_path, "dir": out_dir, "filename": safe_name})
+
+
+@bp.route("/api/app-config", methods=["GET", "POST", "OPTIONS"])
+def api_app_config():
+    if request.method == "OPTIONS":
+        return "", 204
+    if request.method == "GET":
+        file_vals = read_env_file_dict()
+        merged = {k: file_vals.get(k, os.environ.get(k, "")) for k in sorted(ALLOWED_ENV_KEYS)}
+        return jsonify({"ok": True, "values": merged})
+    data = request.get_json(silent=True) or {}
+    updates = data.get("values")
+    if not isinstance(updates, dict):
+        return jsonify({"ok": False, "error": "Expected JSON object { \"values\": { KEY: value } }."}), 400
+    to_write: dict[str, str] = {}
+    for key, raw in updates.items():
+        if key not in ALLOWED_ENV_KEYS:
+            continue
+        if raw is None:
+            continue
+        val = str(raw).strip()
+        if val == "":
+            continue
+        to_write[key] = val
+    try:
+        merge_env_updates(to_write)
+    except OSError as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+    return jsonify({"ok": True})
+
+
 @bp.route("/api/nomination-accuracy", methods=["POST", "OPTIONS"])
 def api_nomination_accuracy():
     if request.method == "OPTIONS":
@@ -195,6 +268,29 @@ def api_nomination_accuracy_analytics_monthly():
         return jsonify({"ok": False, "error": "Query parameter year is required (calendar year, e.g. 2026)."}), 400
     try:
         payload = calendar_monthly_rollup(year)
+    except ValueError as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+    return jsonify({"ok": True, **payload})
+
+
+@bp.route("/api/nomination-accuracy/analytics/month-detail", methods=["GET"])
+def api_nomination_accuracy_analytics_month_detail():
+    year = request.args.get("year", type=int)
+    month = request.args.get("month", type=int)
+    if year is None or month is None:
+        return (
+            jsonify(
+                {
+                    "ok": False,
+                    "error": "Query parameters year and month are required (calendar month, e.g. year=2026&month=3).",
+                }
+            ),
+            400,
+        )
+    try:
+        payload = calendar_month_detail(year, month)
     except ValueError as e:
         return jsonify({"ok": False, "error": str(e)}), 400
     except Exception as e:

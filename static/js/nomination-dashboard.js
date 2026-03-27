@@ -1089,7 +1089,7 @@
       }).catch(function(err) {
         var msg = (err && err.message) ? err.message : 'Could not save to history.';
         console.warn('saveExportToHistory failed:', msg);
-        alert('History save failed: ' + msg + '\n\nStart the app: python run_dashboard.py — then use Refresh history, or try again.');
+        setNominationExportStatus('Export file saved but history sync failed: ' + msg + ' — start the app and use Refresh history.', true);
         if (typeof onDone === 'function') onDone();
       });
     }
@@ -1276,114 +1276,75 @@
       return { mm: mm, dd: dd, yyyy: yyyy, forecastDate: forecastDateDisplay, intervalCount: (intervals && intervals.length) ? intervals.length : 0 };
     }
 
-    /**
-     * Save a blob to a file. Uses Save File Picker when available so user can choose directory and filename;
-     * otherwise falls back to programmatic download.
-     * @param {Blob} blob
-     * @param {string} suggestedFilename
-     * @param {{ description: string, mimeType: string, extension: string }} fileType
-     * @returns {Promise<string|null>} Resolves with the saved filename, or null if user cancelled.
-     */
-    function saveBlobWithPicker(blob, suggestedFilename, fileType) {
-      if (typeof window.showSaveFilePicker === 'function') {
-        return window.showSaveFilePicker({
-          suggestedName: suggestedFilename,
-          types: [{ description: fileType.description, accept: { [fileType.mimeType]: [fileType.extension] } }]
-        }).then(function(handle) {
-          return handle.createWritable().then(function(writable) {
-            return writable.write(blob).then(function() { return writable.close(); }).then(function() { return handle.name; });
-          });
-        }).catch(function(err) {
-          if (err.name === 'AbortError') return null;
-          throw err;
+    function setNominationExportStatus(msg, isErr) {
+      var el = document.getElementById('nomination-export-status');
+      if (!el) return;
+      el.textContent = msg || '';
+      el.className = 'text-xs min-h-[1.25rem] ' + (isErr ? 'text-red-400' : 'text-brand-muted');
+    }
+
+    function saveNominationFileToServer(filename, content) {
+      return fetch(API_BASE + '/api/nomination-save-file', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename: filename, content: content })
+      }).then(function(r) {
+        return r.json().then(function(j) {
+          if (!r.ok) throw new Error((j && j.error) ? j.error : (r.statusText || 'Request failed'));
+          return j;
         });
-      }
+      });
+    }
+
+    function downloadBlobFallback(blob, filename) {
       var a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = suggestedFilename;
+      a.download = filename;
       a.click();
       URL.revokeObjectURL(a.href);
-      return Promise.resolve(suggestedFilename);
     }
 
     document.getElementById('btn-export').addEventListener('click', function() {
       var detail = getExportDetailStrings();
       var filename = 'ARECO_' + detail.mm + '_' + detail.dd + '_' + detail.yyyy + '.xml';
-      var body = 'Forecast date: ' + detail.forecastDate + '\nIntervals: ' + detail.intervalCount + '\nSuggested file: ' + filename + '\n\nYou will choose where to save the file.';
-      showConfirmationModal({
-        title: 'Export confirmation (XML)',
-        body: body,
-        confirmLabel: 'Confirm & Save as…',
-        cancelLabel: 'Cancel',
-        onConfirm: function() {
-          var xml = buildRawBidSetXml();
+      var xml = buildRawBidSetXml();
+      setNominationExportStatus('Saving XML to server folder…');
+      saveNominationFileToServer(filename, xml)
+        .then(function(res) {
+          var snapshot = buildExportSnapshot();
+          saveExportToHistory(snapshot, function() {
+            var path = (res && res.path) ? res.path : filename;
+            setNominationExportStatus('Saved: ' + path + ' — history updated.');
+          });
+        })
+        .catch(function(err) {
+          console.warn('Server XML export failed:', err);
           var blob = new Blob([xml], { type: 'application/xml;charset=utf-8' });
-          saveBlobWithPicker(blob, filename, { description: 'XML file', mimeType: 'application/xml', extension: '.xml' })
-            .then(function(savedName) {
-              if (savedName == null) return;
-              var snapshot = buildExportSnapshot();
-              saveExportToHistory(snapshot, function() {
-                showConfirmationModal({
-                  title: 'Export complete',
-                  body: 'File saved: ' + savedName + '\n\nHistory updated for this date (replaced if same date).',
-                  confirmLabel: 'OK',
-                  hideCancel: true
-                });
-              });
-            })
-            .catch(function(err) {
-              console.error('Export failed:', err);
-              showConfirmationModal({
-                title: 'Export failed',
-                body: 'Could not save file. ' + (err && err.message ? err.message : ''),
-                confirmLabel: 'OK',
-                hideCancel: true
-              });
-            });
-        }
-      });
+          downloadBlobFallback(blob, filename);
+          setNominationExportStatus('Server unavailable — file downloaded in browser. Run the app to save under the automate folder (see App settings).', true);
+        });
     });
 
     document.getElementById('btn-export-vre-csv').addEventListener('click', function() {
-      var plantNameEl = document.getElementById('vre-plant-name');
-      var plantName = (plantNameEl && plantNameEl.value && plantNameEl.value.trim()) ? plantNameEl.value.trim() : 'Vista Alegre Solar Power Plant';
       var detail = getExportDetailStrings();
-      // Dynamic date YYYYMMDD from forecast reference date; filename always uses fixed plant name for format
       var dateStr = String(detail.yyyy) + detail.mm + detail.dd;
       var filename = 'VRE_NOM_{Vista Alegre Solar Power Plant}_' + dateStr + '.csv';
-      var body = 'Forecast date: ' + detail.forecastDate + '\nIntervals: ' + detail.intervalCount + '\nPlant: ' + plantName + '\nSuggested file: ' + filename + '\n\nYou will choose where to save the file.';
-      showConfirmationModal({
-        title: 'Export confirmation (VRE CSV)',
-        body: body,
-        confirmLabel: 'Confirm & Save as…',
-        cancelLabel: 'Cancel',
-        onConfirm: function() {
-          var csv = buildVreCsvContent();
+      var csv = buildVreCsvContent();
+      setNominationExportStatus('Saving VRE CSV to server folder…');
+      saveNominationFileToServer(filename, csv)
+        .then(function(res) {
+          var snapshot = buildExportSnapshot();
+          saveExportToHistory(snapshot, function() {
+            var path = (res && res.path) ? res.path : filename;
+            setNominationExportStatus('Saved: ' + path + ' — history updated.');
+          });
+        })
+        .catch(function(err) {
+          console.warn('Server VRE export failed:', err);
           var blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
-          saveBlobWithPicker(blob, filename, { description: 'CSV file', mimeType: 'text/csv', extension: '.csv' })
-            .then(function(savedName) {
-              if (savedName == null) return;
-              var snapshot = buildExportSnapshot();
-              saveExportToHistory(snapshot, function() {
-                showConfirmationModal({
-                  title: 'Export complete',
-                  body: 'File saved: ' + savedName + '\n\nHistory updated for this date (replaced if same date).',
-                  confirmLabel: 'OK',
-                  hideCancel: true
-                });
-              });
-            })
-            .catch(function(err) {
-              console.error('VRE export failed:', err);
-              showConfirmationModal({
-                title: 'Export failed',
-                body: 'Could not save file. ' + (err && err.message ? err.message : ''),
-                confirmLabel: 'OK',
-                hideCancel: true
-              });
-            });
-        }
-      });
+          downloadBlobFallback(blob, filename);
+          setNominationExportStatus('Server unavailable — file downloaded in browser. Run the app to save under the automate folder (see App settings).', true);
+        });
     });
 
     document.getElementById('btn-import').addEventListener('click', function() {
