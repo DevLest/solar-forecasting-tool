@@ -933,6 +933,7 @@
       var daMap = getDayAheadLookupForDisplay();
       tbody.innerHTML = vreRows.map(function(r) {
         var clockH = deliveryHourToClockHour(r.deliveryHour);
+        var hourCell = '<td class="vre-col-hour">' + String(r.deliveryHour) + '</td>';
         var vreCell = '<td class="vre-col-vre">' + String(r.vreNom) + '</td>';
         var dataCells = VRE_MINUTE_COLUMNS.map(function(min) {
           var mw = getDayAheadMwAt(daMap, clockH, min);
@@ -940,7 +941,7 @@
           var cls = 'vre-col-mw' + (isZero ? ' vre-cell-zero' : '');
           return '<td class="' + cls + '">' + formatMinuteMwForVreGrid(mw) + '</td>';
         }).join('');
-        return '<tr>' + vreCell + dataCells + '</tr>';
+        return '<tr>' + hourCell + vreCell + dataCells + '</tr>';
       }).join('');
     }
 

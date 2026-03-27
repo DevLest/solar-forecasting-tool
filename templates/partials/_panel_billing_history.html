@@ -1,0 +1,10 @@
+{% from 'components/ui_macros.html' import page_hero %}
+    <div id="panel-billing-history" class="hidden flex-grow p-6 max-w-[1600px] mx-auto w-full space-y-6">
+      {{ page_hero('Billing History', 'Past settlement extracts and billing-related records. Use Billing & Settlement to run a new extract; detailed accuracy runs by billing period live under Forecast Percentage Error (Saved runs).') }}
+      <section class="bg-brand-card rounded-xl border border-brand-border p-5 sm:p-6 shadow-lg">
+        <p class="text-sm text-brand-muted leading-relaxed max-w-3xl">
+          After each successful master zip extraction, file lists and paths are shown on <span class="font-semibold text-brand-text">Billing & Settlement</span>.
+          Nomination accuracy results stored in the database (by trade day and billing period) are listed under <span class="font-semibold text-brand-text">Forecast Percentage Error</span> → <span class="font-semibold text-brand-text">Saved runs</span>.
+        </p>
+      </section>
+    </div>

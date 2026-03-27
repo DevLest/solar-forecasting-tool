@@ -2,17 +2,21 @@
       var panelNom = document.getElementById('panel-nomination');
       var panelBill = document.getElementById('panel-billing');
       var panelAcc = document.getElementById('panel-nomination-accuracy');
+      var panelBillHist = document.getElementById('panel-billing-history');
       var subtitleEl = document.getElementById('app-subtitle');
       var titles = {
-        nomination: 'WESM Nomination',
-        billing: 'Billing & Invoice',
-        'nomination-accuracy': 'Nomination accuracy'
+        nomination: 'Nomination Dashboard',
+        billing: 'Billing & Settlement',
+        'nomination-accuracy': 'Forecast Percentage Error',
+        'billing-history': 'Billing History'
       };
       function showPanel(id) {
-        if (id !== 'billing' && id !== 'nomination-accuracy') id = 'nomination';
+        var valid = { nomination: 1, billing: 1, 'nomination-accuracy': 1, 'billing-history': 1 };
+        if (!valid[id]) id = 'nomination';
         if (panelNom) panelNom.classList.toggle('hidden', id !== 'nomination');
         if (panelBill) panelBill.classList.toggle('hidden', id !== 'billing');
         if (panelAcc) panelAcc.classList.toggle('hidden', id !== 'nomination-accuracy');
+        if (panelBillHist) panelBillHist.classList.toggle('hidden', id !== 'billing-history');
         document.querySelectorAll('[data-nav-panel]').forEach(function(btn) {
           var active = btn.getAttribute('data-nav-panel') === id;
           btn.setAttribute('aria-current', active ? 'page' : 'false');
@@ -27,7 +31,7 @@
       });
       var saved = '';
       try { saved = sessionStorage.getItem('areco_app_panel') || ''; } catch (e2) {}
-      if (saved === 'billing' || saved === 'nomination-accuracy') showPanel(saved);
+      if (saved === 'billing' || saved === 'nomination-accuracy' || saved === 'billing-history') showPanel(saved);
       else showPanel('nomination');
     })();
 

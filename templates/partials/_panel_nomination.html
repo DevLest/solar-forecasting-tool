@@ -227,8 +227,14 @@
         <div class="overflow-x-auto">
           <div class="vre-paste-matrix-wrapper max-w-full inline-block min-w-full">
             <table class="vre-paste-matrix" id="vre-table" aria-label="Day ahead MW matrix by delivery hour">
+              <colgroup>
+                <col class="vre-col-hour" />
+                <col class="vre-col-vre" />
+                <col span="12" class="vre-col-mw" />
+              </colgroup>
               <thead>
                 <tr>
+                  <th scope="col" class="vre-col-hour">Hour</th>
                   <th scope="col" class="vre-col-vre">VRE</th>
                   <th scope="col" class="vre-col-mw">5</th>
                   <th scope="col" class="vre-col-mw">10</th>

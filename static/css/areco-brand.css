@@ -25,10 +25,13 @@
     }
     .vre-paste-matrix {
       width: 100%;
+      table-layout: fixed;
       border-collapse: collapse;
       font-size: 0.875rem;
       font-variant-numeric: tabular-nums;
     }
+    .vre-paste-matrix col.vre-col-hour { width: 3rem; }
+    .vre-paste-matrix col.vre-col-vre { width: 3.25rem; }
     .vre-paste-matrix th,
     .vre-paste-matrix td {
       border: 1px solid #334155;
@@ -43,6 +46,28 @@
       text-transform: uppercase;
       letter-spacing: 0.06em;
       font-size: 0.75rem;
+    }
+    /* Sticky only on body cells — sticky on <th> breaks thead/tbody column alignment in many browsers. */
+    .vre-paste-matrix thead th.vre-col-hour {
+      position: static;
+      z-index: auto;
+      box-shadow: none;
+    }
+    .vre-paste-matrix tbody td.vre-col-hour {
+      position: sticky;
+      left: 0;
+      z-index: 2;
+      box-shadow: 1px 0 0 #334155;
+    }
+    .vre-paste-matrix .vre-col-hour {
+      min-width: 2.5rem;
+      font-weight: 600;
+      text-align: center;
+      color: #cbd5e1;
+      background: rgba(30, 41, 59, 0.95) !important;
+    }
+    .vre-paste-matrix tbody tr:nth-child(even) .vre-col-hour {
+      background: rgba(51, 65, 85, 0.55) !important;
     }
     .vre-paste-matrix tbody tr:nth-child(even) td {
       background: rgba(51, 65, 85, 0.28);
