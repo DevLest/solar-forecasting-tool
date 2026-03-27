@@ -12,7 +12,7 @@
             </div>
           </div>
         </div>
-        <div class="flex items-center gap-2 mb-3">
+        <div class="flex items-center gap-2 mb-3 flex-wrap">
           <label for="interval-hour-filter" class="text-[10px] text-brand-muted uppercase whitespace-nowrap">Hour</label>
           <select id="interval-hour-filter" class="flex-1 min-w-0 bg-brand-dark border border-brand-border rounded px-2 py-1.5 text-xs text-brand-text focus:ring-1 focus:ring-brand-accent">
             <option value="all">All</option>
@@ -23,6 +23,7 @@
             <option value="16">16</option><option value="17">17</option><option value="18">18</option><option value="19">19</option>
             <option value="20">20</option><option value="21">21</option><option value="22">22</option><option value="23">23</option>
           </select>
+          <button type="button" id="btn-rtd-range-modal" class="shrink-0 text-[10px] uppercase font-bold tracking-wide px-2.5 py-1.5 rounded-md border border-brand-accent/60 text-brand-accent hover:bg-brand-accent/10 focus:outline-none focus:ring-1 focus:ring-brand-accent" title="Set the same RTD (MW) for many 5‑minute intervals at once">Bulk RTD</button>
         </div>
         <div class="overflow-y-auto flex-1 min-h-0 relative isolate">
           <table class="interval-data-table w-full text-left border-collapse">
@@ -258,5 +259,47 @@
           </div>
         </div>
       </section>
+    </div>
+
+    <!-- Bulk RTD: time range + per-slot checkboxes (modal) -->
+    <div id="rtd-range-modal" class="hidden fixed inset-0 z-[100] flex items-start justify-center p-4 pt-8 sm:pt-12 overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="rtd-range-modal-title">
+      <button type="button" class="absolute inset-0 w-full h-full bg-black/60 border-0 cursor-default" id="rtd-range-modal-backdrop" aria-label="Close dialog"></button>
+      <div class="relative z-10 w-full max-w-lg rounded-xl border border-brand-border bg-brand-card shadow-2xl max-h-[min(90vh,40rem)] flex flex-col">
+        <div class="px-4 py-3 sm:px-5 sm:py-4 border-b border-brand-border flex items-start justify-between gap-3 shrink-0">
+          <div>
+            <h2 id="rtd-range-modal-title" class="text-sm font-bold uppercase tracking-wider text-brand-text">Bulk RTD by interval range</h2>
+            <p class="text-[10px] text-brand-muted mt-1 leading-relaxed">Intervals are 5‑minute <span class="text-brand-text/90">end times</span> (same as the table). Checklist shows <span class="text-brand-text/90">05:05–19:00</span> only; From–To checks those in range — adjust or uncheck to skip.</p>
+            <p id="rtd-range-modal-ref-hint" class="text-[10px] text-brand-accent/90 mt-1 font-medium"></p>
+          </div>
+          <button type="button" id="rtd-range-modal-close-x" class="shrink-0 p-1 rounded text-brand-muted hover:text-brand-text hover:bg-brand-border/30 focus:outline-none focus:ring-1 focus:ring-brand-accent" aria-label="Close">&times;</button>
+        </div>
+        <div class="px-4 py-3 sm:px-5 space-y-3 overflow-y-auto flex-1 min-h-0">
+          <div class="grid grid-cols-2 gap-2 sm:gap-3">
+            <div>
+              <label for="rtd-range-start" class="block text-[10px] uppercase text-brand-muted mb-1">From (interval end)</label>
+              <input type="time" id="rtd-range-start" step="300" value="12:00" class="w-full bg-brand-dark border border-brand-border rounded px-2 py-1.5 text-xs text-brand-text focus:ring-1 focus:ring-brand-accent [color-scheme:dark]" title="Snaps to nearest 5‑minute interval end"/>
+            </div>
+            <div>
+              <label for="rtd-range-end" class="block text-[10px] uppercase text-brand-muted mb-1">To (interval end)</label>
+              <input type="time" id="rtd-range-end" step="300" value="16:00" class="w-full bg-brand-dark border border-brand-border rounded px-2 py-1.5 text-xs text-brand-text focus:ring-1 focus:ring-brand-accent [color-scheme:dark]" title="Snaps to nearest 5‑minute interval end"/>
+            </div>
+          </div>
+          <div>
+            <label for="rtd-range-mw" class="block text-[10px] uppercase text-brand-muted mb-1">RTD (MW)</label>
+            <input type="number" id="rtd-range-mw" min="0" max="50" step="0.001" value="40" class="w-full max-w-[12rem] bg-brand-dark border border-brand-border rounded px-2 py-1.5 text-sm font-mono text-right text-brand-text focus:ring-1 focus:ring-brand-accent"/>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="text-[10px] uppercase text-brand-muted">Timeslots (05:05–19:00)</span>
+            <button type="button" id="rtd-range-select-all" class="text-[10px] font-semibold uppercase text-brand-accent hover:text-brand-accent/80">Select all</button>
+            <span class="text-brand-border">|</span>
+            <button type="button" id="rtd-range-select-none" class="text-[10px] font-semibold uppercase text-brand-muted hover:text-brand-text">Clear all</button>
+          </div>
+          <div id="rtd-range-slot-list" class="rounded-lg border border-brand-border/60 bg-brand-dark/40 p-2 max-h-[min(50vh,22rem)] overflow-y-auto grid grid-cols-4 sm:grid-cols-6 gap-1 content-start text-[10px] leading-tight" role="group" aria-label="5-minute interval end times from 05:05 through 19:00"></div>
+        </div>
+        <div class="px-4 py-3 sm:px-5 border-t border-brand-border flex flex-wrap justify-end gap-2 shrink-0 bg-brand-card rounded-b-xl">
+          <button type="button" id="rtd-range-cancel" class="px-4 py-2 rounded-lg border border-brand-border text-xs font-bold uppercase text-brand-muted hover:bg-brand-border/20">Cancel</button>
+          <button type="button" id="rtd-range-apply" class="px-4 py-2 rounded-lg bg-brand-accent text-brand-dark text-xs font-bold uppercase hover:bg-brand-accent/90">Apply to checked</button>
+        </div>
+      </div>
     </div>
     </div>

@@ -44,6 +44,89 @@
       return new Date(y, mo - 1, day, hh, mm, 0, 0);
     }
 
+    /** Full day: each hour HH has HH:05…HH:55 plus (HH+1):00 (last closes as 24:00). */
+    function getFixedIntervalSlotsFullDay() {
+      var slots = [];
+      function pad2(n) { return (n < 10 ? '0' : '') + n; }
+      for (var h = 0; h < 24; h++) {
+        for (var mm = 5; mm < 60; mm += 5) {
+          slots.push(pad2(h) + ':' + pad2(mm));
+        }
+        slots.push(h === 23 ? '24:00' : pad2(h + 1) + ':00');
+      }
+      return slots;
+    }
+
+    function normalizeIntervalStr(s) {
+      if (!s || typeof s !== 'string') return '';
+      var t = s.trim();
+      if (/^24\s*:\s*00$/i.test(t)) return '24:00';
+      var p = t.split(':');
+      var h = parseInt(p[0], 10);
+      var m = p.length > 1 ? parseInt(p[1], 10) : 0;
+      if (isNaN(h)) return '';
+      if (h === 24) return '24:00';
+      if (h < 0 || h > 23) return '';
+      return (h < 10 ? '0' + h : '' + h) + ':' + (isNaN(m) ? '00' : (m < 10 ? '0' + m : '' + m));
+    }
+
+    /** Inclusive range of interval-end labels (must match getFixedIntervalSlotsFullDay order / set). */
+    function getIntervalSlotsInRange(startLabel, endLabel) {
+      var a = normalizeIntervalStr(startLabel);
+      var b = normalizeIntervalStr(endLabel);
+      if (!a || !b) return [];
+      var ma = intervalLabelToMinutes(a);
+      var mb = intervalLabelToMinutes(b);
+      if (isNaN(ma) || isNaN(mb)) return [];
+      if (ma > mb) { var t = ma; ma = mb; mb = t; }
+      return getFixedIntervalSlotsFullDay().filter(function(slot) {
+        var m = intervalLabelToMinutes(slot);
+        return !isNaN(m) && m >= ma && m <= mb;
+      });
+    }
+
+    /** Bulk RTD modal: checklist only shows interval ends from 05:05 through 19:00 (inclusive). */
+    var BULK_RTD_MODAL_MIN = '05:05';
+    var BULK_RTD_MODAL_MAX = '19:00';
+
+    function getBulkRtdModalSlotSubset() {
+      var lo = intervalLabelToMinutes(BULK_RTD_MODAL_MIN);
+      var hi = intervalLabelToMinutes(BULK_RTD_MODAL_MAX);
+      if (isNaN(lo) || isNaN(hi)) return [];
+      return getFixedIntervalSlotsFullDay().filter(function(slot) {
+        var m = intervalLabelToMinutes(slot);
+        return !isNaN(m) && m >= lo && m <= hi;
+      });
+    }
+
+    /**
+     * Map HTML `<input type="time">` value (HH:MM or HH:MM:SS) to the nearest
+     * official interval-end label (same 5‑minute grid as the table).
+     */
+    function snapTimeInputToIntervalLabel(timeInputValue) {
+      if (!timeInputValue || typeof timeInputValue !== 'string') return null;
+      var parts = timeInputValue.trim().split(':');
+      var h = parseInt(parts[0], 10);
+      var m = parts.length > 1 ? parseInt(parts[1], 10) : 0;
+      if (isNaN(h) || isNaN(m)) return null;
+      if (h === 24 && m === 0) return '24:00';
+      if (h < 0 || h > 23) return null;
+      var tMin = h * 60 + m;
+      var slotList = getFixedIntervalSlotsFullDay();
+      var best = null;
+      var bestDist = Infinity;
+      for (var i = 0; i < slotList.length; i++) {
+        var sm = intervalLabelToMinutes(slotList[i]);
+        if (isNaN(sm)) continue;
+        var d = Math.abs(sm - tMin);
+        if (d < bestDist) {
+          bestDist = d;
+          best = slotList[i];
+        }
+      }
+      return best;
+    }
+
     /**
      * RTD cell editable: past forecast calendar day = all locked; future forecast day = all editable;
      * today = editable only while interval end is still in the future (past intervals locked).
@@ -415,30 +498,6 @@
         var tdv = String(payload.traderDuty);
         if (tdv === 'DR Cosas') tdv = 'DR COSAS';
         tdEl.value = tdv;
-      }
-      /** Full day: each hour HH has HH:05…HH:55 plus (HH+1):00 (last closes as 24:00). */
-      function getFixedIntervalSlotsFullDay() {
-        var slots = [];
-        function pad2(n) { return (n < 10 ? '0' : '') + n; }
-        for (var h = 0; h < 24; h++) {
-          for (var mm = 5; mm < 60; mm += 5) {
-            slots.push(pad2(h) + ':' + pad2(mm));
-          }
-          slots.push(h === 23 ? '24:00' : pad2(h + 1) + ':00');
-        }
-        return slots;
-      }
-      function normalizeIntervalStr(s) {
-        if (!s || typeof s !== 'string') return '';
-        var t = s.trim();
-        if (/^24\s*:\s*00$/i.test(t)) return '24:00';
-        var p = t.split(':');
-        var h = parseInt(p[0], 10);
-        var m = p.length > 1 ? parseInt(p[1], 10) : 0;
-        if (isNaN(h)) return '';
-        if (h === 24) return '24:00';
-        if (h < 0 || h > 23) return '';
-        return (h < 10 ? '0' + h : '' + h) + ':' + (isNaN(m) ? '00' : (m < 10 ? '0' + m : '' + m));
       }
       var fixedSlots = getFixedIntervalSlotsFullDay();
       var lookup = {};
@@ -1460,6 +1519,150 @@
         chart.update();
       }
     }
+
+    (function initRtdRangeModal() {
+      var modal = document.getElementById('rtd-range-modal');
+      var openBtn = document.getElementById('btn-rtd-range-modal');
+      var startIn = document.getElementById('rtd-range-start');
+      var endIn = document.getElementById('rtd-range-end');
+      var mwIn = document.getElementById('rtd-range-mw');
+      var slotList = document.getElementById('rtd-range-slot-list');
+      var refHint = document.getElementById('rtd-range-modal-ref-hint');
+      if (!modal || !openBtn || !startIn || !endIn || !slotList) return;
+
+      var slots = getBulkRtdModalSlotSubset();
+
+      /** Build checked set from From/To times (intersection with 05:05–19:00 checklist). */
+      function computeCheckedSetFromRange() {
+        var startLabel = snapTimeInputToIntervalLabel(startIn.value);
+        var endLabel = snapTimeInputToIntervalLabel(endIn.value);
+        var set = {};
+        if (startLabel && endLabel) {
+          getIntervalSlotsInRange(startLabel, endLabel).forEach(function(s) {
+            set[s] = true;
+          });
+        }
+        return set;
+      }
+
+      function rebuildSlotCheckboxes() {
+        var checkedSet = computeCheckedSetFromRange();
+        slotList.innerHTML = '';
+        slots.forEach(function(label) {
+          var lab = document.createElement('label');
+          lab.className = 'flex items-center gap-1 cursor-pointer rounded px-0.5 py-0.5 hover:bg-white/5 border border-transparent hover:border-brand-border/50';
+          var chk = document.createElement('input');
+          chk.type = 'checkbox';
+          chk.className = 'rounded border-brand-border text-brand-accent shrink-0';
+          chk.setAttribute('data-interval', label);
+          chk.checked = !!checkedSet[label];
+          var span = document.createElement('span');
+          span.className = 'font-mono tabular-nums text-brand-text';
+          span.textContent = label;
+          lab.appendChild(chk);
+          lab.appendChild(span);
+          slotList.appendChild(lab);
+        });
+      }
+
+      function updateRefHint() {
+        if (!refHint) return;
+        var iso = getForecastRefDateString();
+        if (iso) {
+          refHint.textContent = 'RTD edits use forecast date ' + formatDateForDisplay(iso) + ' (' + iso + '). Locked intervals are skipped.';
+        } else {
+          refHint.textContent = 'Locked intervals (past or ended) are skipped.';
+        }
+      }
+
+      var prevOverflow = '';
+      function openModal() {
+        updateRefHint();
+        rebuildSlotCheckboxes();
+        modal.classList.remove('hidden');
+        prevOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+      }
+      function closeModal() {
+        modal.classList.add('hidden');
+        document.body.style.overflow = prevOverflow;
+      }
+
+      openBtn.addEventListener('click', function() { openModal(); });
+      function onRangeInputsChanged() {
+        rebuildSlotCheckboxes();
+      }
+      startIn.addEventListener('change', onRangeInputsChanged);
+      startIn.addEventListener('input', onRangeInputsChanged);
+      endIn.addEventListener('change', onRangeInputsChanged);
+      endIn.addEventListener('input', onRangeInputsChanged);
+
+      var backdrop = document.getElementById('rtd-range-modal-backdrop');
+      var closeX = document.getElementById('rtd-range-modal-close-x');
+      var cancelBtn = document.getElementById('rtd-range-cancel');
+      if (backdrop) backdrop.addEventListener('click', closeModal);
+      if (closeX) closeX.addEventListener('click', closeModal);
+      if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+
+      var selAll = document.getElementById('rtd-range-select-all');
+      var selNone = document.getElementById('rtd-range-select-none');
+      if (selAll) selAll.addEventListener('click', function() {
+        slotList.querySelectorAll('input[type="checkbox"]').forEach(function(c) { c.checked = true; });
+      });
+      if (selNone) selNone.addEventListener('click', function() {
+        slotList.querySelectorAll('input[type="checkbox"]').forEach(function(c) { c.checked = false; });
+      });
+
+      var applyBtn = document.getElementById('rtd-range-apply');
+      if (applyBtn) applyBtn.addEventListener('click', function() {
+        var mw = clampMw(parseFloat(mwIn && mwIn.value) || 0);
+        var trBy = {};
+        document.querySelectorAll('.interval-data-tbody tr.interval-row').forEach(function(tr) {
+          var iv = tr.getAttribute('data-interval');
+          if (iv) trBy[iv] = tr;
+        });
+        var applied = 0;
+        var skippedLocked = 0;
+        slotList.querySelectorAll('input[type="checkbox"][data-interval]').forEach(function(chk) {
+          if (!chk.checked) return;
+          var label = chk.getAttribute('data-interval');
+          var tr = trBy[label];
+          if (!tr) return;
+          if (!isIntervalRtdEditable(label)) {
+            skippedLocked++;
+            return;
+          }
+          var inp = tr.querySelector('.rtd-input');
+          if (inp) {
+            inp.value = mw;
+            applied++;
+          }
+        });
+        if (applied === 0) {
+          if (skippedLocked > 0) alert('All checked intervals are locked for this forecast date. Nothing was changed.');
+          else alert('No intervals selected, or the range is empty.');
+          return;
+        }
+        intervalsData = getIntervalsFromTable();
+        saveForecastLocally({ intervals: intervalsData });
+        updateRtdChartSeries();
+        renderVreTable();
+        if (window.updateNavbarTimeAndInterval) window.updateNavbarTimeAndInterval();
+        if (typeof updateRtdIntervalLocks === 'function') updateRtdIntervalLocks();
+        var customRadio = document.querySelector('input[name="forecast"][value="custom"]');
+        if (customRadio) customRadio.checked = true;
+        closeModal();
+        if (skippedLocked > 0) {
+          alert('Applied RTD to ' + applied + ' interval(s). Skipped ' + skippedLocked + ' locked interval(s).');
+        }
+      });
+
+      document.addEventListener('keydown', function(e) {
+        if (e.key !== 'Escape') return;
+        if (!modal || modal.classList.contains('hidden')) return;
+        closeModal();
+      });
+    })();
 
     idbGet().then(function(idbRow) {
       var ls = null;
