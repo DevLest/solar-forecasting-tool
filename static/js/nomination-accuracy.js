@@ -58,6 +58,8 @@
   var billPreviewEl = document.getElementById('accuracy-bill-preview');
 
   var lastFetchedRuns = [];
+  /** Rows from last month-detail API response (calendar order); used for policy modal by row index. */
+  var lastMonthDetailRows = [];
   var sortState = { key: 'day', dir: 'desc' };
   /** True after a successful Run analysis; used to restore the results panel when closing Saved / Monthly. */
   var hasAnalysisResults = false;
@@ -93,14 +95,12 @@
     return y + '-' + mm + '-' + dd;
   }
 
-  /** Match server billing_period_for_start_month (month 1–12). */
+  /** Match server billing_period_for_end_month: month 1–12 is the month of the 25th (schedule label). */
   function billingPeriodRange(year, month) {
     if (!isFinite(year) || !isFinite(month) || month < 1 || month > 12) return null;
-    var start = isoFromDate(year, month - 1, 26);
-    var end =
-      month === 12
-        ? isoFromDate(year + 1, 0, 25)
-        : isoFromDate(year, month, 25);
+    var start =
+      month === 1 ? isoFromDate(year - 1, 11, 26) : isoFromDate(year, month - 2, 26);
+    var end = isoFromDate(year, month - 1, 25);
     return { start: start, end: end };
   }
 
@@ -332,6 +332,17 @@
       : 'Non-compliant for this day';
     policyHeadline.className =
       'text-base sm:text-lg font-bold uppercase tracking-wide ' + (ok ? 'text-emerald-200' : 'text-rose-200');
+    var analysisEl = document.getElementById('accuracy-policy-analysis');
+    if (analysisEl) {
+      var summary = policy && policy.analysis_summary;
+      if (summary) {
+        analysisEl.textContent = summary;
+        analysisEl.classList.remove('hidden');
+      } else {
+        analysisEl.textContent = '';
+        analysisEl.classList.add('hidden');
+      }
+    }
     policyNotes.innerHTML = '';
     (policy.notes || []).forEach(function(note) {
       var li = document.createElement('li');
@@ -639,6 +650,117 @@
     });
   }
 
+  function escAttr(s) {
+    if (s == null || s === '') return '';
+    return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+  }
+  function escHtml(s) {
+    if (s == null || s === '') return '';
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  }
+
+  function openAccuracyPolicyModal(payload) {
+    var dlg = document.getElementById('accuracy-run-policy-dialog');
+    var subEl = document.getElementById('accuracy-run-policy-subtitle');
+    var metricsEl = document.getElementById('accuracy-run-policy-metrics');
+    var legacyEl = document.getElementById('accuracy-run-policy-legacy');
+    var sumWrap = document.getElementById('accuracy-run-policy-summary-wrap');
+    var sumEl = document.getElementById('accuracy-run-policy-summary');
+    var failWrap = document.getElementById('accuracy-run-policy-fail-wrap');
+    var failList = document.getElementById('accuracy-run-policy-fail-list');
+    var notesWrap = document.getElementById('accuracy-run-policy-notes-wrap');
+    var notesList = document.getElementById('accuracy-run-policy-notes-list');
+    if (!dlg || !subEl || !metricsEl) return;
+
+    var dateIso = payload.date || payload.compliance_day || '—';
+    var mape = payload.mape;
+    var perc95 = payload.perc95;
+    var dc = payload.day_compliant;
+    var ok = dc === 1 || dc === true;
+    var mq = payload.mq_sheet;
+    var pol = payload.policy && typeof payload.policy === 'object' ? payload.policy : null;
+    var runId = payload.saved_run_id != null ? payload.saved_run_id : payload.id;
+
+    subEl.textContent = dateIso;
+    metricsEl.innerHTML = '';
+    function addMetric(k, v) {
+      var dt = document.createElement('dt');
+      dt.className = 'text-brand-muted';
+      dt.textContent = k;
+      var dd = document.createElement('dd');
+      dd.className = 'font-mono text-brand-text tabular-nums';
+      dd.textContent = v;
+      metricsEl.appendChild(dt);
+      metricsEl.appendChild(dd);
+    }
+    addMetric('MAPE', mape != null && isFinite(Number(mape)) ? (Number(mape) * 100).toFixed(2) + '%' : '—');
+    addMetric(
+      'PERC95',
+      perc95 != null && isFinite(Number(perc95)) ? (Number(perc95) * 100).toFixed(2) + '%' : '—'
+    );
+    addMetric('Policy', ok ? 'Compliant' : 'Non-compliant');
+    if (mq) addMetric('MQ source', String(mq));
+    if (runId != null) addMetric('Run ID', String(runId));
+
+    if (legacyEl) {
+      if (!pol) {
+        legacyEl.classList.remove('hidden');
+        legacyEl.textContent =
+          'Detailed policy analysis was not stored for this run. Upload or run analysis again for this trade day to capture summary and reasons.';
+      } else {
+        legacyEl.classList.add('hidden');
+        legacyEl.textContent = '';
+      }
+    }
+
+    if (sumWrap && sumEl) {
+      if (pol && pol.analysis_summary) {
+        sumWrap.classList.remove('hidden');
+        sumEl.textContent = pol.analysis_summary;
+      } else {
+        sumWrap.classList.add('hidden');
+        sumEl.textContent = '';
+      }
+    }
+
+    if (failWrap && failList) {
+      var fr = pol && pol.failure_reasons;
+      if (fr && fr.length && !ok) {
+        failWrap.classList.remove('hidden');
+        failList.innerHTML = '';
+        fr.forEach(function(s) {
+          var li = document.createElement('li');
+          li.textContent = s;
+          failList.appendChild(li);
+        });
+      } else {
+        failWrap.classList.add('hidden');
+        failList.innerHTML = '';
+      }
+    }
+
+    if (notesWrap && notesList) {
+      var notes = pol && pol.notes;
+      if (notes && notes.length) {
+        notesWrap.classList.remove('hidden');
+        notesList.innerHTML = '';
+        notes.forEach(function(s) {
+          var li = document.createElement('li');
+          li.textContent = s;
+          notesList.appendChild(li);
+        });
+      } else {
+        notesWrap.classList.add('hidden');
+        notesList.innerHTML = '';
+      }
+    }
+
+    if (dlg.showModal) dlg.showModal();
+  }
+
   function renderSavedTable(runs) {
     if (!savedTbody) return;
     savedTbody.innerHTML = '';
@@ -657,10 +779,23 @@
         '">' +
         (ok ? 'OK' : 'NC') +
         '</span>';
+      var pol = x.policy && typeof x.policy === 'object' ? x.policy : null;
+      var reasonFull = pol && pol.analysis_summary ? String(pol.analysis_summary) : '';
+      var reasonShort =
+        reasonFull.length > 52 ? reasonFull.slice(0, 50) + '…' : reasonFull;
+      var analysisTd =
+        '<td class="py-2 px-3 text-left text-[10px] sm:text-xs text-brand-muted/95 max-w-[14rem] hidden lg:table-cell font-sans normal-case leading-snug" title="' +
+        escAttr(reasonFull) +
+        '">' +
+        (reasonFull ? escHtml(reasonShort) : '—') +
+        '</td>';
       tr.innerHTML =
         '<td class="py-2 px-3 text-xs sm:text-sm">' +
-        (x.compliance_day || '—') +
-        '</td>' +
+        '<button type="button" class="accuracy-saved-day-link text-left font-mono text-brand-accent hover:underline underline-offset-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent/50 rounded px-0.5" data-run-id="' +
+        (x.id != null ? String(x.id) : '') +
+        '">' +
+        escHtml(x.compliance_day || '—') +
+        '</button></td>' +
         '<td class="py-2 px-3 text-right">' +
         mapeStr +
         '</td>' +
@@ -670,6 +805,7 @@
         '<td class="py-2 px-3 text-center">' +
         badge +
         '</td>' +
+        analysisTd +
         '<td class="py-2 px-3 text-right text-brand-muted text-[11px]">#' +
         (x.id != null ? x.id : '—') +
         '</td>';
@@ -706,7 +842,7 @@
     }
     var row = document.createElement('tr');
     row.innerHTML =
-      '<td colspan="5" class="py-6 px-3 text-center text-brand-muted text-sm">Loading…</td>';
+      '<td colspan="6" class="py-6 px-3 text-center text-brand-muted text-sm">Loading…</td>';
     savedTbody.appendChild(row);
 
     var statsEl = document.getElementById('accuracy-saved-stats');
@@ -729,7 +865,7 @@
         if (!j.ok) {
           var err = document.createElement('tr');
           err.innerHTML =
-            '<td colspan="5" class="py-6 px-3 text-center text-rose-300 text-sm">' +
+            '<td colspan="6" class="py-6 px-3 text-center text-rose-300 text-sm">' +
             (j.error || 'Failed') +
             '</td>';
           savedTbody.appendChild(err);
@@ -754,7 +890,7 @@
         savedTbody.innerHTML = '';
         var err = document.createElement('tr');
         err.innerHTML =
-          '<td colspan="5" class="py-6 px-3 text-center text-rose-300 text-sm">Network error</td>';
+          '<td colspan="6" class="py-6 px-3 text-center text-rose-300 text-sm">Network error</td>';
         savedTbody.appendChild(err);
         lastFetchedRuns = [];
       });
@@ -803,6 +939,63 @@
   var monthDetailTbody = document.getElementById('accuracy-month-detail-tbody');
   var monthDetailClose = document.getElementById('accuracy-month-detail-close');
   var lastRollupYearForCalendar = null;
+
+  var policyDlg = document.getElementById('accuracy-run-policy-dialog');
+  var policyDlgClose = document.getElementById('accuracy-run-policy-close');
+  if (policyDlgClose && policyDlg) {
+    policyDlgClose.addEventListener('click', function() {
+      policyDlg.close();
+    });
+  }
+  if (monthDetailTbody && !monthDetailTbody.dataset.policyModalDeleg) {
+    monthDetailTbody.dataset.policyModalDeleg = '1';
+    monthDetailTbody.addEventListener('click', function(ev) {
+      var btn = ev.target.closest('.accuracy-policy-day-link');
+      if (!btn || !monthDetailTbody.contains(btn)) return;
+      ev.preventDefault();
+      var idx = parseInt(btn.getAttribute('data-row-index'), 10);
+      if (!isFinite(idx)) return;
+      var row = lastMonthDetailRows[idx];
+      if (!row || !row.has_data) return;
+      openAccuracyPolicyModal({
+        date: row.date,
+        mape: row.mape,
+        perc95: row.perc95,
+        day_compliant: row.day_compliant,
+        mq_sheet: row.mq_sheet,
+        policy: row.policy,
+        saved_run_id: row.saved_run_id
+      });
+    });
+  }
+  if (savedTbody && !savedTbody.dataset.policyModalDeleg) {
+    savedTbody.dataset.policyModalDeleg = '1';
+    savedTbody.addEventListener('click', function(ev) {
+      var btn = ev.target.closest('.accuracy-saved-day-link');
+      if (!btn || !savedTbody.contains(btn)) return;
+      ev.preventDefault();
+      var rid = btn.getAttribute('data-run-id');
+      var row = null;
+      if (rid) {
+        for (var j = 0; j < lastFetchedRuns.length; j++) {
+          if (String(lastFetchedRuns[j].id) === String(rid)) {
+            row = lastFetchedRuns[j];
+            break;
+          }
+        }
+      }
+      if (!row) return;
+      openAccuracyPolicyModal({
+        compliance_day: row.compliance_day,
+        mape: row.mape,
+        perc95: row.perc95,
+        day_compliant: row.day_compliant,
+        mq_sheet: row.mq_sheet,
+        policy: row.policy,
+        id: row.id
+      });
+    });
+  }
 
   var chartRefs = { monthlyErr: null, monthlyComp: null, annual: null };
 
@@ -893,6 +1086,7 @@
 
   function renderMonthDetailTable(rows) {
     if (!monthDetailTbody) return;
+    lastMonthDetailRows = rows || [];
     monthDetailTbody.innerHTML = '';
     (rows || []).forEach(function(r, i) {
       var tr = document.createElement('tr');
@@ -901,11 +1095,41 @@
         'border-b border-brand-border/30' +
         (!r.has_data ? ' opacity-75' : '');
       if (r.has_data) {
+        var mapePct =
+          r.mape != null && isFinite(Number(r.mape)) ? (Number(r.mape) * 100).toFixed(2) : '—';
+        var p95Pct =
+          r.perc95 != null && isFinite(Number(r.perc95))
+            ? (Number(r.perc95) * 100).toFixed(2)
+            : '—';
+        var polBadge = r.day_compliant
+          ? '<span class="text-emerald-300/90">OK</span>'
+          : '<span class="text-rose-300/90">Fail</span>';
+        var pMeta = r.policy && typeof r.policy === 'object' ? r.policy : null;
+        var reasonFull = pMeta && pMeta.analysis_summary ? String(pMeta.analysis_summary) : '';
+        var reasonShort =
+          reasonFull.length > 52 ? reasonFull.slice(0, 50) + '…' : reasonFull;
         tr.innerHTML =
           '<td class="py-1.5 px-2 text-brand-text">' +
-          r.date +
-          '</td>' +
+          '<button type="button" class="accuracy-policy-day-link text-left font-mono text-brand-accent hover:underline underline-offset-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent/50 rounded px-0.5" data-row-index="' +
+          i +
+          '">' +
+          escHtml(r.date) +
+          '</button></td>' +
           '<td class="py-1.5 px-2 text-right text-emerald-300/90">1</td>' +
+          '<td class="py-1.5 px-2 text-right">' +
+          mapePct +
+          '</td>' +
+          '<td class="py-1.5 px-2 text-right">' +
+          p95Pct +
+          '</td>' +
+          '<td class="py-1.5 px-2 text-center">' +
+          polBadge +
+          '</td>' +
+          '<td class="py-1.5 px-2 text-left text-[10px] max-w-[14rem] font-sans normal-case text-brand-muted leading-snug" title="' +
+          escAttr(reasonFull) +
+          '">' +
+          (reasonFull ? escHtml(reasonShort) : '—') +
+          '</td>' +
           '<td class="py-1.5 px-2 text-right">' +
           (r.n_intervals != null ? String(r.n_intervals) : '—') +
           '</td>' +
@@ -921,6 +1145,10 @@
           r.date +
           '</td>' +
           '<td class="py-1.5 px-2 text-right text-rose-300/80">0</td>' +
+          '<td class="py-1.5 px-2 text-right">—</td>' +
+          '<td class="py-1.5 px-2 text-right">—</td>' +
+          '<td class="py-1.5 px-2 text-center">—</td>' +
+          '<td class="py-1.5 px-2 text-left text-brand-muted">—</td>' +
           '<td class="py-1.5 px-2 text-right">—</td>' +
           '<td class="py-1.5 px-2 text-right">—</td>' +
           '<td class="py-1.5 px-2 text-brand-muted">—</td>';
@@ -1372,4 +1600,355 @@
       fetchRollupData(y);
     });
   }
+
+  (function initBackfillDialog() {
+    var MONTHS = [
+      'january',
+      'february',
+      'march',
+      'april',
+      'may',
+      'june',
+      'july',
+      'august',
+      'september',
+      'october',
+      'november',
+      'december'
+    ];
+    function guessTradeDateFromFilename(name) {
+      if (!name) return null;
+      var base = name.replace(/^.*[\\/]/, '');
+      var m = base.match(
+        /_(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(20\d{2})/i
+      );
+      if (m) {
+        var d = parseInt(m[1], 10);
+        var y = parseInt(m[3], 10);
+        var mi = MONTHS.indexOf(m[2].toLowerCase()) + 1;
+        if (mi >= 1 && d >= 1 && d <= 31 && y >= 2000)
+          return y + '-' + String(mi).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+      }
+      var ymd = base.match(/(20\d{2})(\d{2})(\d{2})/);
+      if (ymd) return ymd[1] + '-' + ymd[2] + '-' + ymd[3];
+      var iso = base.match(/(20\d{2})-(\d{2})-(\d{2})/);
+      if (iso) return iso[1] + '-' + iso[2] + '-' + iso[3];
+      return null;
+    }
+
+    var dlg = document.getElementById('accuracy-backfill-dialog');
+    var openBtn = document.getElementById('accuracy-btn-backfill');
+    var cancel = document.getElementById('accuracy-backfill-cancel');
+    var submit = document.getElementById('accuracy-backfill-submit');
+    var filesInput = document.getElementById('accuracy-backfill-files');
+    var fallbackDate = document.getElementById('accuracy-backfill-fallback-date');
+    var previewEl = document.getElementById('accuracy-backfill-preview');
+    var statusMsg = document.getElementById('accuracy-backfill-status-msg');
+    var spinEl = document.getElementById('accuracy-backfill-spinner');
+    var submitLabel = document.getElementById('accuracy-backfill-submit-label');
+    var detailsEl = document.getElementById('accuracy-backfill-details');
+    var logEl = document.getElementById('accuracy-backfill-log');
+    var progressWrap = document.getElementById('accuracy-backfill-progress-wrap');
+    var progressList = document.getElementById('accuracy-backfill-progress-list');
+    var progressSummary = document.getElementById('accuracy-backfill-progress-summary');
+    var backfillUploading = false;
+
+    var JOB_SPINNER =
+      '<svg class="animate-spin h-3.5 w-3.5 text-sky-400 inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>';
+
+    function escLocal(s) {
+      if (s == null || s === '') return '';
+      return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    }
+
+    function setJobRowState(i, state, detail) {
+      if (!progressList) return;
+      var li = progressList.querySelector('[data-job-index="' + i + '"]');
+      if (!li) return;
+      var icon = li.querySelector('.accuracy-backfill-job-icon');
+      var det = li.querySelector('.accuracy-backfill-job-detail');
+      if (det) det.textContent = detail || '';
+      if (!icon) return;
+      icon.className =
+        'accuracy-backfill-job-icon shrink-0 w-5 flex justify-center pt-0.5 tabular-nums';
+      icon.innerHTML = '';
+      icon.textContent = '';
+      if (state === 'queued') {
+        icon.textContent = '○';
+        icon.classList.add('text-brand-muted');
+      } else if (state === 'running') {
+        icon.innerHTML = JOB_SPINNER;
+      } else if (state === 'done') {
+        icon.textContent = '✓';
+        icon.classList.add('text-emerald-400');
+      } else if (state === 'error') {
+        icon.textContent = '✕';
+        icon.classList.add('text-rose-400');
+      } else if (state === 'skipped') {
+        icon.textContent = '—';
+        icon.classList.add('text-brand-muted/80');
+      }
+    }
+
+    function buildJobList(fileArr) {
+      if (!progressList) return;
+      progressList.innerHTML = '';
+      fileArr.forEach(function(f, i) {
+        var li = document.createElement('li');
+        li.setAttribute('data-job-index', String(i));
+        li.className = 'flex gap-3 px-3 py-2.5 items-start';
+        li.innerHTML =
+          '<span class="accuracy-backfill-job-icon shrink-0 w-5 flex justify-center pt-0.5 text-brand-muted" aria-hidden="true">○</span>' +
+          '<div class="min-w-0 flex-1">' +
+          '<p class="font-mono text-[11px] text-brand-text break-all">' +
+          escLocal(f.name) +
+          '</p>' +
+          '<p class="accuracy-backfill-job-detail mt-0.5 text-[10px] text-brand-muted leading-snug"></p>' +
+          '</div>';
+        progressList.appendChild(li);
+        setJobRowState(i, 'queued', 'Queued');
+      });
+    }
+
+    function setBackfillBusy(on) {
+      backfillUploading = !!on;
+      if (dlg) dlg.setAttribute('aria-busy', on ? 'true' : 'false');
+      if (spinEl) spinEl.classList.toggle('hidden', !on);
+      if (submit) submit.disabled = on;
+      if (cancel) cancel.disabled = on;
+      if (filesInput) filesInput.disabled = on;
+      if (fallbackDate) fallbackDate.disabled = on;
+      if (detailsEl) {
+        detailsEl.classList.toggle('pointer-events-none', on);
+        detailsEl.classList.toggle('opacity-60', on);
+        if (on) detailsEl.setAttribute('inert', '');
+        else detailsEl.removeAttribute('inert');
+      }
+      if (previewEl) previewEl.classList.toggle('opacity-50', on);
+      if (previewEl) previewEl.classList.toggle('pointer-events-none', on);
+      if (submitLabel) submitLabel.textContent = on ? 'Working…' : 'Upload & save';
+    }
+
+    if (!dlg || !openBtn) return;
+    dlg.addEventListener('cancel', function(e) {
+      if (backfillUploading) e.preventDefault();
+    });
+    openBtn.addEventListener('click', function() {
+      if (progressWrap) progressWrap.classList.add('hidden');
+      if (progressList) progressList.innerHTML = '';
+      if (progressSummary) progressSummary.textContent = '';
+      if (dlg.showModal) dlg.showModal();
+    });
+    if (cancel) {
+      cancel.addEventListener('click', function() {
+        if (backfillUploading) return;
+        dlg.close();
+      });
+    }
+    if (filesInput && previewEl) {
+      filesInput.addEventListener('change', function() {
+        previewEl.innerHTML = '';
+        var files = filesInput.files;
+        if (!files || !files.length) {
+          previewEl.classList.add('hidden');
+          return;
+        }
+        previewEl.classList.remove('hidden');
+        for (var i = 0; i < files.length; i++) {
+          var f = files[i];
+          var iso = guessTradeDateFromFilename(f.name);
+          var li = document.createElement('li');
+          li.className = 'leading-snug flex flex-wrap gap-x-1 gap-y-0.5 items-baseline';
+          var nameSpan = document.createElement('span');
+          nameSpan.className = 'text-brand-muted break-all';
+          nameSpan.textContent = f.name || '';
+          var arrow = document.createTextNode(' → ');
+          var dateSpan = document.createElement('span');
+          dateSpan.className = iso ? 'text-brand-accent shrink-0' : 'text-amber-300/90 shrink-0';
+          dateSpan.textContent = iso ? iso : 'no date in name — use fallback or rename';
+          li.appendChild(nameSpan);
+          li.appendChild(arrow);
+          li.appendChild(dateSpan);
+          previewEl.appendChild(li);
+        }
+      });
+    }
+    if (submit) {
+      submit.addEventListener('click', function() {
+        if (backfillUploading) return;
+        if (!filesInput || !filesInput.files || !filesInput.files.length) {
+          if (statusMsg) statusMsg.textContent = 'Choose at least one workbook.';
+          return;
+        }
+        var fileArr = Array.prototype.slice.call(filesInput.files);
+        var total = fileArr.length;
+        if (logEl) {
+          logEl.classList.add('hidden');
+          logEl.textContent = '';
+        }
+        if (progressWrap) progressWrap.classList.remove('hidden');
+        if (progressSummary) progressSummary.textContent = '0 / ' + total + ' complete · ' + total + ' queued';
+        buildJobList(fileArr);
+        if (statusMsg) statusMsg.textContent = 'Starting ' + total + ' job' + (total === 1 ? '' : 's') + '…';
+        setBackfillBusy(true);
+
+        var lines = [];
+        var okCount = 0;
+        var failCount = 0;
+
+        function appendSuccessLine(row) {
+          var s = row.summary || {};
+          var polObj = row.policy || {};
+          var polLine = polObj.day_compliant
+            ? 'policy OK'
+            : polObj.analysis_summary || 'policy FAIL';
+          var mp =
+            s.mape_pct != null && isFinite(Number(s.mape_pct))
+              ? Number(s.mape_pct).toFixed(2) + '% MAPE'
+              : '';
+          var p95 =
+            s.perc95_pct != null && isFinite(Number(s.perc95_pct))
+              ? Number(s.perc95_pct).toFixed(2) + '% P95'
+              : '';
+          var metrics = [mp, p95].filter(Boolean).join(', ');
+          lines.push(
+            row.filename +
+              ' → ' +
+              row.storage_day +
+              ' · ' +
+              (metrics || '—') +
+              ' · ' +
+              polLine +
+              ' · run #' +
+              row.run_id +
+              (row.overwritten ? ' (replaced)' : '')
+          );
+        }
+
+        function processAtIndex(i) {
+          if (i >= total) {
+            if (statusMsg) {
+              statusMsg.textContent =
+                'Done: ' + okCount + ' saved, ' + failCount + ' failed.';
+            }
+            if (progressSummary) {
+              progressSummary.textContent =
+                okCount + ' saved · ' + failCount + ' failed · ' + total + ' total';
+            }
+            if (logEl) {
+              logEl.textContent = lines.join('\n');
+              logEl.classList.toggle('hidden', !lines.length);
+            }
+            setBackfillBusy(false);
+            return;
+          }
+
+          var rem = total - i - 1;
+          if (progressSummary) {
+            progressSummary.textContent =
+              'Running ' + (i + 1) + ' of ' + total + (rem > 0 ? ' · ' + rem + ' left' : '');
+          }
+          if (statusMsg) {
+            statusMsg.textContent =
+              'Running job ' +
+              (i + 1) +
+              ' of ' +
+              total +
+              (rem > 0 ? ' (' + rem + ' remaining after this)' : '') +
+              '…';
+          }
+
+          setJobRowState(i, 'running', 'Uploading and processing on server…');
+
+          var fd = new FormData();
+          fd.append('files', fileArr[i]);
+          if (fallbackDate && fallbackDate.value) fd.append('trade_date', fallbackDate.value);
+
+          fetch('/api/nomination-accuracy/rtd-dispatch-backfill', { method: 'POST', body: fd })
+            .then(function(r) {
+              return r.json().then(function(j) {
+                return { httpOk: r.ok, j: j };
+              });
+            })
+            .then(function(ref) {
+              var j = ref.j;
+              if (!ref.httpOk || !j.ok) {
+                var errTop = (j && j.error) || 'Request failed';
+                setJobRowState(i, 'error', errTop);
+                failCount++;
+                lines.push(fileArr[i].name + ' — ' + errTop);
+                for (var k = i + 1; k < total; k++) {
+                  setJobRowState(k, 'skipped', 'Skipped (batch error)');
+                }
+                if (statusMsg) statusMsg.textContent = errTop;
+                if (progressSummary) {
+                  progressSummary.textContent =
+                    okCount +
+                    ' saved · ' +
+                    failCount +
+                    ' failed · ' +
+                    (total - i - 1) +
+                    ' skipped';
+                }
+                if (logEl) {
+                  logEl.textContent = lines.join('\n');
+                  logEl.classList.remove('hidden');
+                }
+                setBackfillBusy(false);
+                return;
+              }
+              var results = j.results || [];
+              var row = results[0];
+              if (!row) {
+                setJobRowState(i, 'error', 'No result from server');
+                failCount++;
+                lines.push(fileArr[i].name + ' — No result');
+                processAtIndex(i + 1);
+                return;
+              }
+              if (!row.ok) {
+                var err = row.error || 'Error';
+                setJobRowState(i, 'error', err);
+                failCount++;
+                lines.push(row.filename + ' — ' + err);
+                processAtIndex(i + 1);
+                return;
+              }
+              okCount++;
+              var polObj = row.policy || {};
+              var detail =
+                row.storage_day +
+                ' · ' +
+                (polObj.day_compliant ? 'Compliant' : 'Non-compliant');
+              setJobRowState(i, 'done', detail);
+              appendSuccessLine(row);
+              processAtIndex(i + 1);
+            })
+            .catch(function() {
+              setJobRowState(i, 'error', 'Network error');
+              failCount++;
+              lines.push(fileArr[i].name + ' — Network error');
+              for (var k2 = i + 1; k2 < total; k2++) {
+                setJobRowState(k2, 'skipped', 'Not run (network error)');
+              }
+              if (statusMsg) statusMsg.textContent = 'Network error on job ' + (i + 1) + ' of ' + total;
+              if (progressSummary) {
+                progressSummary.textContent =
+                  okCount + ' saved · ' + failCount + ' failed · ' + (total - i - 1) + ' not run';
+              }
+              if (logEl) {
+                logEl.textContent = lines.join('\n');
+                logEl.classList.remove('hidden');
+              }
+              setBackfillBusy(false);
+            });
+        }
+
+        processAtIndex(0);
+      });
+    }
+  })();
 })();

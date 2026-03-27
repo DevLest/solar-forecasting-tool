@@ -4,6 +4,10 @@ MQ: Daily MIRF WESM file, range B13:Y36 (24 rows × DEL/REC pairs → 288 DEL MW
 Compliance: MPI CSV — Interval End, Market DOT (RTD), Actual Output; sorted by time;
   rows mapped to 5‑minute slots (00:05 … 23:55) like Trading Report paste C63:D216.
 
+Alternate backfill: one workbook ``RTD -Actual -Day Ahead`` — columns C interval time,
+  D RTD, E Actual, F Day Ahead (MW). Day Ahead substitutes MIRF DEL for E in FPE when
+  MPI CSV + MIRF are not both available (numbers may differ if Day Ahead ≠ MIRF DEL).
+
 FPE (per Excel Compliance col I): ABS((G - E) / H_max) with
   E = MQ (MW), G = (F + RTD) / 24, F = lagged RTD (F[0]=0, F[i]=RTD[i-1]),
   H_max = max(E over day).
@@ -247,17 +251,38 @@ def evaluate_nomination_policy(mape: float | None, perc95: float | None) -> dict
     mape_ok = mape is not None and mape < MAPE_MAX_EXCLUSIVE
     perc95_ok = perc95 is not None and perc95 < PERC95_MAX_EXCLUSIVE
     day_ok = mape_ok and perc95_ok
+    failure_reasons: list[str] = []
     notes: list[str] = []
     if mape is None:
         notes.append("MAPE could not be computed.")
+        failure_reasons.append("MAPE could not be computed (no usable FPE).")
     elif mape_v:
         notes.append(f"MAPE {mape * 100:.2f}% is at or above the 18% limit (non-compliant).")
+        failure_reasons.append(
+            f"MAPE {mape * 100:.2f}% is at or above the 18% limit (must stay below 18%)."
+        )
     if perc95 is None:
         notes.append("PERC95 could not be computed.")
+        failure_reasons.append("PERC95 could not be computed.")
     elif p95_v:
         notes.append(f"PERC95 {perc95 * 100:.2f}% is at or above the 30% limit (non-compliant).")
+        failure_reasons.append(
+            f"PERC95 {perc95 * 100:.2f}% is at or above the 30% limit (must stay below 30%)."
+        )
     if day_ok:
         notes.append("Both MAPE and PERC95 are within policy for this day.")
+        analysis_summary = (
+            f"Compliant: MAPE {mape * 100:.2f}% and PERC95 {perc95 * 100:.2f}% are below policy "
+            f"(under {MAPE_MAX_EXCLUSIVE * 100:.0f}% MAPE, under {PERC95_MAX_EXCLUSIVE * 100:.0f}% PERC95)."
+            if mape is not None and perc95 is not None
+            else "Both MAPE and PERC95 are within policy for this day."
+        )
+    else:
+        analysis_summary = (
+            " · ".join(failure_reasons)
+            if failure_reasons
+            else "Non-compliant: MAPE and/or PERC95 did not meet policy."
+        )
     return {
         "mape_max_policy_pct": MAPE_MAX_EXCLUSIVE * 100,
         "perc95_max_policy_pct": PERC95_MAX_EXCLUSIVE * 100,
@@ -267,6 +292,8 @@ def evaluate_nomination_policy(mape: float | None, perc95: float | None) -> dict
         "mape_violation": mape_v,
         "perc95_violation": p95_v,
         "notes": notes,
+        "failure_reasons": failure_reasons,
+        "analysis_summary": analysis_summary,
     }
 
 
@@ -322,6 +349,154 @@ def compute_fpe_and_metrics(
         "fpe": fpe,
         "mq_mw": mq_mw,
         "rtd_mw": rtd_mw,
+    }
+
+
+def _cell_mw(val: Any) -> float:
+    if val is None or val == "":
+        return 0.0
+    if isinstance(val, str):
+        s = val.strip()
+        if s in ("-", "—", "N/A", "n/a"):
+            return 0.0
+        s = s.replace(",", "")
+        try:
+            return float(s)
+        except ValueError:
+            return 0.0
+    try:
+        return float(val)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _interval_time_from_cell(val: Any) -> time | None:
+    if val is None:
+        return None
+    if isinstance(val, time):
+        return val
+    if isinstance(val, datetime):
+        return val.time()
+    if isinstance(val, str):
+        s = val.strip()
+        if not s:
+            return None
+        for fmt in ("%H:%M:%S", "%H:%M", "%I:%M:%S %p", "%I:%M %p"):
+            try:
+                return datetime.strptime(s, fmt).time()
+            except ValueError:
+                continue
+    return None
+
+
+def _find_rtd_dispatch_sheet(wb: Any) -> Any:
+    """Prefer sheet name ``RTD -Actual -Day Ahead`` (ARECO workbook)."""
+    names = wb.sheetnames
+    for n in names:
+        if n.strip().lower() == "rtd -actual -day ahead":
+            return wb[n]
+    for n in names:
+        low = n.lower()
+        if "rtd" in low and "actual" in low:
+            return wb[n]
+    if names:
+        return wb[names[0]]
+    raise ValueError("Workbook has no sheets.")
+
+
+def parse_rtd_dispatch_rows_for_day(
+    content: bytes,
+    trade_date: date,
+) -> tuple[list[tuple[datetime, float, float, float]], int]:
+    """
+    Read ARECO ``RTD -Actual -Day Ahead`` sheet: INTERVAL (time), RTD, ACTUAL, Day Ahead (MW).
+    Returns (rows, n_data_rows) where each row is (interval_end_dt, rtd_mw, actual_mw, day_ahead_mw).
+    Day-ahead MW is used as the E = MQ series for FPE when MIRF is not used.
+    """
+    bio = io.BytesIO(content)
+    wb = load_workbook(bio, read_only=True, data_only=True)
+    try:
+        sh = _find_rtd_dispatch_sheet(wb)
+        out: list[tuple[datetime, float, float, float]] = []
+        n_seen = 0
+        max_r = sh.max_row or 400
+        for r in range(1, max_r + 1):
+            t_iv = _interval_time_from_cell(sh.cell(r, 3).value)
+            if t_iv is None:
+                continue
+            n_seen += 1
+            rtd = _cell_mw(sh.cell(r, 4).value)
+            act = _cell_mw(sh.cell(r, 5).value)
+            da = _cell_mw(sh.cell(r, 6).value)
+            dt_end = datetime.combine(trade_date, t_iv)
+            out.append((dt_end, rtd, act, da))
+        if not out:
+            raise ValueError(
+                "No interval times in column C (expected 5‑minute times, e.g. 06:25:00)."
+            )
+        return out, n_seen
+    finally:
+        wb.close()
+
+
+def fill_mq_from_day_ahead_rows(
+    rows: list[tuple[datetime, float, float, float]],
+    day: date,
+) -> tuple[list[float], int]:
+    """Map Day Ahead MW into 288×5‑min slots (full day)."""
+    mq = [0.0] * N_INTERVALS
+    n = 0
+    for dt, _, _, da in rows:
+        if dt.date() != day:
+            continue
+        idx = _interval_index_from_end(dt.time())
+        if idx is None:
+            continue
+        mq[idx] = da
+        n += 1
+    return mq, n
+
+
+def analyze_rtd_dispatch_workbook(
+    content: bytes,
+    filename: str,
+    trade_date: date,
+) -> dict[str, Any]:
+    """
+    Single-file path: MPI CSV + MIRF MQ replaced by one ``RTD … Day Ahead`` workbook.
+    FPE uses E = Day Ahead (MW) per interval; same formula as Compliance (not identical to MIRF DEL
+    if your Day Ahead column differs from the MIRF file).
+    """
+    rows, _n_rows = parse_rtd_dispatch_rows_for_day(content, trade_date)
+    if not rows:
+        raise ValueError("No rows parsed from workbook.")
+
+    day = trade_date
+    compliance = [(dt, rtd, act) for dt, rtd, act, _da in rows]
+    mq_mw, n_mq = fill_mq_from_day_ahead_rows(rows, day)
+
+    rtd, actual, n_paste = fill_rtd_actual(compliance, day)
+    metrics = compute_fpe_and_metrics(mq_mw, rtd)
+    fpe_list = metrics["fpe"]
+    metrics["compliance_day"] = day.isoformat()
+    metrics["compliance_rows_in_window"] = n_paste
+    metrics["mq_sheet"] = "Day Ahead (MW) from workbook"
+    policy = evaluate_nomination_policy(metrics.get("mape"), metrics.get("perc95"))
+    analytics = compute_summary_style_analytics(rtd, actual, mq_mw, fpe_list)
+
+    summary = {k: v for k, v in metrics.items() if k not in ("fpe", "mq_mw", "rtd_mw")}
+    if summary.get("mape") is not None:
+        summary["mape_pct"] = float(summary["mape"]) * 100.0
+    if summary.get("perc95") is not None:
+        summary["perc95_pct"] = float(summary["perc95"]) * 100.0
+
+    return {
+        "summary": summary,
+        "policy": policy,
+        "analytics": analytics,
+        "source": "rtd_dispatch_workbook",
+        "filename": filename,
+        "mq_intervals_filled": n_mq,
     }
 
 

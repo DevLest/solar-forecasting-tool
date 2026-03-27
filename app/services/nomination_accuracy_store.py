@@ -13,7 +13,7 @@ from app.config import DATA_DIR
 from app.services.nomination_accuracy_dates import (
     aggregate_run_stats,
     billing_period_containing,
-    billing_period_for_start_month,
+    billing_period_for_end_month,
     billing_period_label,
 )
 
@@ -54,6 +54,8 @@ def _migrate(conn: sqlite3.Connection) -> None:
         )
     if "billing_period_end" not in cols:
         conn.execute("ALTER TABLE nomination_accuracy_run ADD COLUMN billing_period_end TEXT")
+    if "policy_json" not in cols:
+        conn.execute("ALTER TABLE nomination_accuracy_run ADD COLUMN policy_json TEXT")
 
     for row in conn.execute(
         "SELECT id, compliance_day FROM nomination_accuracy_run WHERE billing_period_start IS NULL OR billing_period_end IS NULL"
@@ -104,6 +106,12 @@ def save_run(row: dict[str, Any]) -> tuple[int, bool]:
     bs, be = billing_period_containing(d)
     created = datetime.now(timezone.utc).isoformat()
     analytics_json = json.dumps(row.get("analytics") or {}, separators=(",", ":"))
+    policy_obj = row.get("policy")
+    policy_json = (
+        json.dumps(policy_obj, separators=(",", ":"))
+        if policy_obj is not None
+        else None
+    )
 
     with sqlite3.connect(db_path()) as conn:
         prev = conn.execute(
@@ -117,8 +125,8 @@ def save_run(row: dict[str, Any]) -> tuple[int, bool]:
             INSERT INTO nomination_accuracy_run (
               created_at, compliance_day, mape, perc95, max_mq_mw, n_intervals,
               compliance_rows_in_window, mq_sheet, mape_ok, perc95_ok, day_compliant,
-              analytics_json, billing_period_start, billing_period_end
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              analytics_json, billing_period_start, billing_period_end, policy_json
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(compliance_day) DO UPDATE SET
               created_at = excluded.created_at,
               mape = excluded.mape,
@@ -132,7 +140,8 @@ def save_run(row: dict[str, Any]) -> tuple[int, bool]:
               day_compliant = excluded.day_compliant,
               analytics_json = excluded.analytics_json,
               billing_period_start = excluded.billing_period_start,
-              billing_period_end = excluded.billing_period_end
+              billing_period_end = excluded.billing_period_end,
+              policy_json = excluded.policy_json
             RETURNING id
             """,
             (
@@ -150,6 +159,7 @@ def save_run(row: dict[str, Any]) -> tuple[int, bool]:
                 analytics_json,
                 bs.isoformat(),
                 be.isoformat(),
+                policy_json,
             ),
         )
         rid_row = cur.fetchone()
@@ -177,7 +187,7 @@ def list_runs(
     params: list[Any] = []
 
     if billing_period_year is not None and billing_period_month is not None:
-        p0, p1 = billing_period_for_start_month(billing_period_year, billing_period_month)
+        p0, p1 = billing_period_for_end_month(billing_period_year, billing_period_month)
         conditions.append("compliance_day >= ? AND compliance_day <= ?")
         params.extend([p0.isoformat(), p1.isoformat()])
     elif year is not None and month is not None:
@@ -193,7 +203,7 @@ def list_runs(
     q = f"""
         SELECT id, created_at, compliance_day, mape, perc95, max_mq_mw, n_intervals,
                compliance_rows_in_window, mq_sheet, mape_ok, perc95_ok, day_compliant,
-               billing_period_start, billing_period_end
+               billing_period_start, billing_period_end, policy_json
         FROM nomination_accuracy_run{where}
         ORDER BY compliance_day DESC, id DESC
         LIMIT ?
@@ -202,7 +212,19 @@ def list_runs(
     with sqlite3.connect(db_path()) as conn:
         conn.row_factory = sqlite3.Row
         cur = conn.execute(q, params)
-        return [dict(r) for r in cur.fetchall()]
+        out: list[dict[str, Any]] = []
+        for r in cur.fetchall():
+            row = dict(r)
+            pj = row.pop("policy_json", None)
+            if pj:
+                try:
+                    row["policy"] = json.loads(pj)
+                except (json.JSONDecodeError, TypeError):
+                    row["policy"] = None
+            else:
+                row["policy"] = None
+            out.append(row)
+        return out
 
 
 def list_runs_with_billing_meta(
@@ -221,7 +243,7 @@ def list_runs_with_billing_meta(
     )
     out: dict[str, Any] = {"runs": runs, "billing_period": None, "stats": aggregate_run_stats(runs)}
     if billing_period_year is not None and billing_period_month is not None:
-        p0, p1 = billing_period_for_start_month(billing_period_year, billing_period_month)
+        p0, p1 = billing_period_for_end_month(billing_period_year, billing_period_month)
         out["billing_period"] = {
             "start": p0.isoformat(),
             "end": p1.isoformat(),
@@ -293,6 +315,11 @@ def calendar_month_detail(year: int, month: int) -> dict[str, Any]:
             "created_at": r.get("created_at"),
             "n_intervals": r.get("n_intervals"),
             "compliance_rows_in_window": r.get("compliance_rows_in_window"),
+            "mape": r.get("mape"),
+            "perc95": r.get("perc95"),
+            "day_compliant": bool(r.get("day_compliant")),
+            "mq_sheet": r.get("mq_sheet"),
+            "policy": r.get("policy"),
         }
     missing_dates: list[str] = []
     rows: list[dict[str, Any]] = []
@@ -308,6 +335,11 @@ def calendar_month_detail(year: int, month: int) -> dict[str, Any]:
                     "created_at": info.get("created_at"),
                     "n_intervals": info.get("n_intervals"),
                     "compliance_rows_in_window": info.get("compliance_rows_in_window"),
+                    "mape": info.get("mape"),
+                    "perc95": info.get("perc95"),
+                    "day_compliant": info.get("day_compliant"),
+                    "mq_sheet": info.get("mq_sheet"),
+                    "policy": info.get("policy"),
                 }
             )
         else:

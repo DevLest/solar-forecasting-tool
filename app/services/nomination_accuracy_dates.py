@@ -21,6 +21,74 @@ def parse_trade_date_from_mq_filename(filename: str) -> date | None:
         return None
 
 
+_MONTH_NAMES = (
+    "january",
+    "february",
+    "march",
+    "april",
+    "may",
+    "june",
+    "july",
+    "august",
+    "september",
+    "october",
+    "november",
+    "december",
+)
+
+
+def parse_trade_date_from_rtd_dispatch_filename(filename: str) -> date | None:
+    """e.g. ``RTD and Actual Dispatch_26 March 2026.xlsm`` → 2026-03-26."""
+    if not filename:
+        return None
+    base = filename.rsplit("/", 1)[-1]
+    m = re.search(
+        r"_(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(20\d{2})",
+        base,
+        re.I,
+    )
+    if m:
+        d, mon_s, y = int(m.group(1)), m.group(2).lower(), int(m.group(3))
+        try:
+            mi = _MONTH_NAMES.index(mon_s.lower()) + 1
+            return date(y, mi, d)
+        except ValueError:
+            pass
+    m = re.search(r"(20\d{2})(\d{2})(\d{2})", base)
+    if m:
+        try:
+            return date(int(m.group(1)), int(m.group(2)), int(m.group(3)))
+        except ValueError:
+            pass
+    m = re.search(r"(\d{4})-(\d{2})-(\d{2})", base)
+    if m:
+        try:
+            return date(int(m.group(1)), int(m.group(2)), int(m.group(3)))
+        except ValueError:
+            pass
+    return None
+
+
+def resolve_storage_trade_date_rtd_dispatch(
+    filename: str,
+    data_day: date,
+) -> tuple[date, list[str]]:
+    """Prefer date embedded in workbook filename; else use dominant day from parsed rows."""
+    warnings: list[str] = []
+    fn_d = parse_trade_date_from_rtd_dispatch_filename(filename)
+    if fn_d:
+        if fn_d != data_day:
+            warnings.append(
+                f"Filename date ({fn_d.isoformat()}) differs from day inferred from row times "
+                f"({data_day.isoformat()}). Using the filename date as the storage key."
+            )
+        return fn_d, warnings
+    warnings.append(
+        "No trade date found in filename (e.g. _26 March 2026); using the day from interval times."
+    )
+    return data_day, warnings
+
+
 def parse_date_from_compliance_filename(filename: str) -> date | None:
     """Best-effort: ISO date before 'T', or YYYYMMDD in name."""
     if not filename:
@@ -101,13 +169,18 @@ def billing_period_containing(d: date) -> tuple[date, date]:
     return start, end
 
 
-def billing_period_for_start_month(year: int, month: int) -> tuple[date, date]:
-    """Period that begins on ``year-month-26`` and ends the 25th of the following month."""
-    start = date(year, month, 26)
-    if month == 12:
-        end = date(year + 1, 1, 25)
+def billing_period_for_end_month(year: int, month: int) -> tuple[date, date]:
+    """
+    Billing period named by the calendar month in which it ends (the 25th).
+
+    From the 26th of the previous month through the 25th of ``month`` (inclusive).
+    Example: (2026, 3) → 2026-02-26 .. 2026-03-25 (the “March” row on the schedule).
+    """
+    end = date(year, month, 25)
+    if month == 1:
+        start = date(year - 1, 12, 26)
     else:
-        end = date(year, month + 1, 25)
+        start = date(year, month - 1, 26)
     return start, end
 
 

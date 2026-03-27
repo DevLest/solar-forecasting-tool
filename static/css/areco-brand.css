@@ -106,6 +106,16 @@
     #billing-extract-progress-modal[open] { display: flex; }
     #billing-extract-progress-modal:not([open]) { display: none; }
     #billing-extract-progress-modal .modal-panel { background: #1e293b; border: 1px solid #334155; border-radius: 1rem; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); max-height: 90vh; overflow: auto; }
+    #accuracy-backfill-dialog::backdrop { background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(4px); }
+    #accuracy-backfill-dialog { border: none; padding: 0; background: transparent; max-width: none; max-height: none; width: 100%; height: 100%; align-items: center; justify-content: center; z-index: 100; }
+    #accuracy-backfill-dialog[open] { display: flex; }
+    #accuracy-backfill-dialog:not([open]) { display: none; }
+    #accuracy-backfill-dialog .modal-panel { background: #1e293b; border: 1px solid #334155; border-radius: 1rem; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); max-height: 90vh; overflow: auto; }
+    #accuracy-run-policy-dialog::backdrop { background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(4px); }
+    #accuracy-run-policy-dialog { border: none; padding: 0; background: transparent; max-width: none; max-height: none; width: 100%; height: 100%; align-items: center; justify-content: center; z-index: 110; }
+    #accuracy-run-policy-dialog[open] { display: flex; }
+    #accuracy-run-policy-dialog:not([open]) { display: none; }
+    #accuracy-run-policy-dialog .modal-panel { background: #1e293b; border: 1px solid #334155; border-radius: 1rem; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); max-height: 90vh; overflow: auto; }
     #confirmation-modal-body { white-space: pre-wrap; }
     .rev-stepper-btn { font-size: 0.5rem; line-height: 1; background: none; border: none; cursor: pointer; -webkit-appearance: none; appearance: none; }
     .interval-row-rtd-locked .rtd-input { opacity: 0.55; cursor: not-allowed; background: rgba(15, 23, 42, 0.9) !important; }

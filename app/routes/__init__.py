@@ -15,8 +15,12 @@ from app.config import DATA_DIR, ROOT, nomination_export_dir, settlement_zip_pas
 from app.services.env_config import ALLOWED_ENV_KEYS, merge_env_updates, read_env_file_dict
 from app.services.billing_settlement_extract import extract_settlement_master
 from app.services.history import load_historical_exports, save_historical_export
-from app.services.nomination_accuracy import analyze_uploads
-from app.services.nomination_accuracy_dates import resolve_storage_trade_date
+from app.services.nomination_accuracy import analyze_rtd_dispatch_workbook, analyze_uploads
+from app.services.nomination_accuracy_dates import (
+    parse_trade_date_from_rtd_dispatch_filename,
+    resolve_storage_trade_date,
+    resolve_storage_trade_date_rtd_dispatch,
+)
 from app.services.nomination_accuracy_store import (
     calendar_annual_rollup,
     calendar_month_detail,
@@ -219,6 +223,7 @@ def api_nomination_accuracy():
         "mape_ok": result["policy"]["mape_ok"],
         "perc95_ok": result["policy"]["perc95_ok"],
         "day_compliant": result["policy"]["day_compliant"],
+        "policy": result["policy"],
         "analytics": result["analytics"],
         "compliance_day": storage_day.isoformat(),
     }
@@ -236,6 +241,84 @@ def api_nomination_accuracy():
             "overwritten": overwritten,
         }
     )
+
+
+@bp.route("/api/nomination-accuracy/rtd-dispatch-backfill", methods=["POST", "OPTIONS"])
+def api_nomination_accuracy_rtd_dispatch_backfill():
+    """
+    One or more ``RTD … Day Ahead`` workbooks (.xlsx/.xlsm): RTD, Actual, Day Ahead MW in one file.
+    Trade date: per file from filename (``_26 March 2026``, ``YYYYMMDD``, ISO in name). Form
+    ``trade_date`` is used only when a filename has no parseable date (rare).
+    """
+    if request.method == "OPTIONS":
+        return "", 204
+    files = request.files.getlist("files")
+    if not files:
+        one = request.files.get("file")
+        files = [one] if one and one.filename else []
+    trade_fallback = (request.form.get("trade_date") or "").strip()
+    fallback_d: date | None = None
+    if trade_fallback:
+        try:
+            fallback_d = date.fromisoformat(trade_fallback)
+        except ValueError:
+            return jsonify({"ok": False, "error": "trade_date must be YYYY-MM-DD."}), 400
+
+    results: list[dict] = []
+    for f in files:
+        if not f or not f.filename:
+            continue
+        if not f.filename.lower().endswith((".xlsx", ".xlsm")):
+            results.append(
+                {"ok": False, "filename": f.filename, "error": "Expected .xlsx or .xlsm."}
+            )
+            continue
+        raw = f.read()
+        d_from_fn = parse_trade_date_from_rtd_dispatch_filename(f.filename)
+        d_candidate = d_from_fn if d_from_fn is not None else fallback_d
+        if not d_candidate:
+            results.append(
+                {
+                    "ok": False,
+                    "filename": f.filename,
+                    "error": "Could not determine trade date. Use a name like "
+                    "'RTD and Actual Dispatch_26 March 2026.xlsm' or set trade_date (YYYY-MM-DD).",
+                }
+            )
+            continue
+        storage_day, date_warnings = resolve_storage_trade_date_rtd_dispatch(
+            f.filename, d_candidate
+        )
+        try:
+            result = analyze_rtd_dispatch_workbook(raw, f.filename, storage_day)
+            row = {
+                **result["summary"],
+                "mape_ok": result["policy"]["mape_ok"],
+                "perc95_ok": result["policy"]["perc95_ok"],
+                "day_compliant": result["policy"]["day_compliant"],
+                "policy": result["policy"],
+                "analytics": result["analytics"],
+                "compliance_day": storage_day.isoformat(),
+            }
+            run_id, overwritten = save_run(row)
+            results.append(
+                {
+                    "ok": True,
+                    "filename": f.filename,
+                    "storage_day": storage_day.isoformat(),
+                    "date_warnings": date_warnings,
+                    "run_id": run_id,
+                    "overwritten": overwritten,
+                    "summary": result["summary"],
+                    "policy": result["policy"],
+                }
+            )
+        except Exception as e:
+            results.append({"ok": False, "filename": f.filename, "error": str(e)})
+
+    if not results:
+        return jsonify({"ok": False, "error": "No files uploaded."}), 400
+    return jsonify({"ok": True, "results": results})
 
 
 @bp.route("/api/nomination-accuracy/runs", methods=["GET"])
