@@ -3,9 +3,15 @@ from __future__ import annotations
 
 import json
 import os
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
-from app.config import DATA_DIR, HISTORICAL_EXPORTS_FILE, MAX_HISTORY_DAYS
+from app.config import (
+    DATA_DIR,
+    HISTORICAL_EXPORTS_FILE,
+    MAX_HISTORY_DAYS,
+    NOMINATION_HISTORY_FUTURE_DAYS,
+    NOMINATION_HISTORY_PAST_DAYS,
+)
 
 def load_historical_exports() -> list:
     """Load historical exports from JSON file. Returns list of records (newest last)."""
@@ -17,6 +23,38 @@ def load_historical_exports() -> list:
         return data if isinstance(data, list) else []
     except (json.JSONDecodeError, OSError):
         return []
+
+
+def _parse_forecast_date(record: dict) -> date | None:
+    """Forecast delivery date as a date, or None if unknown."""
+    key = _forecast_date_key(record)
+    if not key:
+        return None
+    try:
+        return date.fromisoformat(key)
+    except ValueError:
+        return None
+
+
+def filter_historical_exports_nomination_window(records: list) -> list:
+    """
+    Keep exports whose forecast date falls in the nomination history window:
+    NOMINATION_HISTORY_PAST_DAYS calendar days ending today, plus the next
+    NOMINATION_HISTORY_FUTURE_DAYS days (11 days total, matching advance upload horizon).
+    """
+    if not records:
+        return []
+    today = date.today()
+    start = today - timedelta(days=NOMINATION_HISTORY_PAST_DAYS - 1)
+    end = today + timedelta(days=NOMINATION_HISTORY_FUTURE_DAYS)
+    out = []
+    for r in records:
+        d = _parse_forecast_date(r)
+        if d is None:
+            continue
+        if start <= d <= end:
+            out.append(r)
+    return out
 
 
 def _forecast_date_key(record: dict):

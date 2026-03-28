@@ -23,6 +23,11 @@ CACHE_PREFIX = "weather_forecast_"
 HISTORICAL_EXPORTS_FILE = os.path.join(DATA_DIR, "historical_exports.json")
 MAX_HISTORY_DAYS = 7
 
+# Nomination dashboard: Resource Nomination History shows this many days by forecast date
+# (3 days through today + 8 days ahead = 11 calendar days; aligns with advance uploads up to 8 days).
+NOMINATION_HISTORY_PAST_DAYS = 3
+NOMINATION_HISTORY_FUTURE_DAYS = 8
+
 PLANT_MAX_MW = 50.0
 DEFAULT_LAT = 10.638755644610793
 DEFAULT_LON = 123.00417639451439

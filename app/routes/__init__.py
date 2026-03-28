@@ -14,7 +14,11 @@ from werkzeug.utils import secure_filename
 from app.config import DATA_DIR, ROOT, nomination_export_dir, settlement_zip_passwords_from_env
 from app.services.env_config import ALLOWED_ENV_KEYS, merge_env_updates, read_env_file_dict
 from app.services.billing_settlement_extract import extract_settlement_master
-from app.services.history import load_historical_exports, save_historical_export
+from app.services.history import (
+    filter_historical_exports_nomination_window,
+    load_historical_exports,
+    save_historical_export,
+)
 from app.services.nomination_accuracy import analyze_rtd_dispatch_workbook, analyze_uploads
 from app.services.nomination_accuracy_dates import (
     parse_trade_date_from_rtd_dispatch_filename,
@@ -25,6 +29,7 @@ from app.services.nomination_accuracy_store import (
     calendar_annual_rollup,
     calendar_month_detail,
     calendar_monthly_rollup,
+    delete_run,
     list_runs_with_billing_meta,
     save_run,
 )
@@ -114,7 +119,7 @@ def legacy_dashboard():
 @bp.route("/api/historical-exports", methods=["GET"])
 def api_historical_exports():
     try:
-        records = load_historical_exports()
+        records = filter_historical_exports_nomination_window(load_historical_exports())
         return Response(
             json.dumps(records, indent=2, ensure_ascii=False),
             mimetype="application/json",
@@ -342,6 +347,19 @@ def api_nomination_accuracy_runs():
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
     return jsonify({"ok": True, **payload})
+
+
+@bp.route("/api/nomination-accuracy/runs/<int:run_id>", methods=["DELETE", "OPTIONS"])
+def api_nomination_accuracy_run_delete(run_id: int):
+    if request.method == "OPTIONS":
+        return "", 204
+    try:
+        removed = delete_run(run_id)
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+    if not removed:
+        return jsonify({"ok": False, "error": "No saved run with that id."}), 404
+    return jsonify({"ok": True, "deleted_id": run_id})
 
 
 @bp.route("/api/nomination-accuracy/analytics/monthly", methods=["GET"])

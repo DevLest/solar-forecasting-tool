@@ -175,6 +175,17 @@ def save_run(row: dict[str, Any]) -> tuple[int, bool]:
         return rid, overwritten
 
 
+def delete_run(run_id: int) -> bool:
+    """Remove a saved run by primary key. Returns True if a row was deleted."""
+    init_nomination_accuracy_db()
+    if run_id < 1:
+        return False
+    with sqlite3.connect(db_path()) as conn:
+        cur = conn.execute("DELETE FROM nomination_accuracy_run WHERE id = ?", (run_id,))
+        conn.commit()
+        return cur.rowcount > 0
+
+
 def list_runs(
     year: int | None = None,
     month: int | None = None,

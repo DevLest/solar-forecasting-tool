@@ -58,6 +58,8 @@
   var billPreviewEl = document.getElementById('accuracy-bill-preview');
 
   var lastFetchedRuns = [];
+  /** Last options passed to {@link fetchRuns} (for refresh after delete). */
+  var lastRunsFetchOpts = {};
   /** Rows from last month-detail API response (calendar order); used for policy modal by row index. */
   var lastMonthDetailRows = [];
   var sortState = { key: 'day', dir: 'desc' };
@@ -808,6 +810,15 @@
         analysisTd +
         '<td class="py-2 px-3 text-right text-brand-muted text-[11px]">#' +
         (x.id != null ? x.id : '—') +
+        '</td>' +
+        '<td class="py-2 px-2 text-center">' +
+        (x.id != null
+          ? '<button type="button" class="accuracy-saved-delete-btn rounded border border-rose-500/35 bg-rose-950/30 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-rose-200 hover:bg-rose-900/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/50" data-run-id="' +
+            String(x.id) +
+            '" data-compliance-day="' +
+            escAttr(x.compliance_day || '') +
+            '" title="Remove this saved run for this trade day">Del</button>'
+          : '—') +
         '</td>';
       savedTbody.appendChild(tr);
     });
@@ -842,11 +853,12 @@
     }
     var row = document.createElement('tr');
     row.innerHTML =
-      '<td colspan="6" class="py-6 px-3 text-center text-brand-muted text-sm">Loading…</td>';
+      '<td colspan="7" class="py-6 px-3 text-center text-brand-muted text-sm">Loading…</td>';
     savedTbody.appendChild(row);
 
     var statsEl = document.getElementById('accuracy-saved-stats');
     opts = opts || {};
+    lastRunsFetchOpts = opts;
     var qs = '?limit=200';
     if (opts.billingYear != null && opts.billingMonth != null) {
       qs =
@@ -865,7 +877,7 @@
         if (!j.ok) {
           var err = document.createElement('tr');
           err.innerHTML =
-            '<td colspan="6" class="py-6 px-3 text-center text-rose-300 text-sm">' +
+            '<td colspan="7" class="py-6 px-3 text-center text-rose-300 text-sm">' +
             (j.error || 'Failed') +
             '</td>';
           savedTbody.appendChild(err);
@@ -890,7 +902,7 @@
         savedTbody.innerHTML = '';
         var err = document.createElement('tr');
         err.innerHTML =
-          '<td colspan="6" class="py-6 px-3 text-center text-rose-300 text-sm">Network error</td>';
+          '<td colspan="7" class="py-6 px-3 text-center text-rose-300 text-sm">Network error</td>';
         savedTbody.appendChild(err);
         lastFetchedRuns = [];
       });
@@ -971,6 +983,40 @@
   if (savedTbody && !savedTbody.dataset.policyModalDeleg) {
     savedTbody.dataset.policyModalDeleg = '1';
     savedTbody.addEventListener('click', function(ev) {
+      var delBtn = ev.target.closest('.accuracy-saved-delete-btn');
+      if (delBtn && savedTbody.contains(delBtn)) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        var delId = delBtn.getAttribute('data-run-id');
+        var dayStr = delBtn.getAttribute('data-compliance-day') || '';
+        if (!delId) return;
+        var msg =
+          'Delete saved Forecast Percentage Error data for ' +
+          (dayStr || 'this trade day') +
+          '? This cannot be undone.';
+        if (!window.confirm(msg)) return;
+        delBtn.disabled = true;
+        fetch('/api/nomination-accuracy/runs/' + encodeURIComponent(delId), { method: 'DELETE' })
+          .then(function(r) {
+            return r.json().then(function(j) {
+              return { httpOk: r.ok, j: j };
+            });
+          })
+          .then(function(ref) {
+            if (!ref.j.ok) {
+              if (statusEl) statusEl.textContent = ref.j.error || 'Delete failed';
+              delBtn.disabled = false;
+              return;
+            }
+            if (statusEl) statusEl.textContent = 'Removed run #' + delId;
+            fetchRuns(lastRunsFetchOpts);
+          })
+          .catch(function() {
+            if (statusEl) statusEl.textContent = 'Delete: network error';
+            delBtn.disabled = false;
+          });
+        return;
+      }
       var btn = ev.target.closest('.accuracy-saved-day-link');
       if (!btn || !savedTbody.contains(btn)) return;
       ev.preventDefault();

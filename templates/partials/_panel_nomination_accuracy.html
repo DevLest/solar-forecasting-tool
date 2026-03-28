@@ -250,7 +250,7 @@
         <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
           <div>
             <h3 class="text-sm font-semibold text-brand-muted uppercase tracking-wider">Saved runs (database)</h3>
-            <p class="text-xs text-brand-muted mt-1 max-w-3xl leading-relaxed">File: <span class="font-mono">data/nomination_accuracy.sqlite3</span>. <span class="text-brand-text font-semibold">One row per trade day</span>: the date is taken from the MIRF MQ filename (<span class="font-mono">ARECO_YYYYMMDD_…</span>) when possible; uploading again for that day <span class="text-brand-text font-semibold">overwrites</span> the row.</p>
+            <p class="text-xs text-brand-muted mt-1 max-w-3xl leading-relaxed">File: <span class="font-mono">data/nomination_accuracy.sqlite3</span>. <span class="text-brand-text font-semibold">One row per trade day</span>: the date is taken from the MIRF MQ filename (<span class="font-mono">ARECO_YYYYMMDD_…</span>) when possible; uploading again for that trade day <span class="text-brand-text font-semibold">overwrites</span> the row. Use <span class="text-brand-text font-semibold">Delete</span> in the table to remove a bad upload without replacing it.</p>
             <p class="text-xs text-brand-muted mt-2"><span class="font-semibold text-brand-text">Billing period</span> for filters: <span class="font-semibold">26</span> of the previous month through <span class="font-semibold">25</span> of the named month (e.g. March <span class="font-mono">2026</span> → <span class="font-mono">2026-02-26</span> … <span class="font-mono">2026-03-25</span>). Click a <span class="font-semibold text-brand-text">trade day</span> in the table to open policy details.</p>
           </div>
         </div>
@@ -289,6 +289,7 @@
                 <th scope="col" class="py-2.5 px-3 font-bold uppercase tracking-wider text-[10px] sm:text-xs text-center">Status</th>
                 <th scope="col" class="py-2.5 px-3 font-bold uppercase tracking-wider text-[10px] sm:text-xs text-left max-w-[14rem] hidden lg:table-cell">Analysis</th>
                 <th scope="col" class="py-2.5 px-3 font-bold uppercase tracking-wider text-[10px] sm:text-xs text-right font-mono">ID</th>
+                <th scope="col" class="py-2.5 px-3 font-bold uppercase tracking-wider text-[10px] sm:text-xs text-center w-[4.5rem]">Delete</th>
               </tr>
             </thead>
             <tbody id="accuracy-saved-runs-tbody" class="font-mono tabular-nums text-brand-text"></tbody>
