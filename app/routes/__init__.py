@@ -13,6 +13,18 @@ from werkzeug.utils import secure_filename
 
 from app.config import DATA_DIR, ROOT, nomination_export_dir, settlement_zip_passwords_from_env
 from app.services.env_config import ALLOWED_ENV_KEYS, merge_env_updates, read_env_file_dict
+from app.services.billing_invoice_extract import extract_invoice_pdf, merge_input_patches
+from app.services.billing_history_store import (
+    compute_display_totals,
+    delete_row,
+    display_layout,
+    fetch_input_row,
+    list_input_rows,
+    record_upload,
+    update_row_amounts,
+    update_row_status,
+    upsert_input_row,
+)
 from app.services.billing_settlement_extract import extract_settlement_master
 from app.services.history import (
     filter_historical_exports_nomination_window,
@@ -483,6 +495,162 @@ def api_billing_user_export_shortcuts():
     add("Documents", home / "Documents")
 
     return jsonify({"ok": True, "shortcuts": shortcuts})
+
+
+@bp.route("/api/billing-history/rows", methods=["GET"])
+def api_billing_history_rows():
+    try:
+        year = request.args.get("year", type=int)
+        month = (request.args.get("billing_month") or "").strip() or None
+        stmt = (request.args.get("statement_ref") or "").strip() or None
+        rows = list_input_rows(year=year, billing_month=month, statement_ref=stmt)
+        return jsonify({"ok": True, "rows": rows})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@bp.route("/api/billing-history/display", methods=["GET"])
+def api_billing_history_display():
+    try:
+        year = request.args.get("year", type=int)
+        month = (request.args.get("billing_month") or "").strip() or None
+        stmt = (request.args.get("statement_ref") or "").strip() or None
+        row_id = request.args.get("row_id", type=int)
+        rows = list_input_rows(year=year, billing_month=month, statement_ref=stmt)
+        if row_id is not None:
+            match = next((r for r in rows if int(r["id"]) == row_id), None)
+            if match is None:
+                return (
+                    jsonify(
+                        {
+                            "ok": False,
+                            "error": "That row is not in the current filter results. Adjust filters or clear the row selection.",
+                        }
+                    ),
+                    404,
+                )
+            totals = compute_display_totals([match])
+        else:
+            totals = compute_display_totals(rows)
+        layout = display_layout(totals)
+        return jsonify(
+            {
+                "ok": True,
+                "rows": rows,
+                "totals": totals,
+                "display": layout,
+                "selected_row_id": row_id,
+            }
+        )
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@bp.route("/api/billing-history/upload", methods=["POST", "OPTIONS"])
+def api_billing_history_upload():
+    if request.method == "OPTIONS":
+        return "", 204
+    try:
+        year = request.form.get("year", type=int)
+        billing_month = (request.form.get("billing_month") or "").strip()
+        statement_ref = (request.form.get("statement_ref") or "").strip()
+        if year is None or not billing_month or not statement_ref:
+            return (
+                jsonify({"ok": False, "error": "year, billing_month, and statement_ref (Prelim or Final) are required."}),
+                400,
+            )
+        files = request.files.getlist("invoices")
+        if not files:
+            return jsonify({"ok": False, "error": "No PDF uploads (field name: invoices)."}), 400
+        if len(files) > 5:
+            return jsonify({"ok": False, "error": "At most 5 invoice PDFs per request."}), 400
+        patches: list[dict] = []
+        details: list[dict] = []
+        for f in files:
+            if not f or not f.filename:
+                continue
+            if not f.filename.lower().endswith(".pdf"):
+                return jsonify({"ok": False, "error": f"Not a PDF: {f.filename!r}."}), 400
+            raw = f.read()
+            if not raw:
+                return jsonify({"ok": False, "error": f"Empty file: {f.filename!r}."}), 400
+            res = extract_invoice_pdf(f.filename, raw)
+            patches.append(res.input_patch)
+            details.append(
+                {
+                    "filename": f.filename,
+                    "kind": res.detected_kind,
+                    "patch": res.input_patch,
+                    "warnings": res.warnings,
+                }
+            )
+        merged = merge_input_patches(patches)
+        row_id, amounts = upsert_input_row(
+            year=year,
+            billing_month=billing_month,
+            statement_ref=statement_ref,
+            patch=merged,
+        )
+        for d in details:
+            record_upload(row_id, d["filename"], d["kind"], {"patch": d["patch"], "warnings": d["warnings"]})
+        rows = list_input_rows(year=year, billing_month=billing_month, statement_ref=statement_ref)
+        totals = compute_display_totals(rows)
+        layout = display_layout(totals)
+        return jsonify(
+            {
+                "ok": True,
+                "row_id": row_id,
+                "amounts": amounts,
+                "extracted": details,
+                "rows": rows,
+                "totals": totals,
+                "display": layout,
+            }
+        )
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@bp.route("/api/billing-history/rows/<int:row_id>", methods=["PATCH", "DELETE", "OPTIONS"])
+def api_billing_history_row(row_id: int):
+    if request.method == "OPTIONS":
+        return "", 204
+    if request.method == "DELETE":
+        try:
+            ok = delete_row(row_id)
+        except Exception as e:
+            return jsonify({"ok": False, "error": str(e)}), 500
+        if not ok:
+            return jsonify({"ok": False, "error": "Row not found."}), 404
+        return jsonify({"ok": True, "deleted_id": row_id})
+    data = request.get_json(silent=True) or {}
+    try:
+        row = None
+        if "amounts" in data and isinstance(data["amounts"], dict):
+            row = update_row_amounts(row_id, data["amounts"])
+        if any(
+            k in data
+            for k in ("status_sales", "status_purchases", "remarks_sales", "remarks_purchases")
+        ):
+            row = update_row_status(
+                row_id,
+                status_sales=data.get("status_sales"),
+                status_purchases=data.get("status_purchases"),
+                remarks_sales=data.get("remarks_sales"),
+                remarks_purchases=data.get("remarks_purchases"),
+            )
+        if row is None:
+            row = fetch_input_row(row_id)
+        if not row:
+            return jsonify({"ok": False, "error": "Row not found."}), 404
+        rows = list_input_rows()
+        hit = [r for r in rows if r["id"] == row_id]
+        context = hit[0] if hit else row
+        totals = compute_display_totals([context])
+        layout = display_layout(totals)
+        return jsonify({"ok": True, "row": row, "totals": totals, "display": layout})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
 
 
 @bp.route("/api/billing/settlement-extract", methods=["POST", "OPTIONS"])

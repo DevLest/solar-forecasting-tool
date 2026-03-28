@@ -1,10 +1,140 @@
 {% from 'components/ui_macros.html' import page_hero %}
     <div id="panel-billing-history" class="hidden flex-grow p-6 max-w-[1600px] mx-auto w-full space-y-6">
-      {{ page_hero('Billing History', 'Past settlement extracts and billing-related records. Use Billing & Settlement to run a new extract; detailed accuracy runs by billing period live under Forecast Percentage Error (Saved runs).') }}
-      <section class="bg-brand-card rounded-xl border border-brand-border p-5 sm:p-6 shadow-lg">
-        <p class="text-sm text-brand-muted leading-relaxed max-w-3xl">
-          After each successful master zip extraction, file lists and paths are shown on <span class="font-semibold text-brand-text">Billing & Settlement</span>.
-          Nomination accuracy results stored in the database (by trade day and billing period) are listed under <span class="font-semibold text-brand-text">Forecast Percentage Error</span> → <span class="font-semibold text-brand-text">Saved runs</span>.
-        </p>
+      {{ page_hero('Billing History', 'Upload up to five IEMOP PDFs per billing period (EMF Regular / IEMMS / Supplemental + ARECO and ARECOSS WTA). Values populate the Input grid; the Display view mirrors your Excel Summary with filters.') }}
+
+      <section class="bg-brand-card rounded-xl border border-brand-border p-5 sm:p-6 shadow-lg space-y-4">
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 items-end">
+          <div>
+            <label for="bh-filter-year" class="block text-[10px] font-bold uppercase tracking-wider text-brand-muted mb-1">Year</label>
+            <input type="number" id="bh-filter-year" class="w-full rounded-lg border border-brand-border bg-brand-dark px-3 py-2 text-sm text-brand-text focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent/40" min="2000" max="2100" step="1" />
+          </div>
+          <div>
+            <label for="bh-filter-month" class="block text-[10px] font-bold uppercase tracking-wider text-brand-muted mb-1">Billing month</label>
+            <select id="bh-filter-month" class="w-full rounded-lg border border-brand-border bg-brand-dark px-3 py-2 text-sm text-brand-text focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent/40">
+              <option value="">All months</option>
+              <option>January</option><option>February</option><option>March</option><option>April</option>
+              <option>May</option><option>June</option><option>July</option><option>August</option>
+              <option>September</option><option>October</option><option>November</option><option>December</option>
+            </select>
+          </div>
+          <div>
+            <label for="bh-filter-statement" class="block text-[10px] font-bold uppercase tracking-wider text-brand-muted mb-1">Statement</label>
+            <select id="bh-filter-statement" class="w-full rounded-lg border border-brand-border bg-brand-dark px-3 py-2 text-sm text-brand-text focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent/40">
+              <option value="">Prelim &amp; Final</option>
+              <option>Prelim</option>
+              <option>Final</option>
+            </select>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button type="button" id="bh-btn-apply" class="py-2 px-4 rounded-xl border border-brand-accent/50 bg-brand-accent/15 hover:bg-brand-accent/25 text-brand-accent font-semibold text-xs uppercase tracking-wide">Apply filters</button>
+            <button type="button" id="bh-btn-clear" class="py-2 px-4 rounded-xl border border-brand-border bg-brand-dark hover:bg-brand-border/35 text-brand-text font-semibold text-xs uppercase tracking-wide">Clear month</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="bg-brand-card rounded-xl border border-brand-border p-5 sm:p-6 shadow-lg space-y-4">
+        <h3 class="text-sm font-semibold text-brand-muted uppercase tracking-wider">Import invoices (max 5 PDFs)</h3>
+        <p class="text-sm text-brand-muted leading-relaxed max-w-3xl">Use the same billing period fields below, then add your <span class="font-mono text-[11px] text-brand-text">ARECO_236_FS_EMF_*.pdf</span> and <span class="font-mono text-[11px] text-brand-text">ARECO_TS-WF-*.pdf</span> files. Parser fills market fees (AA–AC) and WTA cover summary (ARECO + ARECOSS).</p>
+        <div class="grid gap-4 sm:grid-cols-3">
+          <div>
+            <label for="bh-upload-year" class="block text-[10px] font-bold uppercase tracking-wider text-brand-muted mb-1">Year</label>
+            <input type="number" id="bh-upload-year" class="w-full rounded-lg border border-brand-border bg-brand-dark px-3 py-2 text-sm text-brand-text" min="2000" max="2100" />
+          </div>
+          <div>
+            <label for="bh-upload-month" class="block text-[10px] font-bold uppercase tracking-wider text-brand-muted mb-1">Billing month</label>
+            <select id="bh-upload-month" class="w-full rounded-lg border border-brand-border bg-brand-dark px-3 py-2 text-sm text-brand-text">
+              <option>January</option><option>February</option><option>March</option><option>April</option>
+              <option>May</option><option>June</option><option>July</option><option>August</option>
+              <option>September</option><option>October</option><option>November</option><option>December</option>
+            </select>
+          </div>
+          <div>
+            <label for="bh-upload-statement" class="block text-[10px] font-bold uppercase tracking-wider text-brand-muted mb-1">Prelim / Final</label>
+            <select id="bh-upload-statement" class="w-full rounded-lg border border-brand-border bg-brand-dark px-3 py-2 text-sm text-brand-text">
+              <option>Prelim</option>
+              <option selected>Final</option>
+            </select>
+          </div>
+        </div>
+        <input type="file" id="bh-file-invoices" accept=".pdf,application/pdf" multiple class="sr-only" />
+        <div
+          id="bh-drop-invoices"
+          class="rounded-xl border-2 border-dashed border-brand-border/70 bg-brand-dark/25 px-4 py-8 text-center cursor-pointer hover:border-brand-accent/45 transition-colors"
+          role="button"
+          tabindex="0"
+        >
+          <p class="text-xs text-brand-muted"><span class="text-brand-text font-semibold">Drop PDFs</span> or click — up to 5 files</p>
+          <p id="bh-invoice-names" class="mt-2 text-[11px] font-mono text-brand-muted break-all min-h-[2rem]"></p>
+        </div>
+        <div class="flex flex-wrap items-center gap-3">
+          <button type="button" id="bh-btn-upload" class="py-3 px-5 rounded-xl border border-brand-accent/60 bg-brand-accent/20 hover:bg-brand-accent/30 text-brand-accent font-bold uppercase text-xs tracking-wide disabled:opacity-40">Import PDFs</button>
+          <p id="bh-upload-status" class="text-xs text-brand-muted" role="status"></p>
+        </div>
+      </section>
+
+      <section class="bg-brand-card rounded-xl border border-brand-border p-5 sm:p-6 shadow-lg space-y-4 overflow-x-auto">
+        <div class="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h3 class="text-sm font-semibold text-brand-muted uppercase tracking-wider">Display (filtered)</h3>
+            <p id="bh-display-context" class="text-[11px] text-brand-muted mt-1 max-w-2xl hidden"></p>
+          </div>
+          <button
+            type="button"
+            id="bh-display-clear-selection"
+            class="hidden shrink-0 py-1.5 px-3 rounded-lg border border-brand-border/80 bg-brand-dark/40 text-[11px] font-semibold uppercase tracking-wide text-brand-text hover:bg-brand-border/25"
+          >
+            Clear row selection
+          </button>
+        </div>
+        <p id="bh-display-empty" class="text-sm text-brand-muted">Select filters and click Apply filters, or import PDFs for a period.</p>
+        <div id="bh-display-wrap" class="hidden">
+          <div
+            id="bh-display-report"
+            class="rounded-xl border border-brand-border/80 bg-gradient-to-br from-brand-dark/40 to-brand-dark/10 p-1 shadow-inner"
+          >
+            <div class="grid gap-4 lg:grid-cols-2 lg:gap-0 rounded-lg overflow-hidden border border-brand-border/50">
+              <div class="bh-display-col-sales border-b lg:border-b-0 lg:border-r border-brand-border/40 p-4 sm:p-5">
+                <p class="text-[10px] font-bold uppercase tracking-widest text-emerald-400/95 mb-3 pb-2 border-b border-emerald-500/25">Sales — ARECO / ARECOSS</p>
+                <table class="w-full text-sm border-collapse">
+                  <tbody id="bh-display-sales" class="text-brand-text"></tbody>
+                </table>
+              </div>
+              <div class="bh-display-col-purch p-4 sm:p-5">
+                <p class="text-[10px] font-bold uppercase tracking-widest text-amber-200/90 mb-3 pb-2 border-b border-amber-500/20">Purchases — fees &amp; payable</p>
+                <table class="w-full text-sm border-collapse">
+                  <tbody id="bh-display-purch" class="text-brand-text"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="bg-brand-card rounded-xl border border-brand-border p-5 sm:p-6 shadow-lg space-y-4 overflow-x-auto">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <h3 class="text-sm font-semibold text-brand-muted uppercase tracking-wider">Input (stored rows)</h3>
+          <p id="bh-input-count" class="text-xs text-brand-muted"></p>
+        </div>
+        <div class="overflow-x-auto rounded-lg border border-brand-border/60">
+          <table class="min-w-[960px] w-full text-xs text-left border-collapse">
+            <thead class="bg-brand-dark/50 text-brand-muted uppercase tracking-wider">
+              <tr>
+                <th class="py-2.5 px-2 border-b border-brand-border/50 align-middle">Year</th>
+                <th class="py-2.5 px-2 border-b border-brand-border/50 align-middle">Month</th>
+                <th class="py-2.5 px-2 border-b border-brand-border/50 align-middle">Stmt</th>
+                <th class="py-2.5 px-2 border-b border-brand-border/50 text-right align-middle">E–F (G01)</th>
+                <th class="py-2.5 px-2 border-b border-brand-border/50 text-right align-middle">H–I (L01)</th>
+                <th class="py-2.5 px-2 border-b border-brand-border/50 text-right align-middle">M EWT</th>
+                <th class="py-2.5 px-2 border-b border-brand-border/50 text-right align-middle">AA–AC</th>
+                <th class="py-2.5 px-2 border-b border-brand-border/50 text-right align-middle">S / V</th>
+                <th class="py-2.5 px-2 border-b border-brand-border/50 align-middle">Status (sales)</th>
+                <th class="py-2.5 px-2 border-b border-brand-border/50 align-middle">Status (purch.)</th>
+                <th class="py-2.5 px-2 border-b border-brand-border/50 align-middle w-16"></th>
+              </tr>
+            </thead>
+            <tbody id="bh-input-tbody"></tbody>
+          </table>
+        </div>
+        <p class="text-[11px] text-brand-muted">Click a row to show that period in Display above (aggregated when none selected). Click again to deselect.</p>
       </section>
     </div>

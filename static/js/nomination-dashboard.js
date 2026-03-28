@@ -89,6 +89,11 @@
     var BULK_RTD_MODAL_MIN = '05:05';
     var BULK_RTD_MODAL_MAX = '19:00';
 
+    /** Interval Data table uses the same 05:05–19:00 window as Bulk RTD (not full 24h). */
+    function getNominationIntervalDataSlots() {
+      return getBulkRtdModalSlotSubset();
+    }
+
     function getBulkRtdModalSlotSubset() {
       var lo = intervalLabelToMinutes(BULK_RTD_MODAL_MIN);
       var hi = intervalLabelToMinutes(BULK_RTD_MODAL_MAX);
@@ -499,7 +504,7 @@
         if (tdv === 'DR Cosas') tdv = 'DR COSAS';
         tdEl.value = tdv;
       }
-      var fixedSlots = getFixedIntervalSlotsFullDay();
+      var fixedSlots = getNominationIntervalDataSlots();
       var lookup = {};
       if (payload.intervals && payload.intervals.length) {
         payload.intervals.forEach(function(r) {
@@ -662,17 +667,19 @@
       if (window.updateNavbarTimeAndInterval) window.updateNavbarTimeAndInterval();
     }
 
+    function intervalMatchesHourFilter(interval, hour) {
+      if (!hour || hour === 'all') return true;
+      if (hour === '24') return interval === '24:00';
+      var nextHour00 = String(parseInt(hour, 10) + 1).padStart(2, '0') + ':00';
+      return interval.indexOf(hour + ':') === 0 || interval === nextHour00;
+    }
+
     function applyIntervalFilter() {
       var sel = document.getElementById('interval-hour-filter');
       var hour = (sel && sel.value) ? sel.value : 'all';
-      var nextHour00 = hour !== 'all' && hour !== '24' ? (String(parseInt(hour, 10) + 1).padStart(2, '0') + ':00') : '';
       document.querySelectorAll('.interval-data-tbody tr.interval-row').forEach(function(tr) {
         var interval = tr.getAttribute('data-interval') || '';
-        var match = false;
-        if (hour === 'all') match = true;
-        else if (hour === '24') match = interval === '24:00';
-        else match = interval.indexOf(hour + ':') === 0 || interval === nextHour00;
-        tr.style.display = match ? '' : 'none';
+        tr.style.display = intervalMatchesHourFilter(interval, hour) ? '' : 'none';
       });
     }
 
@@ -1363,6 +1370,190 @@
       URL.revokeObjectURL(a.href);
     }
 
+    /** After a successful export, bump Rev# (snapshot already recorded the previous value). */
+    function incrementIntervalRevAfterExport() {
+      var revSpan = document.getElementById('interval-rev-number');
+      if (!revSpan) return;
+      var revMin = 1;
+      var revMax = 999;
+      var n = parseInt(revSpan.textContent, 10) || revMin;
+      n = Math.max(revMin, Math.min(revMax, n + 1));
+      revSpan.textContent = n;
+      saveForecastLocally({ intervalRev: n });
+    }
+
+    /**
+     * html2canvas often clips or misaligns text inside <input> and <select>.
+     * Replace them in the cloned document with plain divs showing the same values.
+     */
+    function flattenIntervalDataPanelControlsInClone(doc) {
+      var panel = doc.getElementById('interval-data-panel');
+      if (!panel) return;
+      panel.querySelectorAll('input.rtd-input').forEach(function(inp) {
+        var d = doc.createElement('div');
+        d.textContent = inp.value;
+        d.setAttribute('class', inp.getAttribute('class') || '');
+        d.style.cssText = [
+          'box-sizing:border-box',
+          'display:inline-block',
+          'text-align:right',
+          'font-family:ui-monospace,Consolas,Courier New,monospace',
+          'padding:0.4rem 0.45rem',
+          'border:1px solid #334155',
+          'border-radius:0.25rem',
+          'background:#0f172a',
+          'color:#f8fafc',
+          'font-size:0.9375rem',
+          'font-weight:600',
+          'font-variant-numeric:tabular-nums',
+          'min-width:4.5rem',
+          'width:4.75rem',
+          'line-height:1.35',
+          'vertical-align:middle'
+        ].join(';');
+        inp.parentNode.replaceChild(d, inp);
+      });
+      panel.querySelectorAll('select').forEach(function(sel) {
+        var opt = sel.options[sel.selectedIndex];
+        var txt = opt ? opt.text : '';
+        var d = doc.createElement('div');
+        d.textContent = txt;
+        d.setAttribute('class', sel.getAttribute('class') || '');
+        d.style.cssText = [
+          'box-sizing:border-box',
+          'width:100%',
+          'background:#0f172a',
+          'border:1px solid #334155',
+          'border-radius:0.25rem',
+          'padding:0.45rem 0.5rem',
+          'color:#f8fafc',
+          'line-height:1.4',
+          'min-height:2rem',
+          'display:flex',
+          'align-items:center'
+        ].join(';');
+        if (sel.id === 'interval-hour-filter') {
+          d.style.fontSize = '0.75rem';
+          d.style.flex = '1';
+          d.style.minWidth = '0';
+        } else {
+          d.style.fontSize = '0.8125rem';
+        }
+        sel.parentNode.replaceChild(d, sel);
+      });
+    }
+
+    function copyIntervalDataPanelImage() {
+      var panel = document.getElementById('interval-data-panel');
+      if (!panel) return;
+      if (typeof html2canvas === 'undefined') {
+        setNominationExportStatus('Copy image: library not loaded. Refresh the page.', true);
+        return;
+      }
+      var btn = document.getElementById('btn-interval-data-copy-image');
+      var scrollWrap = document.getElementById('interval-data-table-scroll');
+      var prevScroll = {};
+      var prevPanel = {};
+      if (scrollWrap) {
+        prevScroll.overflow = scrollWrap.style.overflow;
+        prevScroll.maxHeight = scrollWrap.style.maxHeight;
+        scrollWrap.style.overflow = 'visible';
+        scrollWrap.style.maxHeight = 'none';
+      }
+      prevPanel.overflow = panel.style.overflow;
+      prevPanel.maxHeight = panel.style.maxHeight;
+      prevPanel.height = panel.style.height;
+      panel.style.overflow = 'visible';
+      panel.style.maxHeight = 'none';
+      panel.style.height = 'auto';
+      if (btn) {
+        btn.disabled = true;
+        btn.classList.add('opacity-60', 'cursor-wait');
+      }
+      setNominationExportStatus('Capturing Interval Data…');
+      var scale = Math.min(2, typeof window.devicePixelRatio === 'number' ? window.devicePixelRatio : 2);
+      html2canvas(panel, {
+        scale: scale,
+        backgroundColor: null,
+        useCORS: true,
+        logging: false,
+        windowHeight: panel.scrollHeight,
+        height: panel.scrollHeight,
+        onclone: function(doc) {
+          var hideBtn = doc.getElementById('btn-interval-data-copy-image');
+          if (hideBtn) hideBtn.style.visibility = 'hidden';
+          var hourVal = 'all';
+          var selLive = document.getElementById('interval-hour-filter');
+          if (selLive && selLive.value) hourVal = selLive.value;
+          doc.querySelectorAll('#interval-data-panel .interval-data-tbody tr.interval-row').forEach(function(tr) {
+            var interval = tr.getAttribute('data-interval') || '';
+            if (!intervalMatchesHourFilter(interval, hourVal)) tr.remove();
+          });
+          flattenIntervalDataPanelControlsInClone(doc);
+          var p = doc.getElementById('interval-data-panel');
+          if (p) {
+            p.style.overflow = 'visible';
+            p.style.maxHeight = 'none';
+            p.style.height = 'auto';
+          }
+          var sw = doc.getElementById('interval-data-table-scroll');
+          if (sw) {
+            sw.style.overflow = 'visible';
+            sw.style.maxHeight = 'none';
+          }
+        }
+      }).then(function(canvas) {
+        if (scrollWrap) {
+          scrollWrap.style.overflow = prevScroll.overflow;
+          scrollWrap.style.maxHeight = prevScroll.maxHeight;
+        }
+        panel.style.overflow = prevPanel.overflow;
+        panel.style.maxHeight = prevPanel.maxHeight;
+        panel.style.height = prevPanel.height;
+        if (btn) {
+          btn.disabled = false;
+          btn.classList.remove('opacity-60', 'cursor-wait');
+        }
+        canvas.toBlob(function(blob) {
+          if (!blob) {
+            setNominationExportStatus('Could not create image.', true);
+            return;
+          }
+          function fallbackDownloadPng() {
+            var a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'interval-data.png';
+            a.click();
+            URL.revokeObjectURL(a.href);
+            setNominationExportStatus('Clipboard not available — saved interval-data.png instead.');
+          }
+          if (navigator.clipboard && navigator.clipboard.write && typeof ClipboardItem !== 'undefined') {
+            navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]).then(function() {
+              setNominationExportStatus('Interval Data image copied to clipboard — paste into chat.');
+            }).catch(function() {
+              fallbackDownloadPng();
+            });
+          } else {
+            fallbackDownloadPng();
+          }
+        }, 'image/png');
+      }).catch(function(err) {
+        if (scrollWrap) {
+          scrollWrap.style.overflow = prevScroll.overflow;
+          scrollWrap.style.maxHeight = prevScroll.maxHeight;
+        }
+        panel.style.overflow = prevPanel.overflow;
+        panel.style.maxHeight = prevPanel.maxHeight;
+        panel.style.height = prevPanel.height;
+        if (btn) {
+          btn.disabled = false;
+          btn.classList.remove('opacity-60', 'cursor-wait');
+        }
+        console.warn('copyIntervalDataPanelImage:', err);
+        setNominationExportStatus('Copy image failed: ' + (err && err.message ? err.message : 'unknown'), true);
+      });
+    }
+
     document.getElementById('btn-export').addEventListener('click', function() {
       var detail = getExportDetailStrings();
       var filename = 'ARECO_' + detail.mm + '_' + detail.dd + '_' + detail.yyyy + '.xml';
@@ -1374,6 +1565,7 @@
           saveExportToHistory(snapshot, function() {
             var path = (res && res.path) ? res.path : filename;
             setNominationExportStatus('Saved: ' + path + ' — history updated.');
+            incrementIntervalRevAfterExport();
           });
         })
         .catch(function(err) {
@@ -1381,6 +1573,7 @@
           var blob = new Blob([xml], { type: 'application/xml;charset=utf-8' });
           downloadBlobFallback(blob, filename);
           setNominationExportStatus('Server unavailable — file downloaded in browser. Run the app to save under the automate folder (see App settings).', true);
+          incrementIntervalRevAfterExport();
         });
     });
 
@@ -1396,6 +1589,7 @@
           saveExportToHistory(snapshot, function() {
             var path = (res && res.path) ? res.path : filename;
             setNominationExportStatus('Saved: ' + path + ' — history updated.');
+            incrementIntervalRevAfterExport();
           });
         })
         .catch(function(err) {
@@ -1403,6 +1597,7 @@
           var blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
           downloadBlobFallback(blob, filename);
           setNominationExportStatus('Server unavailable — file downloaded in browser. Run the app to save under the automate folder (see App settings).', true);
+          incrementIntervalRevAfterExport();
         });
     });
 
@@ -1430,21 +1625,8 @@
     var intervalFilterEl = document.getElementById('interval-hour-filter');
     if (intervalFilterEl) intervalFilterEl.addEventListener('change', applyIntervalFilter);
 
-    (function initIntervalRevStepper() {
-      var revSpan = document.getElementById('interval-rev-number');
-      var revUp = document.getElementById('interval-rev-up');
-      var revDown = document.getElementById('interval-rev-down');
-      var revMin = 1;
-      var revMax = 999;
-      function getRev() { return parseInt(revSpan && revSpan.textContent ? revSpan.textContent : 1, 10) || revMin; }
-      function setRev(n) {
-        n = Math.max(revMin, Math.min(revMax, n));
-        if (revSpan) revSpan.textContent = n;
-        if (typeof saveForecastLocally === 'function') saveForecastLocally({ intervalRev: n });
-      }
-      if (revUp) revUp.addEventListener('click', function() { setRev(getRev() + 1); });
-      if (revDown) revDown.addEventListener('click', function() { setRev(getRev() - 1); });
-    })();
+    var btnCopyIntervalImage = document.getElementById('btn-interval-data-copy-image');
+    if (btnCopyIntervalImage) btnCopyIntervalImage.addEventListener('click', copyIntervalDataPanelImage);
 
     attachIntervalRowHandlers();
 
@@ -1528,7 +1710,7 @@
       var mwIn = document.getElementById('rtd-range-mw');
       var slotList = document.getElementById('rtd-range-slot-list');
       var refHint = document.getElementById('rtd-range-modal-ref-hint');
-      if (!modal || !openBtn || !startIn || !endIn || !slotList) return;
+      if (!modal || !startIn || !endIn || !slotList) return;
 
       var slots = getBulkRtdModalSlotSubset();
 
@@ -1588,7 +1770,7 @@
         document.body.style.overflow = prevOverflow;
       }
 
-      openBtn.addEventListener('click', function() { openModal(); });
+      if (openBtn) openBtn.addEventListener('click', function() { openModal(); });
       function onRangeInputsChanged() {
         rebuildSlotCheckboxes();
       }
@@ -1695,10 +1877,11 @@
       }
       var timeEl = document.getElementById('navbar-current-time');
       var rtdEl = document.getElementById('navbar-rtd-mw');
+      var rtdIntervalEl = document.getElementById('navbar-rtd-interval');
       function updateNavbarTimeAndInterval() {
         if (timeEl) timeEl.textContent = new Date().toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
         var now = new Date();
-        var currentMins = now.getHours() * 60 + now.getMinutes();
+        var nowSec = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
         var rows = document.querySelectorAll('.interval-data-tbody .interval-row');
         var entries = [];
         for (var i = 0; i < rows.length; i++) {
@@ -1708,23 +1891,30 @@
           var rtdInput = rows[i].querySelector('.rtd-input');
           var raw = rtdInput && rtdInput.value !== '' ? parseFloat(rtdInput.value) : NaN;
           var rtdVal = (raw != null && !isNaN(raw)) ? raw : 0;
-          entries.push({ mins: intervalMins, row: rows[i], rtd: rtdVal });
+          entries.push({ mins: intervalMins, intervalStr: intervalStr, row: rows[i], rtd: rtdVal });
         }
         entries.sort(function(a, b) { return a.mins - b.mins; });
-        var prev = null;
-        var next = null;
+        var chosen = null;
+        /* Advance: interval end E is “current” for [E, E+1min); after that use the next row (e.g. 4:50–4:50:59 → 4:50; 4:51+ → 4:55). */
         for (var j = 0; j < entries.length; j++) {
-          if (entries[j].mins <= currentMins) prev = entries[j];
-          if (entries[j].mins >= currentMins) { next = entries[j]; break; }
+          var endSec = entries[j].mins * 60;
+          if (nowSec < endSec + 60) {
+            chosen = entries[j];
+            break;
+          }
         }
-        var displayVal = null;
-        /* Interval-aligned (step): show RTD for the last row at or before current clock — no linear blend between rows */
-        if (prev) {
-          displayVal = prev.rtd;
-        } else if (next) {
-          displayVal = next.rtd;
-        }
+        if (!chosen && entries.length) chosen = entries[entries.length - 1];
+        var displayVal = chosen ? chosen.rtd : null;
         if (rtdEl) rtdEl.textContent = displayVal != null ? displayVal.toFixed(3) : '—';
+        if (rtdIntervalEl) {
+          if (chosen && chosen.intervalStr) {
+            rtdIntervalEl.textContent = normalizeIntervalStr(chosen.intervalStr);
+            rtdIntervalEl.setAttribute('title', 'Nomination for interval end ' + normalizeIntervalStr(chosen.intervalStr));
+          } else {
+            rtdIntervalEl.textContent = '';
+            rtdIntervalEl.setAttribute('title', 'Interval end (nomination advance)');
+          }
+        }
         if (typeof window.updateRtdIntervalLocks === 'function') window.updateRtdIntervalLocks();
       }
       if (timeEl || rtdEl) {

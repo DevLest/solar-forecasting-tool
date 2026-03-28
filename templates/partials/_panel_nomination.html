@@ -1,31 +1,21 @@
     <div id="panel-nomination" class="flex-grow p-6 space-y-3 max-w-[1600px] mx-auto w-full">
     <div class="grid grid-cols-12 gap-6 lg:items-stretch">
-      <section class="col-span-12 lg:col-span-3 bg-brand-card rounded-xl border border-brand-border p-4 shadow-xl overflow-hidden flex flex-col min-h-0 h-[min(90vh,58rem)] max-h-[90vh]">
+      <section id="interval-data-panel" class="col-span-12 lg:col-span-3 bg-brand-card rounded-xl border border-brand-border p-4 shadow-xl overflow-hidden flex flex-col min-h-0 h-[min(90vh,58rem)] max-h-[90vh]">
         <div class="flex items-center justify-between gap-2 mb-2">
           <h3 class="text-sm font-semibold text-brand-muted uppercase tracking-wider">Interval Data</h3>
-          <div class="flex items-center gap-0.5 shrink-0">
-            <span class="text-[10px] text-brand-muted uppercase">Rev#</span>
-            <span id="interval-rev-number" class="min-w-[1.5rem] text-center text-sm font-semibold text-brand-text tabular-nums">1</span>
-            <div class="flex flex-col ml-0.5">
-              <button type="button" id="interval-rev-up" class="rev-stepper-btn leading-none p-0.5 text-brand-muted hover:text-brand-accent focus:outline-none focus:text-brand-accent" title="Increase revision" aria-label="Increase revision">&#9650;</button>
-              <button type="button" id="interval-rev-down" class="rev-stepper-btn leading-none p-0.5 text-brand-muted hover:text-brand-accent focus:outline-none focus:text-brand-accent" title="Decrease revision" aria-label="Decrease revision">&#9660;</button>
-            </div>
+          <div class="flex items-baseline gap-1.5 shrink-0" title="Revision advances automatically when you export XML or VRE CSV">
+            <span class="text-xs text-brand-muted uppercase tracking-wide">Rev#</span>
+            <span id="interval-rev-number" class="min-w-[2rem] text-center text-2xl font-bold text-brand-text tabular-nums leading-none">1</span>
           </div>
         </div>
         <div class="flex items-center gap-2 mb-3 flex-wrap">
           <label for="interval-hour-filter" class="text-[10px] text-brand-muted uppercase whitespace-nowrap">Hour</label>
-          <select id="interval-hour-filter" class="flex-1 min-w-0 bg-brand-dark border border-brand-border rounded px-2 py-1.5 text-xs text-brand-text focus:ring-1 focus:ring-brand-accent">
+          <select id="interval-hour-filter" class="flex-1 min-w-0 bg-brand-dark border border-brand-border rounded px-2 py-1.5 text-xs text-brand-text focus:ring-1 focus:ring-brand-accent" title="Filter 5‑minute intervals (table shows 05:05–19:00 only)">
             <option value="all">All</option>
-            <option value="00">00</option><option value="01">01</option><option value="02">02</option><option value="03">03</option>
-            <option value="04">04</option><option value="05">05</option><option value="06">06</option><option value="07">07</option>
-            <option value="08">08</option><option value="09">09</option><option value="10">10</option><option value="11">11</option>
-            <option value="12">12</option><option value="13">13</option><option value="14">14</option><option value="15">15</option>
-            <option value="16">16</option><option value="17">17</option><option value="18">18</option><option value="19">19</option>
-            <option value="20">20</option><option value="21">21</option><option value="22">22</option><option value="23">23</option>
           </select>
-          <button type="button" id="btn-rtd-range-modal" class="shrink-0 text-[10px] uppercase font-bold tracking-wide px-2.5 py-1.5 rounded-md border border-brand-accent/60 text-brand-accent hover:bg-brand-accent/10 focus:outline-none focus:ring-1 focus:ring-brand-accent" title="Set the same RTD (MW) for many 5‑minute intervals at once">Bulk RTD</button>
+          <button type="button" id="btn-interval-data-copy-image" class="shrink-0 text-[10px] uppercase font-bold tracking-wide px-2.5 py-1.5 rounded-md border border-brand-border text-brand-muted hover:text-brand-text hover:bg-brand-border/20 focus:outline-none focus:ring-1 focus:ring-brand-accent interval-data-capture-exclude" title="Copy visible intervals (current Hour filter) as an image for chat or reports">Copy image</button>
         </div>
-        <div class="overflow-y-auto flex-1 min-h-0 relative isolate">
+        <div id="interval-data-table-scroll" class="overflow-y-auto flex-1 min-h-0 relative isolate">
           <table class="interval-data-table w-full text-left border-collapse">
             <thead>
               <tr class="text-brand-muted border-b border-brand-border">
@@ -35,12 +25,6 @@
               </tr>
             </thead>
             <tbody class="interval-data-tbody divide-y divide-brand-border/30">
-              <tr class="interval-row hover:bg-brand-border/20 transition-colors" data-interval="00:05"><td class="interval-cell-time">00:05</td><td class="text-right pr-3 day-ahead-cell">0.0</td><td class="text-right"><input type="number" class="rtd-input bg-brand-dark border border-brand-border rounded text-right font-mono" min="0" max="50" step="0.001" value="0"/></td></tr>
-              <tr class="interval-row hover:bg-brand-border/20 transition-colors" data-interval="00:10"><td class="interval-cell-time">00:10</td><td class="text-right pr-3 day-ahead-cell">0.0</td><td class="text-right"><input type="number" class="rtd-input bg-brand-dark border border-brand-border rounded text-right font-mono" min="0" max="50" step="0.001" value="0"/></td></tr>
-              <tr class="interval-row hover:bg-brand-border/20 transition-colors" data-interval="08:00"><td class="interval-cell-time">08:00</td><td class="text-right pr-3 day-ahead-cell">10.10</td><td class="text-right"><input type="number" class="rtd-input bg-brand-dark border border-brand-border rounded text-right font-mono" min="0" max="50" step="0.001" value="0"/></td></tr>
-              <tr class="interval-row interval-row-active hover:bg-brand-border/20 transition-colors" data-interval="09:00"><td class="interval-cell-time text-brand-accent">09:00</td><td class="text-right pr-3 day-ahead-cell text-brand-accent font-bold">39.40</td><td class="text-right"><input type="number" class="rtd-input bg-brand-dark border border-brand-border rounded text-right font-mono" min="0" max="50" step="0.001" value="0"/></td></tr>
-              <tr class="interval-row hover:bg-brand-border/20 transition-colors" data-interval="12:00"><td class="interval-cell-time">12:00</td><td class="text-right pr-3 day-ahead-cell">48.50</td><td class="text-right"><input type="number" class="rtd-input bg-brand-dark border border-brand-border rounded text-right font-mono" min="0" max="50" step="0.001" value="0"/></td></tr>
-              <tr class="interval-row hover:bg-brand-border/20 transition-colors" data-interval="21:00"><td class="interval-cell-time">21:00</td><td class="text-right pr-3 day-ahead-cell">0.00</td><td class="text-right"><input type="number" class="rtd-input bg-brand-dark border border-brand-border rounded text-right font-mono" min="0" max="50" step="0.001" value="0"/></td></tr>
             </tbody>
           </table>
         </div>

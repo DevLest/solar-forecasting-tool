@@ -6,7 +6,9 @@
   {% include 'partials/_panel_billing_history.html' %}
 {% endblock %}
 {% block page_scripts %}
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" defer></script>
   <script src="{{ url_for('static', filename='js/nomination-dashboard.js') }}" defer></script>
   <script src="{{ url_for('static', filename='js/nomination-accuracy.js') }}" defer></script>
   <script src="{{ url_for('static', filename='js/billing-settlement.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/billing-history.js') }}" defer></script>
 {% endblock %}

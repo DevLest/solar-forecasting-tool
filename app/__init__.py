@@ -20,9 +20,11 @@ def create_app() -> Flask:
     app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
 
     from app.routes import bp as main_bp
+    from app.services.billing_history_store import init_billing_history_db
     from app.services.nomination_accuracy_store import init_nomination_accuracy_db
 
     init_nomination_accuracy_db()
+    init_billing_history_db()
     app.register_blueprint(main_bp)
 
     return app
