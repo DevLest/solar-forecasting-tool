@@ -3,29 +3,22 @@
       {{ page_hero('Forecast Percentage Error', 'State of the art app from Daniel Rex Cosas') }}
 
       <p class="text-sm text-brand-muted max-w-3xl leading-relaxed">
-        <span class="font-semibold text-brand-text">Historical backfill:</span> use <span class="font-mono text-[11px]">Backfill (RTD workbook)</span> to upload one or more <span class="font-mono text-[11px]">.xlsm</span> / <span class="font-mono text-[11px]">.xlsx</span> files like <span class="font-mono text-[11px]">RTD and Actual Dispatch_26 March 2026.xlsm</span> — RTD, Actual, and Day Ahead MW in a single sheet (no MPI CSV for that path). For live runs with separate MIRF MQ + MPI export, use the two drop zones below.
+        <span class="font-semibold text-brand-text">Historical backfill:</span> use <span class="font-mono text-[11px]">Backfill (RTD + MIRF)</span> to open the dialog — one trade day at a time with the RTD workbook and MIRF Daily MQ (the calendar blocks days that already have a saved run). For MPI compliance CSV + MIRF, use the two drop zones and <span class="font-semibold text-brand-text">Run analysis</span> below.
       </p>
 
       <dialog id="accuracy-backfill-dialog" aria-labelledby="accuracy-backfill-title">
         <div class="modal-panel p-6 sm:p-7 max-w-xl w-[min(100vw-2rem,40rem)]">
-          <h2 id="accuracy-backfill-title" class="text-sm font-bold uppercase tracking-wider text-brand-muted mb-2">Backfill from RTD / Actual / Day Ahead workbook</h2>
+          <h2 id="accuracy-backfill-title" class="text-sm font-bold uppercase tracking-wider text-brand-muted mb-2">Backfill: RTD workbook + MIRF Daily MQ</h2>
           <p class="text-xs text-brand-muted leading-relaxed mb-3">
-            Sheet <span class="font-mono text-[11px] text-brand-text">RTD -Actual -Day Ahead</span>: C interval time, D RTD (MW), E Actual, F Day Ahead (MW). FPE uses Day Ahead as E = MQ. <span class="font-semibold text-brand-text">Each file’s trade date comes from that file’s filename</span> (e.g. <span class="font-mono text-[10px]">_26 March 2026</span>, <span class="font-mono text-[10px]">20260326</span>) so you can upload many days at once. One row per day in the database (same as Run analysis).
+            <span class="font-semibold text-brand-text">One day per upload.</span> Sheet <span class="font-mono text-[11px] text-brand-text">RTD -Actual -Day Ahead</span>: C interval time, D RTD (MW), E Actual (F Day Ahead is ignored when MIRF MQ is supplied). MIRF MQ uses the same DEL grid as <span class="font-semibold text-brand-text">Run analysis</span> (B13:Y36). The <span class="font-semibold text-brand-text">trade date</span> you select is the database key; filenames may still be checked for mismatches (warnings only).
           </p>
-          <label for="accuracy-backfill-files" class="block text-[10px] font-bold uppercase tracking-wider text-brand-muted mb-1">Workbooks (.xlsx / .xlsm)</label>
-          <input type="file" id="accuracy-backfill-files" name="files" multiple accept=".xlsx,.xlsm,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" class="block w-full text-xs text-brand-muted file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border file:border-brand-border file:bg-brand-dark file:text-brand-text file:text-xs file:font-semibold" />
-          <ul id="accuracy-backfill-preview" class="mt-3 hidden rounded-lg border border-brand-border/50 bg-brand-dark/35 px-3 py-2 text-[11px] font-mono text-brand-text space-y-1 max-h-32 overflow-y-auto" aria-live="polite"></ul>
-          <details id="accuracy-backfill-details" class="mt-4 rounded-lg border border-brand-border/60 bg-brand-dark/25 open:border-brand-accent/25">
-            <summary class="cursor-pointer list-none px-3 py-2.5 text-[11px] font-semibold text-brand-muted marker:content-none [&::-webkit-details-marker]:hidden flex items-center justify-between gap-2">
-              <span>Filename has no date? (optional fallback)</span>
-              <span class="text-brand-muted text-xs opacity-80" aria-hidden="true">▼</span>
-            </summary>
-            <div class="px-3 pb-3 pt-0 border-t border-brand-border/30">
-              <p class="text-[10px] text-brand-muted mt-2 mb-2 leading-relaxed">Used only for files where the name does not include a parseable date. Files with <span class="font-semibold text-brand-text">_Day Month Year_</span> in the name ignore this.</p>
-              <label for="accuracy-backfill-fallback-date" class="block text-[10px] font-bold uppercase tracking-wider text-brand-muted mb-1">Fallback trade date</label>
-              <input type="date" id="accuracy-backfill-fallback-date" class="w-full max-w-[12rem] bg-brand-dark border border-brand-border rounded-lg px-2 py-1.5 text-sm text-brand-text font-mono focus:outline-none focus:ring-2 focus:ring-brand-accent/40" />
-            </div>
-          </details>
+          <label for="accuracy-backfill-trade-date" class="block text-[10px] font-bold uppercase tracking-wider text-brand-muted mb-1">Trade date (target day)</label>
+          <input type="date" id="accuracy-backfill-trade-date" class="w-full max-w-[12rem] bg-brand-dark border border-brand-border rounded-lg px-2 py-1.5 text-sm text-brand-text font-mono [color-scheme:dark] focus:outline-none focus:ring-2 focus:ring-brand-accent/40" />
+          <p id="accuracy-backfill-date-hint" class="mt-1 text-[11px] text-rose-300/95 min-h-[1.25rem]" role="status" aria-live="polite"></p>
+          <label for="accuracy-backfill-rtd" class="block text-[10px] font-bold uppercase tracking-wider text-brand-muted mb-1 mt-3">RTD / Actual / Day Ahead workbook (.xlsx / .xlsm)</label>
+          <input type="file" id="accuracy-backfill-rtd" name="rtd_file" accept=".xlsx,.xlsm,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" class="block w-full text-xs text-brand-muted file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border file:border-brand-border file:bg-brand-dark file:text-brand-text file:text-xs file:font-semibold" />
+          <label for="accuracy-backfill-mq" class="block text-[10px] font-bold uppercase tracking-wider text-brand-muted mb-1 mt-3">MIRF Daily MQ workbook (.xlsx / .xlsm)</label>
+          <input type="file" id="accuracy-backfill-mq" name="mq_xlsx" accept=".xlsx,.xlsm,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" class="block w-full text-xs text-brand-muted file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border file:border-brand-border file:bg-brand-dark file:text-brand-text file:text-xs file:font-semibold" />
           <p id="accuracy-backfill-status" class="mt-3 min-h-[1.25rem] flex items-center gap-2.5 text-xs text-brand-muted" role="status" aria-live="polite" aria-atomic="true">
             <span id="accuracy-backfill-spinner" class="hidden inline-flex shrink-0" aria-hidden="true">
               <svg class="animate-spin h-4 w-4 text-brand-accent" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -35,12 +28,8 @@
             </span>
             <span id="accuracy-backfill-status-msg"></span>
           </p>
-          <div id="accuracy-backfill-progress-wrap" class="hidden mt-3 rounded-lg border border-brand-border/70 bg-brand-dark/35 overflow-hidden shadow-inner" aria-label="Backfill job progress">
-            <div class="flex flex-wrap items-center justify-between gap-2 px-3 py-2 border-b border-brand-border/50 bg-brand-dark/50">
-              <span class="text-[10px] font-bold uppercase tracking-wider text-brand-muted">Jobs</span>
-              <span id="accuracy-backfill-progress-summary" class="text-[11px] font-mono text-brand-accent tabular-nums" aria-live="polite"></span>
-            </div>
-            <ul id="accuracy-backfill-progress-list" class="max-h-52 overflow-y-auto text-[11px] divide-y divide-brand-border/25" role="list"></ul>
+          <div id="accuracy-backfill-progress-wrap" class="hidden mt-3 rounded-lg border border-brand-border/70 bg-brand-dark/35 px-3 py-2 text-[11px] text-brand-muted" aria-live="polite">
+            <span id="accuracy-backfill-progress-summary"></span>
           </div>
           <pre id="accuracy-backfill-log" class="mt-2 max-h-40 overflow-y-auto rounded-lg border border-brand-border/60 bg-brand-dark/40 p-2 text-[11px] font-mono text-brand-text whitespace-pre-wrap hidden"></pre>
           <div class="mt-4 flex flex-wrap justify-end gap-2">
@@ -80,7 +69,7 @@
         <section class="bg-brand-card rounded-xl border border-brand-border p-5 sm:p-6 shadow-lg flex flex-col gap-4 group transition-shadow hover:shadow-xl hover:border-brand-border/80" aria-labelledby="accuracy-upload-compliance-heading">
           <div>
             <h3 id="accuracy-upload-compliance-heading" class="text-sm font-semibold text-brand-muted uppercase tracking-wider">MPI compliance export (CSV)</h3>
-            <p class="text-sm text-brand-muted mt-1 leading-relaxed">CSV (e.g. <span class="font-mono text-[11px]">mpi_areco_01_Compliance-Output … .csv</span>). Uses <span class="font-mono">Interval End</span>, <span class="font-mono">Market DOT</span>, <span class="font-mono">Actual Output</span>. Rows from 05:05–19:00 on the dominant day are mapped into the 5‑minute grid like your Trading Report paste. For RTD + Actual from an ARECO workbook instead, use <span class="font-semibold text-brand-text">Backfill (RTD workbook)</span> — MPI CSV is not required for that path.</p>
+            <p class="text-sm text-brand-muted mt-1 leading-relaxed">CSV (e.g. <span class="font-mono text-[11px]">mpi_areco_01_Compliance-Output … .csv</span>). Uses <span class="font-mono">Interval End</span>, <span class="font-mono">Market DOT</span>, <span class="font-mono">Actual Output</span>. Rows from 05:05–19:00 on the dominant day are mapped into the 5‑minute grid like your Trading Report paste. For RTD + Actual plus MIRF MQ from workbooks, use <span class="font-semibold text-brand-text">Backfill (RTD + MIRF)</span>.</p>
           </div>
           <input type="file" id="accuracy-file-compliance" accept=".csv,text/csv" class="sr-only" />
           <div
@@ -130,7 +119,7 @@
 
       <div class="flex flex-wrap items-center gap-3">
         <button type="button" id="accuracy-btn-backfill" class="py-3 px-4 rounded-xl border border-amber-500/50 bg-amber-500/10 hover:bg-amber-500/20 text-amber-200 font-bold uppercase text-xs tracking-wide transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50 active:scale-[0.98]">
-          Backfill (RTD workbook)
+          Backfill (RTD + MIRF)
         </button>
         <button type="button" id="accuracy-btn-run" class="inline-flex items-center justify-center gap-2 py-3 px-6 rounded-xl border border-brand-accent/60 bg-brand-accent/20 hover:bg-brand-accent/30 text-brand-accent font-bold uppercase text-xs tracking-wide transition-all disabled:opacity-40 disabled:pointer-events-none focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent/50 active:scale-[0.98]">
           <svg id="accuracy-run-spinner" class="hidden h-4 w-4 animate-spin text-brand-accent" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
@@ -367,7 +356,7 @@
                 <tbody id="accuracy-month-detail-tbody" class="font-mono tabular-nums text-brand-text"></tbody>
               </table>
             </div>
-            <p class="text-[10px] text-brand-muted leading-relaxed">Click a <span class="font-semibold text-brand-text">date</span> with a saved run to open policy details (summary, reasons, notes). Saved runs are one per trade day (<span class="font-mono">compliance_day</span>); re-uploading the same day replaces the previous save. <span class="font-semibold text-brand-text">Policy</span>: both MAPE &lt; 18% and PERC95 &lt; 30% (same thresholds as Compliance). Workbook backfill uses Day Ahead MW as MQ — numbers may differ from MIRF+MPI.</p>
+            <p class="text-[10px] text-brand-muted leading-relaxed">Click a <span class="font-semibold text-brand-text">date</span> with a saved run to open policy details (summary, reasons, notes). Saved runs are one per trade day (<span class="font-mono">compliance_day</span>); re-uploading the same day replaces the previous save. <span class="font-semibold text-brand-text">Policy</span>: both MAPE &lt; 18% and PERC95 &lt; 30% (same thresholds as Compliance). The backfill dialog pairs RTD with MIRF MQ (same DEL grid as Run analysis).</p>
           </div>
           <div class="grid gap-4 lg:grid-cols-2">
             <div class="rounded-lg border border-brand-border/60 bg-brand-card/50 p-3">

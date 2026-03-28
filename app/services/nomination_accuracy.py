@@ -4,9 +4,9 @@ MQ: Daily MIRF WESM file, range B13:Y36 (24 rows × DEL/REC pairs → 288 DEL MW
 Compliance: MPI CSV — Interval End, Market DOT (RTD), Actual Output; sorted by time;
   rows mapped to 5‑minute slots (00:05 … 23:55) like Trading Report paste C63:D216.
 
-Alternate backfill: one workbook ``RTD -Actual -Day Ahead`` — columns C interval time,
-  D RTD, E Actual, F Day Ahead (MW). Day Ahead substitutes MIRF DEL for E in FPE when
-  MPI CSV + MIRF are not both available (numbers may differ if Day Ahead ≠ MIRF DEL).
+Backfill: ``RTD -Actual -Day Ahead`` workbook (C–E for times, RTD, Actual) plus optional
+  MIRF Daily MQ workbook. When MQ is provided, E uses MIRF DEL (same as MPI+MIRF). Otherwise
+  column F (Day Ahead MW) is used as MQ.
 
 FPE (per Excel Compliance col I): ABS((G - E) / H_max) with
   E = MQ (MW), G = (F + RTD) / 24, F = lagged RTD (F[0]=0, F[i]=RTD[i-1]),
@@ -461,11 +461,14 @@ def analyze_rtd_dispatch_workbook(
     content: bytes,
     filename: str,
     trade_date: date,
+    mq_xlsx_bytes: bytes | None = None,
 ) -> dict[str, Any]:
     """
-    Single-file path: MPI CSV + MIRF MQ replaced by one ``RTD … Day Ahead`` workbook.
-    FPE uses E = Day Ahead (MW) per interval; same formula as Compliance (not identical to MIRF DEL
-    if your Day Ahead column differs from the MIRF file).
+    RTD ``RTD … Day Ahead`` workbook: RTD and Actual from columns D/E.
+
+    MQ (E in FPE): if ``mq_xlsx_bytes`` is set, DEL MW comes from the MIRF Daily MQ workbook
+    (same B13:Y36 logic as MPI+MIRF). Otherwise Day Ahead (column F) is used as MQ — numbers
+    may differ from MIRF DEL.
     """
     rows, _n_rows = parse_rtd_dispatch_rows_for_day(content, trade_date)
     if not rows:
@@ -473,14 +476,20 @@ def analyze_rtd_dispatch_workbook(
 
     day = trade_date
     compliance = [(dt, rtd, act) for dt, rtd, act, _da in rows]
-    mq_mw, n_mq = fill_mq_from_day_ahead_rows(rows, day)
+    if mq_xlsx_bytes is not None:
+        mq_mw, sheet_used = load_mq_del_mw_from_xlsx(mq_xlsx_bytes)
+        n_mq = N_INTERVALS
+        mq_sheet_label = sheet_used
+    else:
+        mq_mw, n_mq = fill_mq_from_day_ahead_rows(rows, day)
+        mq_sheet_label = "Day Ahead (MW) from workbook"
 
     rtd, actual, n_paste = fill_rtd_actual(compliance, day)
     metrics = compute_fpe_and_metrics(mq_mw, rtd)
     fpe_list = metrics["fpe"]
     metrics["compliance_day"] = day.isoformat()
     metrics["compliance_rows_in_window"] = n_paste
-    metrics["mq_sheet"] = "Day Ahead (MW) from workbook"
+    metrics["mq_sheet"] = mq_sheet_label
     policy = evaluate_nomination_policy(metrics.get("mape"), metrics.get("perc95"))
     analytics = compute_summary_style_analytics(rtd, actual, mq_mw, fpe_list)
 

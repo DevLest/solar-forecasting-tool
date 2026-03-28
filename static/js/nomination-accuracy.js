@@ -1,5 +1,24 @@
 (function initNominationAccuracy() {
   var lastStorageDayIso = '';
+  /** ISO dates (YYYY-MM-DD) that already have a saved nomination-accuracy run */
+  var uploadedTradeDates = new Set();
+
+  function refreshUploadedTradeDates() {
+    return fetch('/api/nomination-accuracy/uploaded-dates')
+      .then(function(r) {
+        return r.json();
+      })
+      .then(function(j) {
+        if (j && j.ok && Array.isArray(j.dates)) {
+          uploadedTradeDates = new Set(j.dates);
+        }
+      })
+      .catch(function() {});
+  }
+
+  function isTradeDateUnavailable(iso) {
+    return !!(iso && uploadedTradeDates.has(iso));
+  }
 
   function wirePair(btnId, inputId, nameId) {
     var btn = document.getElementById(btnId);
@@ -508,7 +527,7 @@
         })
         .then(function(ref) {
           var j = ref.j;
-          if (!j.ok) {
+          if (!ref.httpOk || !j.ok) {
             if (statusEl) statusEl.textContent = j.error || 'Request failed';
             return;
           }
@@ -1010,6 +1029,7 @@
             }
             if (statusEl) statusEl.textContent = 'Removed run #' + delId;
             fetchRuns(lastRunsFetchOpts);
+            refreshUploadedTradeDates();
           })
           .catch(function() {
             if (statusEl) statusEl.textContent = 'Delete: network error';
@@ -1660,115 +1680,33 @@
   }
 
   (function initBackfillDialog() {
-    var MONTHS = [
-      'january',
-      'february',
-      'march',
-      'april',
-      'may',
-      'june',
-      'july',
-      'august',
-      'september',
-      'october',
-      'november',
-      'december'
-    ];
-    function guessTradeDateFromFilename(name) {
-      if (!name) return null;
-      var base = name.replace(/^.*[\\/]/, '');
-      var m = base.match(
-        /_(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(20\d{2})/i
-      );
-      if (m) {
-        var d = parseInt(m[1], 10);
-        var y = parseInt(m[3], 10);
-        var mi = MONTHS.indexOf(m[2].toLowerCase()) + 1;
-        if (mi >= 1 && d >= 1 && d <= 31 && y >= 2000)
-          return y + '-' + String(mi).padStart(2, '0') + '-' + String(d).padStart(2, '0');
-      }
-      var ymd = base.match(/(20\d{2})(\d{2})(\d{2})/);
-      if (ymd) return ymd[1] + '-' + ymd[2] + '-' + ymd[3];
-      var iso = base.match(/(20\d{2})-(\d{2})-(\d{2})/);
-      if (iso) return iso[1] + '-' + iso[2] + '-' + iso[3];
-      return null;
-    }
-
     var dlg = document.getElementById('accuracy-backfill-dialog');
     var openBtn = document.getElementById('accuracy-btn-backfill');
     var cancel = document.getElementById('accuracy-backfill-cancel');
     var submit = document.getElementById('accuracy-backfill-submit');
-    var filesInput = document.getElementById('accuracy-backfill-files');
-    var fallbackDate = document.getElementById('accuracy-backfill-fallback-date');
-    var previewEl = document.getElementById('accuracy-backfill-preview');
+    var tradeDateEl = document.getElementById('accuracy-backfill-trade-date');
+    var dateHint = document.getElementById('accuracy-backfill-date-hint');
+    var rtdInput = document.getElementById('accuracy-backfill-rtd');
+    var mqInput = document.getElementById('accuracy-backfill-mq');
     var statusMsg = document.getElementById('accuracy-backfill-status-msg');
     var spinEl = document.getElementById('accuracy-backfill-spinner');
     var submitLabel = document.getElementById('accuracy-backfill-submit-label');
-    var detailsEl = document.getElementById('accuracy-backfill-details');
     var logEl = document.getElementById('accuracy-backfill-log');
     var progressWrap = document.getElementById('accuracy-backfill-progress-wrap');
-    var progressList = document.getElementById('accuracy-backfill-progress-list');
     var progressSummary = document.getElementById('accuracy-backfill-progress-summary');
     var backfillUploading = false;
 
-    var JOB_SPINNER =
-      '<svg class="animate-spin h-3.5 w-3.5 text-sky-400 inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>';
-
-    function escLocal(s) {
-      if (s == null || s === '') return '';
-      return String(s)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;');
-    }
-
-    function setJobRowState(i, state, detail) {
-      if (!progressList) return;
-      var li = progressList.querySelector('[data-job-index="' + i + '"]');
-      if (!li) return;
-      var icon = li.querySelector('.accuracy-backfill-job-icon');
-      var det = li.querySelector('.accuracy-backfill-job-detail');
-      if (det) det.textContent = detail || '';
-      if (!icon) return;
-      icon.className =
-        'accuracy-backfill-job-icon shrink-0 w-5 flex justify-center pt-0.5 tabular-nums';
-      icon.innerHTML = '';
-      icon.textContent = '';
-      if (state === 'queued') {
-        icon.textContent = '○';
-        icon.classList.add('text-brand-muted');
-      } else if (state === 'running') {
-        icon.innerHTML = JOB_SPINNER;
-      } else if (state === 'done') {
-        icon.textContent = '✓';
-        icon.classList.add('text-emerald-400');
-      } else if (state === 'error') {
-        icon.textContent = '✕';
-        icon.classList.add('text-rose-400');
-      } else if (state === 'skipped') {
-        icon.textContent = '—';
-        icon.classList.add('text-brand-muted/80');
+    function updateBackfillDateHint() {
+      if (!tradeDateEl || !dateHint) return;
+      var v = tradeDateEl.value;
+      if (v && isTradeDateUnavailable(v)) {
+        dateHint.textContent =
+          'This day already has a saved run. Delete it in Saved runs first, or pick another date.';
+        tradeDateEl.classList.add('ring-2', 'ring-rose-500/40');
+      } else {
+        dateHint.textContent = '';
+        tradeDateEl.classList.remove('ring-2', 'ring-rose-500/40');
       }
-    }
-
-    function buildJobList(fileArr) {
-      if (!progressList) return;
-      progressList.innerHTML = '';
-      fileArr.forEach(function(f, i) {
-        var li = document.createElement('li');
-        li.setAttribute('data-job-index', String(i));
-        li.className = 'flex gap-3 px-3 py-2.5 items-start';
-        li.innerHTML =
-          '<span class="accuracy-backfill-job-icon shrink-0 w-5 flex justify-center pt-0.5 text-brand-muted" aria-hidden="true">○</span>' +
-          '<div class="min-w-0 flex-1">' +
-          '<p class="font-mono text-[11px] text-brand-text break-all">' +
-          escLocal(f.name) +
-          '</p>' +
-          '<p class="accuracy-backfill-job-detail mt-0.5 text-[10px] text-brand-muted leading-snug"></p>' +
-          '</div>';
-        progressList.appendChild(li);
-        setJobRowState(i, 'queued', 'Queued');
-      });
     }
 
     function setBackfillBusy(on) {
@@ -1777,28 +1715,27 @@
       if (spinEl) spinEl.classList.toggle('hidden', !on);
       if (submit) submit.disabled = on;
       if (cancel) cancel.disabled = on;
-      if (filesInput) filesInput.disabled = on;
-      if (fallbackDate) fallbackDate.disabled = on;
-      if (detailsEl) {
-        detailsEl.classList.toggle('pointer-events-none', on);
-        detailsEl.classList.toggle('opacity-60', on);
-        if (on) detailsEl.setAttribute('inert', '');
-        else detailsEl.removeAttribute('inert');
-      }
-      if (previewEl) previewEl.classList.toggle('opacity-50', on);
-      if (previewEl) previewEl.classList.toggle('pointer-events-none', on);
+      if (tradeDateEl) tradeDateEl.disabled = on;
+      if (rtdInput) rtdInput.disabled = on;
+      if (mqInput) mqInput.disabled = on;
       if (submitLabel) submitLabel.textContent = on ? 'Working…' : 'Upload & save';
     }
 
     if (!dlg || !openBtn) return;
+    if (tradeDateEl) {
+      tradeDateEl.addEventListener('input', updateBackfillDateHint);
+      tradeDateEl.addEventListener('change', updateBackfillDateHint);
+    }
     dlg.addEventListener('cancel', function(e) {
       if (backfillUploading) e.preventDefault();
     });
     openBtn.addEventListener('click', function() {
-      if (progressWrap) progressWrap.classList.add('hidden');
-      if (progressList) progressList.innerHTML = '';
-      if (progressSummary) progressSummary.textContent = '';
-      if (dlg.showModal) dlg.showModal();
+      refreshUploadedTradeDates().then(function() {
+        updateBackfillDateHint();
+        if (progressWrap) progressWrap.classList.add('hidden');
+        if (progressSummary) progressSummary.textContent = '';
+        if (dlg.showModal) dlg.showModal();
+      });
     });
     if (cancel) {
       cancel.addEventListener('click', function() {
@@ -1806,206 +1743,102 @@
         dlg.close();
       });
     }
-    if (filesInput && previewEl) {
-      filesInput.addEventListener('change', function() {
-        previewEl.innerHTML = '';
-        var files = filesInput.files;
-        if (!files || !files.length) {
-          previewEl.classList.add('hidden');
-          return;
-        }
-        previewEl.classList.remove('hidden');
-        for (var i = 0; i < files.length; i++) {
-          var f = files[i];
-          var iso = guessTradeDateFromFilename(f.name);
-          var li = document.createElement('li');
-          li.className = 'leading-snug flex flex-wrap gap-x-1 gap-y-0.5 items-baseline';
-          var nameSpan = document.createElement('span');
-          nameSpan.className = 'text-brand-muted break-all';
-          nameSpan.textContent = f.name || '';
-          var arrow = document.createTextNode(' → ');
-          var dateSpan = document.createElement('span');
-          dateSpan.className = iso ? 'text-brand-accent shrink-0' : 'text-amber-300/90 shrink-0';
-          dateSpan.textContent = iso ? iso : 'no date in name — use fallback or rename';
-          li.appendChild(nameSpan);
-          li.appendChild(arrow);
-          li.appendChild(dateSpan);
-          previewEl.appendChild(li);
-        }
-      });
-    }
     if (submit) {
       submit.addEventListener('click', function() {
         if (backfillUploading) return;
-        if (!filesInput || !filesInput.files || !filesInput.files.length) {
-          if (statusMsg) statusMsg.textContent = 'Choose at least one workbook.';
+        if (!tradeDateEl || !tradeDateEl.value) {
+          if (statusMsg) statusMsg.textContent = 'Choose a trade date.';
           return;
         }
-        var fileArr = Array.prototype.slice.call(filesInput.files);
-        var total = fileArr.length;
+        if (isTradeDateUnavailable(tradeDateEl.value)) {
+          if (statusMsg) statusMsg.textContent = 'Pick a date without an existing saved run.';
+          return;
+        }
+        if (!rtdInput || !rtdInput.files || !rtdInput.files[0]) {
+          if (statusMsg) statusMsg.textContent = 'Choose the RTD / Actual workbook.';
+          return;
+        }
+        if (!mqInput || !mqInput.files || !mqInput.files[0]) {
+          if (statusMsg) statusMsg.textContent = 'Choose the MIRF Daily MQ workbook.';
+          return;
+        }
         if (logEl) {
           logEl.classList.add('hidden');
           logEl.textContent = '';
         }
         if (progressWrap) progressWrap.classList.remove('hidden');
-        if (progressSummary) progressSummary.textContent = '0 / ' + total + ' complete · ' + total + ' queued';
-        buildJobList(fileArr);
-        if (statusMsg) statusMsg.textContent = 'Starting ' + total + ' job' + (total === 1 ? '' : 's') + '…';
+        if (progressSummary) progressSummary.textContent = 'Uploading…';
+        if (statusMsg) statusMsg.textContent = 'Uploading and processing…';
         setBackfillBusy(true);
 
-        var lines = [];
-        var okCount = 0;
-        var failCount = 0;
+        var fd = new FormData();
+        fd.append('rtd_file', rtdInput.files[0]);
+        fd.append('mq_xlsx', mqInput.files[0]);
+        fd.append('trade_date', tradeDateEl.value);
 
-        function appendSuccessLine(row) {
-          var s = row.summary || {};
-          var polObj = row.policy || {};
-          var polLine = polObj.day_compliant
-            ? 'policy OK'
-            : polObj.analysis_summary || 'policy FAIL';
-          var mp =
-            s.mape_pct != null && isFinite(Number(s.mape_pct))
-              ? Number(s.mape_pct).toFixed(2) + '% MAPE'
-              : '';
-          var p95 =
-            s.perc95_pct != null && isFinite(Number(s.perc95_pct))
-              ? Number(s.perc95_pct).toFixed(2) + '% P95'
-              : '';
-          var metrics = [mp, p95].filter(Boolean).join(', ');
-          lines.push(
-            row.filename +
+        fetch('/api/nomination-accuracy/rtd-dispatch-backfill', { method: 'POST', body: fd })
+          .then(function(r) {
+            return r.json().then(function(j) {
+              return { httpOk: r.ok, status: r.status, j: j };
+            });
+          })
+          .then(function(ref) {
+            var j = ref.j;
+            if (!ref.httpOk || !j.ok) {
+              var errTop =
+                (j && j.error) ||
+                (ref.status === 409 ? 'This trade date already has a saved run.' : 'Request failed');
+              if (statusMsg) statusMsg.textContent = errTop;
+              if (progressSummary) progressSummary.textContent = '';
+              if (logEl) {
+                logEl.textContent = errTop;
+                logEl.classList.remove('hidden');
+              }
+              setBackfillBusy(false);
+              return;
+            }
+            var s = j.summary || {};
+            var polObj = j.policy || {};
+            var polLine = polObj.day_compliant ? 'policy OK' : polObj.analysis_summary || 'policy FAIL';
+            var mp =
+              s.mape_pct != null && isFinite(Number(s.mape_pct))
+                ? Number(s.mape_pct).toFixed(2) + '% MAPE'
+                : '';
+            var p95 =
+              s.perc95_pct != null && isFinite(Number(s.perc95_pct))
+                ? Number(s.perc95_pct).toFixed(2) + '% P95'
+                : '';
+            var metrics = [mp, p95].filter(Boolean).join(', ');
+            var line =
+              (j.filename || '') +
               ' → ' +
-              row.storage_day +
+              (j.storage_day || '') +
               ' · ' +
               (metrics || '—') +
               ' · ' +
               polLine +
               ' · run #' +
-              row.run_id +
-              (row.overwritten ? ' (replaced)' : '')
-          );
-        }
-
-        function processAtIndex(i) {
-          if (i >= total) {
-            if (statusMsg) {
-              statusMsg.textContent =
-                'Done: ' + okCount + ' saved, ' + failCount + ' failed.';
+              (j.run_id != null ? j.run_id : '—') +
+              (j.overwritten ? ' (replaced)' : '');
+            if (j.date_warnings && j.date_warnings.length) {
+              line += '\n' + j.date_warnings.join('\n');
             }
-            if (progressSummary) {
-              progressSummary.textContent =
-                okCount + ' saved · ' + failCount + ' failed · ' + total + ' total';
-            }
+            if (statusMsg) statusMsg.textContent = 'Saved.';
+            if (progressSummary) progressSummary.textContent = 'Done · run #' + j.run_id;
             if (logEl) {
-              logEl.textContent = lines.join('\n');
-              logEl.classList.toggle('hidden', !lines.length);
+              logEl.textContent = line;
+              logEl.classList.remove('hidden');
             }
-            setBackfillBusy(false);
-            return;
-          }
-
-          var rem = total - i - 1;
-          if (progressSummary) {
-            progressSummary.textContent =
-              'Running ' + (i + 1) + ' of ' + total + (rem > 0 ? ' · ' + rem + ' left' : '');
-          }
-          if (statusMsg) {
-            statusMsg.textContent =
-              'Running job ' +
-              (i + 1) +
-              ' of ' +
-              total +
-              (rem > 0 ? ' (' + rem + ' remaining after this)' : '') +
-              '…';
-          }
-
-          setJobRowState(i, 'running', 'Uploading and processing on server…');
-
-          var fd = new FormData();
-          fd.append('files', fileArr[i]);
-          if (fallbackDate && fallbackDate.value) fd.append('trade_date', fallbackDate.value);
-
-          fetch('/api/nomination-accuracy/rtd-dispatch-backfill', { method: 'POST', body: fd })
-            .then(function(r) {
-              return r.json().then(function(j) {
-                return { httpOk: r.ok, j: j };
-              });
-            })
-            .then(function(ref) {
-              var j = ref.j;
-              if (!ref.httpOk || !j.ok) {
-                var errTop = (j && j.error) || 'Request failed';
-                setJobRowState(i, 'error', errTop);
-                failCount++;
-                lines.push(fileArr[i].name + ' — ' + errTop);
-                for (var k = i + 1; k < total; k++) {
-                  setJobRowState(k, 'skipped', 'Skipped (batch error)');
-                }
-                if (statusMsg) statusMsg.textContent = errTop;
-                if (progressSummary) {
-                  progressSummary.textContent =
-                    okCount +
-                    ' saved · ' +
-                    failCount +
-                    ' failed · ' +
-                    (total - i - 1) +
-                    ' skipped';
-                }
-                if (logEl) {
-                  logEl.textContent = lines.join('\n');
-                  logEl.classList.remove('hidden');
-                }
-                setBackfillBusy(false);
-                return;
-              }
-              var results = j.results || [];
-              var row = results[0];
-              if (!row) {
-                setJobRowState(i, 'error', 'No result from server');
-                failCount++;
-                lines.push(fileArr[i].name + ' — No result');
-                processAtIndex(i + 1);
-                return;
-              }
-              if (!row.ok) {
-                var err = row.error || 'Error';
-                setJobRowState(i, 'error', err);
-                failCount++;
-                lines.push(row.filename + ' — ' + err);
-                processAtIndex(i + 1);
-                return;
-              }
-              okCount++;
-              var polObj = row.policy || {};
-              var detail =
-                row.storage_day +
-                ' · ' +
-                (polObj.day_compliant ? 'Compliant' : 'Non-compliant');
-              setJobRowState(i, 'done', detail);
-              appendSuccessLine(row);
-              processAtIndex(i + 1);
-            })
-            .catch(function() {
-              setJobRowState(i, 'error', 'Network error');
-              failCount++;
-              lines.push(fileArr[i].name + ' — Network error');
-              for (var k2 = i + 1; k2 < total; k2++) {
-                setJobRowState(k2, 'skipped', 'Not run (network error)');
-              }
-              if (statusMsg) statusMsg.textContent = 'Network error on job ' + (i + 1) + ' of ' + total;
-              if (progressSummary) {
-                progressSummary.textContent =
-                  okCount + ' saved · ' + failCount + ' failed · ' + (total - i - 1) + ' not run';
-              }
-              if (logEl) {
-                logEl.textContent = lines.join('\n');
-                logEl.classList.remove('hidden');
-              }
-              setBackfillBusy(false);
+            refreshUploadedTradeDates().then(function() {
+              updateBackfillDateHint();
             });
-        }
-
-        processAtIndex(0);
+            setBackfillBusy(false);
+          })
+          .catch(function() {
+            if (statusMsg) statusMsg.textContent = 'Network error';
+            if (progressSummary) progressSummary.textContent = '';
+            setBackfillBusy(false);
+          });
       });
     }
   })();

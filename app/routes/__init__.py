@@ -21,16 +21,17 @@ from app.services.history import (
 )
 from app.services.nomination_accuracy import analyze_rtd_dispatch_workbook, analyze_uploads
 from app.services.nomination_accuracy_dates import (
-    parse_trade_date_from_rtd_dispatch_filename,
+    resolve_rtd_backfill_storage,
     resolve_storage_trade_date,
-    resolve_storage_trade_date_rtd_dispatch,
 )
 from app.services.nomination_accuracy_store import (
     calendar_annual_rollup,
     calendar_month_detail,
     calendar_monthly_rollup,
+    compliance_day_exists,
     delete_run,
     list_runs_with_billing_meta,
+    list_uploaded_compliance_days,
     save_run,
 )
 from app.services.weather import get_weather_forecast
@@ -199,6 +200,15 @@ def api_app_config():
     return jsonify({"ok": True})
 
 
+@bp.route("/api/nomination-accuracy/uploaded-dates", methods=["GET"])
+def api_nomination_accuracy_uploaded_dates():
+    try:
+        dates = list_uploaded_compliance_days()
+        return jsonify({"ok": True, "dates": dates})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
 @bp.route("/api/nomination-accuracy", methods=["POST", "OPTIONS"])
 def api_nomination_accuracy():
     if request.method == "OPTIONS":
@@ -251,79 +261,82 @@ def api_nomination_accuracy():
 @bp.route("/api/nomination-accuracy/rtd-dispatch-backfill", methods=["POST", "OPTIONS"])
 def api_nomination_accuracy_rtd_dispatch_backfill():
     """
-    One or more ``RTD … Day Ahead`` workbooks (.xlsx/.xlsm): RTD, Actual, Day Ahead MW in one file.
-    Trade date: per file from filename (``_26 March 2026``, ``YYYYMMDD``, ISO in name). Form
-    ``trade_date`` is used only when a filename has no parseable date (rare).
+    One trade day per request: ``RTD … Day Ahead`` workbook (RTD + Actual) plus MIRF Daily MQ
+    workbook. MQ DEL MW uses the same grid as MPI+MIRF analysis; storage key is the form
+    ``trade_date`` (calendar).
     """
     if request.method == "OPTIONS":
         return "", 204
-    files = request.files.getlist("files")
-    if not files:
-        one = request.files.get("file")
-        files = [one] if one and one.filename else []
-    trade_fallback = (request.form.get("trade_date") or "").strip()
-    fallback_d: date | None = None
-    if trade_fallback:
-        try:
-            fallback_d = date.fromisoformat(trade_fallback)
-        except ValueError:
-            return jsonify({"ok": False, "error": "trade_date must be YYYY-MM-DD."}), 400
-
-    results: list[dict] = []
-    for f in files:
-        if not f or not f.filename:
-            continue
-        if not f.filename.lower().endswith((".xlsx", ".xlsm")):
-            results.append(
-                {"ok": False, "filename": f.filename, "error": "Expected .xlsx or .xlsm."}
-            )
-            continue
-        raw = f.read()
-        d_from_fn = parse_trade_date_from_rtd_dispatch_filename(f.filename)
-        d_candidate = d_from_fn if d_from_fn is not None else fallback_d
-        if not d_candidate:
-            results.append(
+    rtd_f = request.files.get("rtd_file") or request.files.get("file")
+    mq_f = request.files.get("mq_xlsx")
+    trade_raw = (request.form.get("trade_date") or "").strip()
+    if not rtd_f or not rtd_f.filename:
+        return (
+            jsonify({"ok": False, "error": "Missing RTD / Actual / Day Ahead workbook (.xlsx / .xlsm)."}),
+            400,
+        )
+    if not mq_f or not mq_f.filename:
+        return jsonify({"ok": False, "error": "Missing MIRF Daily MQ workbook (.xlsx / .xlsm)."}), 400
+    if not trade_raw:
+        return jsonify({"ok": False, "error": "trade_date is required (YYYY-MM-DD)."}), 400
+    try:
+        chosen = date.fromisoformat(trade_raw)
+    except ValueError:
+        return jsonify({"ok": False, "error": "trade_date must be YYYY-MM-DD."}), 400
+    if compliance_day_exists(chosen.isoformat()):
+        return (
+            jsonify(
                 {
                     "ok": False,
-                    "filename": f.filename,
-                    "error": "Could not determine trade date. Use a name like "
-                    "'RTD and Actual Dispatch_26 March 2026.xlsm' or set trade_date (YYYY-MM-DD).",
+                    "error": "A saved run already exists for this trade date. "
+                    "Delete it in Saved runs before uploading again.",
                 }
-            )
-            continue
-        storage_day, date_warnings = resolve_storage_trade_date_rtd_dispatch(
-            f.filename, d_candidate
+            ),
+            409,
         )
-        try:
-            result = analyze_rtd_dispatch_workbook(raw, f.filename, storage_day)
-            row = {
-                **result["summary"],
-                "mape_ok": result["policy"]["mape_ok"],
-                "perc95_ok": result["policy"]["perc95_ok"],
-                "day_compliant": result["policy"]["day_compliant"],
-                "policy": result["policy"],
-                "analytics": result["analytics"],
-                "compliance_day": storage_day.isoformat(),
-            }
-            run_id, overwritten = save_run(row)
-            results.append(
-                {
-                    "ok": True,
-                    "filename": f.filename,
-                    "storage_day": storage_day.isoformat(),
-                    "date_warnings": date_warnings,
-                    "run_id": run_id,
-                    "overwritten": overwritten,
-                    "summary": result["summary"],
-                    "policy": result["policy"],
-                }
-            )
-        except Exception as e:
-            results.append({"ok": False, "filename": f.filename, "error": str(e)})
-
-    if not results:
-        return jsonify({"ok": False, "error": "No files uploaded."}), 400
-    return jsonify({"ok": True, "results": results})
+    if not rtd_f.filename.lower().endswith((".xlsx", ".xlsm")):
+        return jsonify({"ok": False, "error": "RTD workbook must be .xlsx or .xlsm."}), 400
+    if not mq_f.filename.lower().endswith((".xlsx", ".xlsm")):
+        return jsonify({"ok": False, "error": "MIRF MQ file must be .xlsx or .xlsm."}), 400
+    raw_rtd = rtd_f.read()
+    raw_mq = mq_f.read()
+    storage_day, date_warnings = resolve_rtd_backfill_storage(
+        rtd_f.filename or "",
+        mq_f.filename or "",
+        chosen,
+    )
+    try:
+        result = analyze_rtd_dispatch_workbook(
+            raw_rtd,
+            rtd_f.filename or "",
+            storage_day,
+            mq_xlsx_bytes=raw_mq,
+        )
+        row = {
+            **result["summary"],
+            "mape_ok": result["policy"]["mape_ok"],
+            "perc95_ok": result["policy"]["perc95_ok"],
+            "day_compliant": result["policy"]["day_compliant"],
+            "policy": result["policy"],
+            "analytics": result["analytics"],
+            "compliance_day": storage_day.isoformat(),
+        }
+        run_id, overwritten = save_run(row)
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
+    return jsonify(
+        {
+            "ok": True,
+            "filename": rtd_f.filename,
+            "storage_day": storage_day.isoformat(),
+            "date_warnings": date_warnings,
+            "run_id": run_id,
+            "overwritten": overwritten,
+            "summary": result["summary"],
+            "policy": result["policy"],
+            "analytics": result.get("analytics"),
+        }
+    )
 
 
 @bp.route("/api/nomination-accuracy/runs", methods=["GET"])

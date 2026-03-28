@@ -145,6 +145,28 @@ def resolve_storage_trade_date(
     return data_d, warnings
 
 
+def resolve_rtd_backfill_storage(
+    rtd_filename: str,
+    mq_filename: str,
+    chosen: date,
+) -> tuple[date, list[str]]:
+    """Storage key is the selected trade date; warn if workbook names imply another day."""
+    warnings: list[str] = []
+    rtd_d = parse_trade_date_from_rtd_dispatch_filename(rtd_filename)
+    mq_d = parse_trade_date_from_mq_filename(mq_filename)
+    if rtd_d and rtd_d != chosen:
+        warnings.append(
+            f"RTD workbook filename suggests {rtd_d.isoformat()}, but the selected trade date "
+            f"({chosen.isoformat()}) is used as the storage key."
+        )
+    if mq_d and mq_d != chosen:
+        warnings.append(
+            f"MIRF MQ filename suggests {mq_d.isoformat()}, but the selected trade date "
+            f"({chosen.isoformat()}) is used as the storage key."
+        )
+    return chosen, warnings
+
+
 def billing_period_containing(d: date) -> tuple[date, date]:
     """
     Billing period: 26th of one month through 25th of the next (inclusive).

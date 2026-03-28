@@ -186,6 +186,26 @@ def delete_run(run_id: int) -> bool:
         return cur.rowcount > 0
 
 
+def list_uploaded_compliance_days() -> list[str]:
+    """All distinct trade dates (ISO) that have a saved run, sorted ascending."""
+    init_nomination_accuracy_db()
+    with sqlite3.connect(db_path()) as conn:
+        cur = conn.execute(
+            "SELECT compliance_day FROM nomination_accuracy_run ORDER BY compliance_day ASC"
+        )
+        return [str(r[0]) for r in cur.fetchall() if r[0]]
+
+
+def compliance_day_exists(iso_day: str) -> bool:
+    init_nomination_accuracy_db()
+    with sqlite3.connect(db_path()) as conn:
+        r = conn.execute(
+            "SELECT 1 FROM nomination_accuracy_run WHERE compliance_day = ? LIMIT 1",
+            (iso_day,),
+        ).fetchone()
+        return r is not None
+
+
 def list_runs(
     year: int | None = None,
     month: int | None = None,
