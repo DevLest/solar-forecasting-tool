@@ -366,7 +366,12 @@ def api_nomination_accuracy_run_delete(run_id: int):
 def api_nomination_accuracy_analytics_monthly():
     year = request.args.get("year", type=int)
     if year is None:
-        return jsonify({"ok": False, "error": "Query parameter year is required (calendar year, e.g. 2026)."}), 400
+        return jsonify(
+            {
+                "ok": False,
+                "error": "Query parameter year is required (billing periods ending in this year, e.g. 2026).",
+            }
+        ), 400
     try:
         payload = calendar_monthly_rollup(year)
     except ValueError as e:
@@ -385,7 +390,7 @@ def api_nomination_accuracy_analytics_month_detail():
             jsonify(
                 {
                     "ok": False,
-                    "error": "Query parameters year and month are required (calendar month, e.g. year=2026&month=3).",
+                    "error": "Query parameters year and month are required (billing period end month, e.g. year=2026&month=1 for Dec 26, 2025–Jan 25, 2026).",
                 }
             ),
             400,

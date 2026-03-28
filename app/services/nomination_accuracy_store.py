@@ -6,7 +6,7 @@ import json
 import os
 import sqlite3
 from collections import defaultdict
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
 from app.config import DATA_DIR
@@ -265,28 +265,22 @@ def list_runs_with_billing_meta(
 
 def calendar_monthly_rollup(year: int, limit_per_year: int = 8000) -> dict[str, Any]:
     """
-    Roll up saved runs by **calendar month** (trade date ``compliance_day``), for one year.
-    Always returns 12 rows (Jan–Dec); months with no data have zero days and null averages.
+    Roll up saved runs by **billing period** (26th–25th, same as ``save_run``), for periods
+    whose **end date** falls in ``year`` (month label = month of the 25th end date).
+
+    Always returns 12 rows (Jan–Dec); periods with no data have zero days and null averages.
     """
     if year < 1990 or year > 2100:
         raise ValueError("year out of range")
-    runs = list_runs(year=year, month=None, limit=limit_per_year)
-    by_month: dict[int, list[dict[str, Any]]] = defaultdict(list)
-    for r in runs:
-        cd = str(r.get("compliance_day") or "")
-        if len(cd) < 7:
-            continue
-        try:
-            y = int(cd[:4])
-            mo = int(cd[5:7])
-        except ValueError:
-            continue
-        if y == year and 1 <= mo <= 12:
-            by_month[mo].append(r)
-
     months: list[dict[str, Any]] = []
+    all_in_year: list[dict[str, Any]] = []
     for m in range(1, 13):
-        chunk = by_month.get(m, [])
+        chunk = list_runs(
+            billing_period_year=year,
+            billing_period_month=m,
+            limit=limit_per_year,
+        )
+        all_in_year.extend(chunk)
         st = aggregate_run_stats(chunk)
         months.append(
             {
@@ -299,13 +293,15 @@ def calendar_monthly_rollup(year: int, limit_per_year: int = 8000) -> dict[str, 
     return {
         "year": year,
         "months": months,
-        "year_totals": aggregate_run_stats(runs),
+        "year_totals": aggregate_run_stats(all_in_year),
     }
 
 
 def calendar_month_detail(year: int, month: int) -> dict[str, Any]:
     """
-    Per calendar day in ``year``-``month``: which trade days have a saved run and which are missing.
+    Per trade day in the billing period that **ends** in ``year``-``month`` (26th prior month
+    through 25th of ``month``, inclusive) — same window as ``save_run`` / ``billing_period_*``.
+
     One saved row per ``compliance_day`` (re-uploads replace the same day).
     """
     if year < 1990 or year > 2100:
@@ -313,8 +309,13 @@ def calendar_month_detail(year: int, month: int) -> dict[str, Any]:
     if month < 1 or month > 12:
         raise ValueError("month must be 1–12")
     init_nomination_accuracy_db()
-    last_day = calendar.monthrange(year, month)[1]
-    runs = list_runs(year=year, month=month, limit=8000)
+    p0, p1 = billing_period_for_end_month(year, month)
+    period_days = (p1 - p0).days + 1
+    runs = list_runs(
+        billing_period_year=year,
+        billing_period_month=month,
+        limit=8000,
+    )
     by_day: dict[str, dict[str, Any]] = {}
     for r in runs:
         cd = str(r.get("compliance_day") or "")
@@ -334,8 +335,9 @@ def calendar_month_detail(year: int, month: int) -> dict[str, Any]:
         }
     missing_dates: list[str] = []
     rows: list[dict[str, Any]] = []
-    for d in range(1, last_day + 1):
-        iso = date(year, month, d).isoformat()
+    d = p0
+    while d <= p1:
+        iso = d.isoformat()
         if iso in by_day:
             info = by_day[iso]
             rows.append(
@@ -356,11 +358,14 @@ def calendar_month_detail(year: int, month: int) -> dict[str, Any]:
         else:
             missing_dates.append(iso)
             rows.append({"date": iso, "has_data": False})
+        d += timedelta(days=1)
     return {
         "year": year,
         "month": month,
         "label": f"{calendar.month_name[month]} {year}",
-        "calendar_days": last_day,
+        "billing_period": {"start": p0.isoformat(), "end": p1.isoformat()},
+        "calendar_days": period_days,
+        "days_in_period": period_days,
         "days_with_saved": len(by_day),
         "days_missing": len(missing_dates),
         "missing_dates": missing_dates,

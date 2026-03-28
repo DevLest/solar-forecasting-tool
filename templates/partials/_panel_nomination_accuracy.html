@@ -302,7 +302,7 @@
         <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
           <div>
             <h3 class="text-sm font-semibold text-brand-muted uppercase tracking-wider">Monthly &amp; annual analysis</h3>
-            <p class="text-xs text-brand-muted mt-1 max-w-3xl leading-relaxed">Rollups use the <span class="font-semibold text-brand-text">saved trade date</span> (<span class="font-mono">compliance_day</span>) — <span class="font-semibold text-brand-text">calendar months and years</span>, not billing periods (26th–25th). Click a <span class="font-semibold text-brand-text">month name</span> in the monthly table to see per-day saved uploads and missing dates. Charts use Chart.js on the same theme as the rest of the app.</p>
+            <p class="text-xs text-brand-muted mt-1 max-w-3xl leading-relaxed">Monthly rollups and the day-detail view use the same <span class="font-semibold text-brand-text">billing period</span> as saved runs: <span class="font-semibold text-brand-text">26th–25th</span>, labeled by the calendar month in which the period <span class="font-semibold text-brand-text">ends</span> (e.g. January = Dec&nbsp;26–Jan&nbsp;25). The year selector applies to those end months. Charts use Chart.js on the same theme as the rest of the app.</p>
           </div>
           <button type="button" id="accuracy-btn-rollup-refresh" class="shrink-0 py-2 px-3 rounded-lg border border-brand-border bg-brand-dark hover:bg-brand-border/40 text-brand-text text-xs font-bold uppercase tracking-wide transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent/40">
             Refresh data
@@ -312,7 +312,7 @@
         <div class="rounded-xl border border-brand-border/80 bg-brand-dark/25 p-4 sm:p-5 space-y-4">
           <div class="flex flex-wrap items-end gap-3">
             <div class="flex flex-col gap-0.5">
-              <label for="accuracy-rollup-year" class="text-[10px] uppercase tracking-wider text-brand-muted">Calendar year (monthly table &amp; charts)</label>
+              <label for="accuracy-rollup-year" class="text-[10px] uppercase tracking-wider text-brand-muted">Year (billing periods ending in this year)</label>
               <input type="number" id="accuracy-rollup-year" min="2000" max="2100" class="w-[5.5rem] bg-brand-dark border border-brand-border rounded-lg px-2 py-1.5 text-sm text-brand-text font-mono focus:outline-none focus:ring-2 focus:ring-brand-accent/40" />
             </div>
             <button type="button" id="accuracy-btn-load-rollup-year" class="py-2 px-3 rounded-lg border border-brand-accent/50 bg-brand-accent/15 text-brand-accent text-xs font-bold uppercase tracking-wide hover:bg-brand-accent/25 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent/40">

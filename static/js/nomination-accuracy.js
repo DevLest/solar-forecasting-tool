@@ -60,7 +60,7 @@
   var lastFetchedRuns = [];
   /** Last options passed to {@link fetchRuns} (for refresh after delete). */
   var lastRunsFetchOpts = {};
-  /** Rows from last month-detail API response (calendar order); used for policy modal by row index. */
+  /** Rows from last month-detail API response (billing-period day order); used for policy modal by row index. */
   var lastMonthDetailRows = [];
   var sortState = { key: 'day', dir: 'desc' };
   /** True after a successful Run analysis; used to restore the results panel when closing Saved / Monthly. */
@@ -1240,9 +1240,21 @@
         }
         if (monthDetailTitle) monthDetailTitle.textContent = j.label || 'Day coverage';
         if (monthDetailSummary) {
+          var bp = j.billing_period && typeof j.billing_period === 'object' ? j.billing_period : null;
+          var rangeLine =
+            bp && bp.start && bp.end
+              ? String(bp.start) + ' → ' + String(bp.end)
+              : '';
+          var nDays =
+            j.days_in_period != null
+              ? j.days_in_period
+              : j.calendar_days != null
+                ? j.calendar_days
+                : '—';
           monthDetailSummary.textContent =
-            String(j.calendar_days != null ? j.calendar_days : '—') +
-            ' calendar days · ' +
+            (rangeLine ? rangeLine + ' · ' : '') +
+            String(nDays) +
+            ' trade days in period · ' +
             String(j.days_with_saved != null ? j.days_with_saved : 0) +
             ' with saved run · ' +
             String(j.days_missing != null ? j.days_missing : 0) +
@@ -1302,7 +1314,7 @@
         '<td class="py-2 px-3 text-brand-text">' +
         '<button type="button" class="text-left font-medium text-brand-accent hover:underline hover:text-emerald-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent/40 rounded px-0.5 -mx-0.5" data-accuracy-month="' +
         mo +
-        '" title="Show per-day uploads and gaps for this month">' +
+        '" title="Show per-day uploads and gaps for this billing period (26th–25th)">' +
         row.label +
         '</button>' +
         '</td>' +
@@ -1632,7 +1644,7 @@
     rollupLoadYear.addEventListener('click', function() {
       var y = parseInt(rollupYearInput.value, 10);
       if (!isFinite(y) || y < 2000 || y > 2100) {
-        if (rollupStatus) rollupStatus.textContent = 'Enter a calendar year between 2000 and 2100.';
+        if (rollupStatus) rollupStatus.textContent = 'Enter a year between 2000 and 2100 (billing period end year).';
         return;
       }
       fetchRollupData(y);
