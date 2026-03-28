@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import csv
 import io
+import math
 from collections import defaultdict
 from datetime import date, datetime, time, timedelta
 from statistics import mean
@@ -13,6 +14,9 @@ from app.services.nomination_accuracy import parse_compliance_csv
 # Compliance window aligned with nomination accuracy paste (MPI rows 05:05–19:00)
 T_START = time(5, 5)
 T_END = time(19, 0)
+
+# Interval-end hours 6..18 = hourly LMP buckets from 6:00 through 18:00 (6AM–6PM display), used for average price.
+_HOURS_LMP_AVG_6AM_6PM = range(6, 19)
 
 
 def _parse_dt_interval_end(raw: str) -> datetime | None:
@@ -161,6 +165,36 @@ def _hourly_from_compliance(
     return out
 
 
+def _hourly_he_from_compliance(
+    parsed: list[tuple[datetime, float, float]], day: date, he_min: int, he_max: int
+) -> dict[int, tuple[float, float]]:
+    """
+    Hour-ending (HE) buckets aligned with Excel / trading reports: **HE N** = intervals whose end
+    time falls in ``((N-1):00, N:00]`` (e.g. HE 7 = 06:05 … 07:00), intersected with the compliance
+    window. Labels like “6:00 AM” on the reference chart correspond to **HE 6**, not naive ``dt.hour``.
+    """
+    out: dict[int, tuple[float, float]] = {}
+    for he in range(he_min, he_max + 1):
+        lo = time(he - 1, 0, 0)
+        hi = time(he, 0, 0)
+        pairs: list[tuple[float, float]] = []
+        for dt, rtd, act in parsed:
+            if dt.date() != day:
+                continue
+            t = dt.time()
+            if t < T_START or t > T_END:
+                continue
+            if not (lo < t <= hi):
+                continue
+            pairs.append((rtd, act))
+        if pairs:
+            out[he] = (
+                float(mean([p[0] for p in pairs])),
+                float(mean([p[1] for p in pairs])),
+            )
+    return out
+
+
 def _market_maps_for_day(
     rows: list[tuple[datetime, float, float]], day: date
 ) -> tuple[dict[int, float], dict[int, float]]:
@@ -178,6 +212,35 @@ def _market_maps_for_day(
     return mw_h, lmp_h
 
 
+def _day_ahead_mw_linear(dt: datetime, mw_map: dict[int, float]) -> float | None:
+    """
+    Day-ahead schedule MW from Energy Schedules (one MW per clock-hour ``Interval End``).
+
+    Excel line charts typically draw **straight segments** between points. MPI exports give one
+    value per hour; repeating that constant for every 5-minute row produces a **step** (ladder).
+    We **linearly interpolate** between consecutive hourly MW values at each interval-end time so
+    the series matches that slanted segment look (same source data, different sampling).
+    """
+    if not mw_map:
+        return None
+    t = dt.hour + dt.minute / 60.0 + dt.second / 3600.0
+    h0 = int(math.floor(t + 1e-9))
+    frac = t - float(h0)
+    if frac < 0:
+        frac = 0.0
+    if frac > 1:
+        frac = 1.0
+    v0 = mw_map.get(h0)
+    v1 = mw_map.get(h0 + 1)
+    if v0 is None and v1 is None:
+        return None
+    if v0 is None:
+        return float(v1)
+    if v1 is None:
+        return float(v0)
+    return float(v0) * (1.0 - frac) + float(v1) * frac
+
+
 def build_marketplace_chart_payload(
     compliance_bytes: bytes,
     trade_day: date,
@@ -186,11 +249,18 @@ def build_marketplace_chart_payload(
     """
     Build JSON-serializable chart data from stored MPI compliance.
 
-    If ``market_bytes`` is set, adds day-ahead MW, LMP, and E7:E19 LMP average from Energy Schedules.
-    If omitted, returns the same shape with market fields ``null`` and ``partial: True`` (MPI-only charts).
+    If ``market_bytes`` is set, adds day-ahead MW and LMP from the **Market Result — Energy
+    Schedules** CSV. **Average price (PHP)** is ``mean(LMP for interval-end hours 6..18) / 1000``,
+    aligned with the hourly chart. The hourly **Actual MW** series uses **hour-ending (HE)**
+    buckets ``((HE-1):00, HE:00]`` (same as Excel’s “hour ending” columns), not naive ``dt.hour``.
+    Day-ahead MW on the dispatch chart is **linearly interpolated** between hourly schedule values.
+
+    If ``market_bytes`` is omitted, returns the same shape with market fields ``null`` and
+    ``partial: True`` (MPI-only charts).
     """
     parsed = parse_compliance_csv(compliance_bytes)
-    hourly_c = _hourly_from_compliance(parsed, trade_day)
+    # Hourly combo chart: hour-ending HE 6..18 (6AM–6PM) to match Excel “hour ending” columns.
+    hourly_he = _hourly_he_from_compliance(parsed, trade_day, 6, 18)
 
     mw_map: dict[int, float] = {}
     lmp_map: dict[int, float] = {}
@@ -198,21 +268,24 @@ def build_marketplace_chart_payload(
     lmp_disp: float | None = None
     partial = market_bytes is None
 
+    lmp_avg_hourly_6am_6pm: float | None = None
+    average_price_php: float | None = None
     if market_bytes:
         mrows = parse_market_result_energy_schedules(market_bytes)
         mw_map, lmp_map = _market_maps_for_day(mrows, trade_day)
         lmp_avg_e7_e19 = lmp_average_excel_rows_e7_through_e19(market_bytes)
         lmp_disp = round(lmp_avg_e7_e19 / 1000.0, 3)
+        hourly_lmps = [lmp_map[h] for h in _HOURS_LMP_AVG_6AM_6PM if h in lmp_map]
+        if hourly_lmps:
+            lmp_avg_hourly_6am_6pm = float(mean(hourly_lmps))
+            average_price_php = round(lmp_avg_hourly_6am_6pm / 1000.0, 3)
 
     win_rows = _compliance_rows_for_day(parsed, trade_day)
     dispatch: list[dict[str, Any]] = []
     for i, (dt, rtd, act) in enumerate(win_rows, start=1):
-        h = dt.hour
         da = None
         if mw_map:
-            da = mw_map.get(h)
-            if da is None and h == 0 and 24 in mw_map:
-                da = mw_map.get(24)
+            da = _day_ahead_mw_linear(dt, mw_map)
         dispatch.append(
             {
                 "i": i,
@@ -223,25 +296,26 @@ def build_marketplace_chart_payload(
             }
         )
 
-    hours_6_18 = list(range(6, 19))
     hourly_chart: list[dict[str, Any]] = []
-    actual_for_avg: list[float] = []
-    for h in hours_6_18:
-        rtd_m, act_m = hourly_c.get(h, (None, None))
+    actual_for_6am_6pm: list[float] = []
+    for he in range(6, 19):
+        rtd_m, act_m = hourly_he.get(he, (None, None))
         if act_m is not None:
-            actual_for_avg.append(act_m)
+            actual_for_6am_6pm.append(act_m)
         hourly_chart.append(
             {
-                "hour": h,
-                "label": _hour_label_ampm(h),
+                "hour_ending": he,
+                "hour": he,
+                "label": _hour_label_ampm(he),
                 "rtd_mw_avg": rtd_m,
                 "actual_mw_avg": act_m,
-                "day_ahead_mw": mw_map.get(h) if mw_map else None,
-                "lmp": lmp_map.get(h) if lmp_map else None,
+                "day_ahead_mw": mw_map.get(he) if mw_map else None,
+                "lmp": lmp_map.get(he) if lmp_map else None,
             }
         )
 
-    actual_avg_6_to_18 = float(mean(actual_for_avg)) if actual_for_avg else None
+    actual_avg_6am_6pm = round(float(mean(actual_for_6am_6pm)), 4) if actual_for_6am_6pm else None
+    actual_mwh_6am_6pm = round(float(sum(actual_for_6am_6pm)), 3) if actual_for_6am_6pm else None
     total_actual_mwh_hint = None
     if win_rows:
         total_actual_mwh_hint = float(sum(act for _, _, act in win_rows) / 12.0)
@@ -251,7 +325,10 @@ def build_marketplace_chart_payload(
         "partial": partial,
         "lmp_average_e7_e19": lmp_avg_e7_e19,
         "lmp_average_e7_e19_display": lmp_disp,
-        "actual_dispatch_avg_mw_6am_6pm": actual_avg_6_to_18,
+        "lmp_average_hourly_6am_6pm": lmp_avg_hourly_6am_6pm,
+        "average_price_php": average_price_php,
+        "actual_dispatch_avg_mw_6am_6pm": actual_avg_6am_6pm,
+        "actual_dispatch_mwh_6am_6pm": actual_mwh_6am_6pm,
         "actual_dispatch_mwh_compliance_window": total_actual_mwh_hint,
         "dispatch_series": dispatch,
         "hourly_6am_6pm": hourly_chart,
@@ -259,7 +336,7 @@ def build_marketplace_chart_payload(
     if partial:
         out["partial_message"] = (
             "MPI compliance is loaded from the database. Upload Market Result — Energy Schedules "
-            "for this trade day to add LMP, day-ahead MW, and the E7:E19 LMP average."
+            "for this trade day to add LMP, day-ahead MW, and hourly average price."
         )
     return out
 

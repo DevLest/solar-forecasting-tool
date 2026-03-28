@@ -92,7 +92,8 @@
           </div>
         </div>
         <div class="rounded-lg border border-brand-border/60 bg-brand-dark/20 p-3">
-          <p class="text-[10px] font-bold uppercase tracking-wider text-brand-muted mb-2">6:00 AM – 6:00 PM — hourly actual vs LMP</p>
+          <p class="text-[10px] font-bold uppercase tracking-wider text-brand-muted mb-2">Hourly actual vs LMP (6AM–6PM, hour-ending)</p>
+          <p id="reporting-hourly-kpi" class="hidden text-center text-sm sm:text-base font-semibold tracking-tight mb-3 px-2 py-2 rounded-lg border border-brand-border/50 bg-brand-dark/35 text-brand-text" role="status" aria-live="polite"></p>
           <div class="h-80 min-h-[18rem] sm:min-h-[20rem] relative">
             <canvas id="reporting-chart-hourly" aria-label="Hourly actual dispatch and LMP"></canvas>
           </div>

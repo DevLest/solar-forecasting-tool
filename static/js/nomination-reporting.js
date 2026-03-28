@@ -183,6 +183,7 @@
   var chartDispatchEl = document.getElementById('reporting-chart-dispatch');
   var chartHourlyEl = document.getElementById('reporting-chart-hourly');
   var chartPartialBanner = document.getElementById('reporting-chart-partial-banner');
+  var hourlyKpiEl = document.getElementById('reporting-hourly-kpi');
   var chartDispatch = null;
   var chartHourly = null;
 
@@ -266,11 +267,46 @@
       .catch(function() {});
   }
 
-  /** Draws numeric labels above each LMP bar and each Actual line point on the hourly chart. */
+  function _reportingFmtLmpLabel(v) {
+    var a = Math.abs(v);
+    if (a >= 100) return String(Math.round(v));
+    return v.toFixed(1);
+  }
+
+  /** Boxed labels: LMP centered above/below bars, Actual MW centered below line points. */
   var reportingHourlyValueLabelsPlugin = {
     id: 'reportingHourlyValueLabels',
     afterDatasetsDraw: function(chart) {
       var ctx = chart.ctx;
+      function drawBoxedAt(text, x, centerY, fillRgb, strokeRgb) {
+        ctx.save();
+        ctx.font = '600 11px system-ui, Segoe UI, sans-serif';
+        var padX = 6;
+        var padY = 4;
+        var tw = ctx.measureText(text).width;
+        var th = 13;
+        var bw = tw + padX * 2;
+        var bh = th + padY * 2;
+        var bx = x - bw / 2;
+        var by = centerY - bh / 2;
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+        ctx.strokeStyle = strokeRgb;
+        ctx.lineWidth = 1;
+        if (typeof ctx.roundRect === 'function') {
+          ctx.beginPath();
+          ctx.roundRect(bx, by, bw, bh, 4);
+          ctx.fill();
+          ctx.stroke();
+        } else {
+          ctx.fillRect(bx, by, bw, bh);
+          ctx.strokeRect(bx, by, bw, bh);
+        }
+        ctx.fillStyle = fillRgb;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(text, x, centerY);
+        ctx.restore();
+      }
       chart.data.datasets.forEach(function(dataset, dsIndex) {
         var meta = chart.getDatasetMeta(dsIndex);
         if (!meta || meta.hidden) return;
@@ -280,39 +316,37 @@
           if (raw == null || raw === '') return;
           var v = typeof raw === 'number' ? raw : parseFloat(raw);
           if (isNaN(v)) return;
-          var label = v.toFixed(1);
+          var label = isBar ? _reportingFmtLmpLabel(v) : v.toFixed(1);
           var x;
-          var y;
+          var centerY;
           if (isBar && element) {
             x = element.x;
+            var posBar = typeof element.tooltipPosition === 'function' ? element.tooltipPosition() : null;
             if (element.y !== undefined && element.base !== undefined) {
-              y = Math.min(element.y, element.base) - 6;
-            } else if (typeof element.tooltipPosition === 'function') {
-              var posBar = element.tooltipPosition();
-              x = posBar.x;
-              var h = element.height;
-              if (h != null && !isNaN(h) && h > 0) {
-                y = posBar.y - h / 2 - 6;
+              var top = Math.min(element.y, element.base);
+              var bot = Math.max(element.y, element.base);
+              if (v >= 0) {
+                centerY = top - 14;
               } else {
-                y = posBar.y - 14;
+                centerY = bot + 14;
+              }
+            } else if (posBar && element.height != null && !isNaN(element.height) && element.height > 0) {
+              x = posBar.x;
+              if (v >= 0) {
+                centerY = posBar.y - element.height / 2 - 14;
+              } else {
+                centerY = posBar.y + element.height / 2 + 14;
               }
             } else {
               return;
             }
+            drawBoxedAt(label, x, centerY, 'rgb(191, 219, 254)', 'rgba(96, 165, 250, 0.65)');
           } else if (element && typeof element.tooltipPosition === 'function') {
             var pos = element.tooltipPosition();
             x = pos.x;
-            y = pos.y - 10;
-          } else {
-            return;
+            centerY = pos.y + 18;
+            drawBoxedAt(label, x, centerY, 'rgb(254, 215, 170)', 'rgba(251, 146, 60, 0.65)');
           }
-          ctx.save();
-          ctx.font = '600 10px system-ui, Segoe UI, sans-serif';
-          ctx.fillStyle = isBar ? 'rgb(147, 197, 253)' : 'rgb(254, 215, 170)';
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'bottom';
-          ctx.fillText(label, x, y);
-          ctx.restore();
         });
       });
     }
@@ -336,6 +370,10 @@
       chartError.textContent = '';
     }
     if (chartSummary) chartSummary.classList.add('hidden');
+    if (hourlyKpiEl) {
+      hourlyKpiEl.classList.add('hidden');
+      hourlyKpiEl.textContent = '';
+    }
     if (chartPartialBanner) chartPartialBanner.classList.add('hidden');
     destroyReportingCharts();
     fetch('/api/nomination-reporting/marketplace-chart?day=' + encodeURIComponent(dayIso))
@@ -379,7 +417,8 @@
             data: rtd,
             borderColor: 'rgb(59, 130, 246)',
             backgroundColor: 'rgba(59, 130, 246, 0.1)',
-            tension: 0.1,
+            tension: 0,
+            stepped: 'after',
             pointRadius: 0,
             borderWidth: 1.5
           },
@@ -388,7 +427,7 @@
             data: act,
             borderColor: 'rgb(249, 115, 22)',
             backgroundColor: 'rgba(249, 115, 22, 0.08)',
-            tension: 0.1,
+            tension: 0.12,
             pointRadius: 0,
             borderWidth: 1.5
           }
@@ -401,7 +440,6 @@
             backgroundColor: 'transparent',
             spanGaps: true,
             tension: 0,
-            stepped: true,
             pointRadius: 0,
             borderWidth: 1.5
           });
@@ -443,7 +481,7 @@
             }
           });
         }
-        var hourly = j.hourly_6am_6pm || [];
+        var hourly = j.hourly_6am_6pm || j.hourly_5am_7pm || [];
         var hLabels = hourly.map(function(h) {
           return h.label;
         });
@@ -466,9 +504,10 @@
                     data: hAct,
                     borderColor: 'rgb(249, 115, 22)',
                     backgroundColor: 'rgba(249, 115, 22, 0.12)',
-                    tension: 0.2,
+                    tension: 0,
                     fill: false,
                     borderWidth: 2,
+                    spanGaps: false,
                     pointRadius: 4,
                     pointHoverRadius: 6,
                     pointBackgroundColor: 'rgb(249, 115, 22)',
@@ -480,7 +519,7 @@
               options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                layout: { padding: { top: 14 } },
+                layout: { padding: { top: 18, bottom: 28 } },
                 plugins: {
                   legend: { labels: { color: '#94a3b8' } },
                   title: {
@@ -527,7 +566,7 @@
                     borderColor: 'rgb(249, 115, 22)',
                     backgroundColor: 'rgba(249, 115, 22, 0.15)',
                     yAxisID: 'y',
-                    tension: 0.2,
+                    tension: 0,
                     fill: false,
                     borderWidth: 2,
                     order: 1,
@@ -535,16 +574,20 @@
                     pointHoverRadius: 6,
                     pointBackgroundColor: 'rgb(249, 115, 22)',
                     pointBorderColor: 'rgb(255, 237, 213)',
-                    pointBorderWidth: 1
+                    pointBorderWidth: 1,
+                    spanGaps: false
                   }
                 ]
               },
               options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                layout: { padding: { top: 14 } },
+                layout: { padding: { top: 18, bottom: 28 } },
                 plugins: {
-                  legend: { labels: { color: '#94a3b8' } }
+                  legend: {
+                    labels: { color: '#94a3b8' },
+                    position: 'bottom'
+                  }
                 },
                 scales: {
                   x: {
@@ -569,6 +612,36 @@
             });
           }
         }
+        if (hourlyKpiEl) {
+          var mwhK =
+            j.actual_dispatch_mwh_6am_6pm != null
+              ? j.actual_dispatch_mwh_6am_6pm
+              : j.actual_dispatch_mwh_5am_7pm != null
+                ? j.actual_dispatch_mwh_5am_7pm
+                : j.actual_dispatch_mwh_6am_5pm;
+          var phpK = j.average_price_php != null ? j.average_price_php : j.lmp_average_e7_e19_display;
+          var segs = [];
+          if (mwhK != null) {
+            segs.push(
+              '<span class="text-orange-300/95 font-semibold">Actual dispatch ' +
+                mwhK.toFixed(1) +
+                ' MWh</span> <span class="text-brand-muted font-normal text-xs">(6AM–6PM HE)</span>'
+            );
+          }
+          if (!isPartial && phpK != null) {
+            segs.push(
+              '<span class="text-sky-300/95 font-semibold">Avg price ' +
+                phpK +
+                ' PHP</span> <span class="text-brand-muted font-normal text-xs">(hourly 6AM–6PM)</span>'
+            );
+          }
+          if (segs.length) {
+            hourlyKpiEl.innerHTML = segs.join(
+              ' <span class="text-brand-muted px-1" aria-hidden="true">·</span> '
+            );
+            hourlyKpiEl.classList.remove('hidden');
+          }
+        }
         if (chartSummary) {
           var parts = [];
           parts.push('Trade day ' + (j.trade_day || dayIso));
@@ -580,14 +653,29 @@
               'Actual MWh (05:05–19:00 window) ' + j.actual_dispatch_mwh_compliance_window.toFixed(1)
             );
           }
-          if (j.actual_dispatch_avg_mw_6am_6pm != null) {
-            parts.push('Avg actual MW 6AM–6PM ' + j.actual_dispatch_avg_mw_6am_6pm.toFixed(2));
+          var mwh66 =
+            j.actual_dispatch_mwh_6am_6pm != null
+              ? j.actual_dispatch_mwh_6am_6pm
+              : j.actual_dispatch_mwh_5am_7pm != null
+                ? j.actual_dispatch_mwh_5am_7pm
+                : j.actual_dispatch_mwh_6am_5pm;
+          var avg66 =
+            j.actual_dispatch_avg_mw_6am_6pm != null
+              ? j.actual_dispatch_avg_mw_6am_6pm
+              : j.actual_dispatch_avg_mw_5am_7pm != null
+                ? j.actual_dispatch_avg_mw_5am_7pm
+                : j.actual_dispatch_avg_mw_6am_5pm;
+          if (mwh66 != null) {
+            parts.push('Actual MWh (6AM–6PM HE) ' + mwh66.toFixed(1));
+          }
+          if (avg66 != null) {
+            parts.push('Avg actual MW (6AM–6PM HE) ' + avg66.toFixed(2));
+          }
+          if (!isPartial && j.average_price_php != null) {
+            parts.push('Avg price (hourly 6AM–6PM) ' + j.average_price_php + ' PHP');
           }
           if (!isPartial && j.lmp_average_e7_e19 != null) {
-            parts.push('Avg LMP (rows 7–19) ' + j.lmp_average_e7_e19.toFixed(2));
-          }
-          if (!isPartial && j.lmp_average_e7_e19_display != null) {
-            parts.push('Avg LMP ÷1000 (display) ' + j.lmp_average_e7_e19_display);
+            parts.push('LMP ref rows 7–19 (file) ' + j.lmp_average_e7_e19.toFixed(2));
           }
           chartSummary.textContent = parts.join(' · ');
           chartSummary.classList.remove('hidden');
