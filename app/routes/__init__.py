@@ -7,6 +7,7 @@ import os
 import re
 from datetime import date, datetime
 from pathlib import Path
+from typing import Any
 
 from flask import Blueprint, Response, jsonify, render_template, request, send_from_directory
 from werkzeug.utils import secure_filename
@@ -559,26 +560,41 @@ def api_billing_history_upload():
                 jsonify({"ok": False, "error": "year, billing_month, and statement_ref (Prelim or Final) are required."}),
                 400,
             )
-        files = request.files.getlist("invoices")
-        if not files:
-            return jsonify({"ok": False, "error": "No PDF uploads (field name: invoices)."}), 400
-        if len(files) > 5:
+        slot_pairs: list[tuple[Any, str]] = [
+            ("invoice_emf_regular", "emf_regular"),
+            ("invoice_emf_iemms", "emf_iemms"),
+            ("invoice_emf_supplemental", "emf_supplemental"),
+            ("invoice_wta_areco", "wta_areco"),
+            ("invoice_wta_arecoss", "wta_arecoss"),
+        ]
+        work: list[tuple[Any, str | None]] = []
+        for field_name, slot in slot_pairs:
+            f = request.files.get(field_name)
+            if f and f.filename:
+                work.append((f, slot))
+        if not work:
+            files = request.files.getlist("invoices")
+            for f in files:
+                if f and f.filename:
+                    work.append((f, None))
+        if not work:
+            return jsonify({"ok": False, "error": "No PDF uploads. Use the five labeled slots or the legacy invoices field."}), 400
+        if len(work) > 5:
             return jsonify({"ok": False, "error": "At most 5 invoice PDFs per request."}), 400
         patches: list[dict] = []
         details: list[dict] = []
-        for f in files:
-            if not f or not f.filename:
-                continue
+        for f, slot in work:
             if not f.filename.lower().endswith(".pdf"):
                 return jsonify({"ok": False, "error": f"Not a PDF: {f.filename!r}."}), 400
             raw = f.read()
             if not raw:
                 return jsonify({"ok": False, "error": f"Empty file: {f.filename!r}."}), 400
-            res = extract_invoice_pdf(f.filename, raw)
+            res = extract_invoice_pdf(f.filename, raw, slot=slot)
             patches.append(res.input_patch)
             details.append(
                 {
                     "filename": f.filename,
+                    "slot": slot,
                     "kind": res.detected_kind,
                     "patch": res.input_patch,
                     "warnings": res.warnings,

@@ -10,9 +10,6 @@
   var uploadYear = document.getElementById('bh-upload-year');
   var uploadMonth = document.getElementById('bh-upload-month');
   var uploadStmt = document.getElementById('bh-upload-statement');
-  var fileInput = document.getElementById('bh-file-invoices');
-  var dropZone = document.getElementById('bh-drop-invoices');
-  var invoiceNames = document.getElementById('bh-invoice-names');
   var btnUpload = document.getElementById('bh-btn-upload');
   var uploadStatus = document.getElementById('bh-upload-status');
 
@@ -25,7 +22,6 @@
   var inputTbody = document.getElementById('bh-input-tbody');
   var inputCount = document.getElementById('bh-input-count');
 
-  var pendingFiles = [];
   /** @type {number|null} */
   var bhSelectedRowId = null;
   /** @type {Record<number, object>} */
@@ -52,13 +48,126 @@
     if (uploadYear && !uploadYear.value) uploadYear.value = String(y);
   }
 
-  function setInvoiceList(files) {
-    pendingFiles = (files || []).slice(0, 5);
-    if (invoiceNames) {
-      invoiceNames.textContent = pendingFiles.length
-        ? pendingFiles.map(function (f) { return f.name; }).join(', ')
-        : '';
+  function updateSlotsSummary() {
+    var el = document.getElementById('bh-upload-slots-summary');
+    if (!el) return;
+    var n = countChosenSlotFiles();
+    var inputs = document.querySelectorAll('.bh-slot-input');
+    var total = inputs.length || 5;
+    if (n === 0) {
+      el.textContent = 'No files selected — choose PDFs in the rows above.';
+      el.className = 'text-[11px] text-brand-muted pt-1 min-h-[1.25rem]';
+    } else if (n === total) {
+      el.textContent = 'All ' + total + ' slots have a file — ready to import.';
+      el.className = 'text-[11px] text-emerald-400/95 font-medium pt-1 min-h-[1.25rem]';
+    } else {
+      el.textContent = n + ' of ' + total + ' slots have a file.';
+      el.className = 'text-[11px] text-brand-accent/90 font-medium pt-1 min-h-[1.25rem]';
     }
+  }
+
+  function syncSlotRowState(inp) {
+    if (!inp) return;
+    var has = !!(inp.files && inp.files[0]);
+    var fname = has ? inp.files[0].name : '';
+    var row = inp.closest ? inp.closest('.bh-slot-row') : null;
+    var label = document.querySelector('[data-slot-for="' + inp.name + '"]');
+    if (label) {
+      label.textContent = has ? fname : 'No file chosen';
+      label.classList.toggle('text-emerald-300', has);
+      label.classList.toggle('text-brand-muted', !has);
+      label.classList.toggle('font-medium', has);
+    }
+    if (row) {
+      row.setAttribute('data-has-file', has ? 'true' : 'false');
+      row.setAttribute(
+        'aria-label',
+        has ? 'Invoice slot, file attached: ' + fname : 'Invoice slot, empty — choose a PDF'
+      );
+      row.classList.toggle('border-dashed', !has);
+      row.classList.toggle('border-solid', has);
+      row.classList.toggle('border-brand-border/45', !has);
+      row.classList.toggle('border-emerald-500/50', has);
+      row.classList.toggle('bg-brand-dark/15', !has);
+      row.classList.toggle('bg-emerald-950/30', has);
+      row.classList.toggle('shadow-sm', has);
+      var emptyIc = row.querySelector('.bh-slot-icon-empty');
+      var filledIc = row.querySelector('.bh-slot-icon-filled');
+      var status = row.querySelector('.bh-slot-status');
+      if (emptyIc) {
+        emptyIc.classList.toggle('hidden', has);
+        emptyIc.classList.toggle('flex', !has);
+      }
+      if (filledIc) {
+        filledIc.classList.toggle('hidden', !has);
+        filledIc.classList.toggle('flex', has);
+      }
+      if (status) {
+        status.classList.toggle('border-emerald-400/60', has);
+        status.classList.toggle('bg-emerald-500/20', has);
+        status.classList.toggle('text-emerald-400', has);
+        status.classList.toggle('ring-2', has);
+        status.classList.toggle('ring-emerald-500/25', has);
+        status.classList.toggle('border-brand-border/55', !has);
+        status.classList.toggle('bg-brand-dark/40', !has);
+        status.classList.toggle('text-brand-muted', !has);
+      }
+      if (has) {
+        row.classList.remove('bh-slot-row--flash');
+        void row.offsetWidth;
+        row.classList.add('bh-slot-row--flash');
+        window.clearTimeout(row._bhFlashTimer);
+        row._bhFlashTimer = window.setTimeout(function () {
+          row.classList.remove('bh-slot-row--flash');
+        }, 900);
+      }
+    }
+    updateSlotsSummary();
+  }
+
+  function clearAllSlotInputs() {
+    document.querySelectorAll('.bh-slot-input').forEach(function (inp) {
+      inp.value = '';
+      syncSlotRowState(inp);
+    });
+  }
+
+  function countChosenSlotFiles() {
+    var n = 0;
+    document.querySelectorAll('.bh-slot-input').forEach(function (inp) {
+      if (inp.files && inp.files[0]) n += 1;
+    });
+    return n;
+  }
+
+  function bindBillingSlotPickers() {
+    document.querySelectorAll('.bh-slot-input').forEach(function (inp) {
+      inp.addEventListener('change', function () {
+        syncSlotRowState(inp);
+      });
+    });
+    document.querySelectorAll('.bh-slot-browse').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var id = btn.getAttribute('data-bh-slot');
+        var el = id ? document.getElementById(id) : null;
+        if (el) el.click();
+      });
+    });
+    document.querySelectorAll('.bh-slot-clear').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var id = btn.getAttribute('data-bh-slot');
+        var inp = id ? document.getElementById(id) : null;
+        if (inp) {
+          inp.value = '';
+          syncSlotRowState(inp);
+        }
+      });
+    });
+    document.querySelectorAll('.bh-slot-input').forEach(function (inp) {
+      syncSlotRowState(inp);
+    });
   }
 
   function updateDisplayContext(payload) {
@@ -417,16 +526,18 @@
       if (uploadStatus) uploadStatus.textContent = 'Year is required.';
       return;
     }
-    if (!pendingFiles.length) {
-      if (uploadStatus) uploadStatus.textContent = 'Choose up to 5 PDFs first.';
+    if (!countChosenSlotFiles()) {
+      if (uploadStatus) uploadStatus.textContent = 'Choose at least one PDF in the slots above.';
       return;
     }
     var fd = new FormData();
     fd.append('year', uploadYear.value);
     fd.append('billing_month', uploadMonth ? uploadMonth.value : '');
     fd.append('statement_ref', uploadStmt ? uploadStmt.value : 'Final');
-    pendingFiles.forEach(function (f) {
-      fd.append('invoices', f, f.name);
+    document.querySelectorAll('.bh-slot-input').forEach(function (inp) {
+      if (inp.files && inp.files[0]) {
+        fd.append(inp.name, inp.files[0], inp.files[0].name);
+      }
     });
     if (btnUpload) btnUpload.disabled = true;
     if (uploadStatus) uploadStatus.textContent = 'Uploading…';
@@ -439,8 +550,7 @@
         if (uploadStatus) {
           uploadStatus.textContent = 'Imported row #' + j.row_id + '.';
         }
-        setInvoiceList([]);
-        if (fileInput) fileInput.value = '';
+        clearAllSlotInputs();
         if (yearFilter) yearFilter.value = uploadYear.value;
         if (monthFilter && uploadMonth) monthFilter.value = uploadMonth.value;
         if (stmtFilter && uploadStmt) stmtFilter.value = uploadStmt.value;
@@ -470,41 +580,7 @@
   if (btnUpload) btnUpload.addEventListener('click', onUpload);
   if (displayClearSel) displayClearSel.addEventListener('click', onClearDisplaySelection);
 
-  if (dropZone && fileInput) {
-    dropZone.addEventListener('click', function () {
-      fileInput.click();
-    });
-    dropZone.addEventListener('keydown', function (e) {
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        fileInput.click();
-      }
-    });
-    fileInput.addEventListener('change', function () {
-      setInvoiceList(fileInput.files ? Array.prototype.slice.call(fileInput.files) : []);
-    });
-    ['dragenter', 'dragover'].forEach(function (ev) {
-      dropZone.addEventListener(ev, function (e) {
-        e.preventDefault();
-        dropZone.classList.add('border-brand-accent/50');
-      });
-    });
-    ['dragleave', 'drop'].forEach(function (ev) {
-      dropZone.addEventListener(ev, function (e) {
-        e.preventDefault();
-        dropZone.classList.remove('border-brand-accent/50');
-      });
-    });
-    dropZone.addEventListener('drop', function (e) {
-      var files = e.dataTransfer && e.dataTransfer.files ? Array.prototype.slice.call(e.dataTransfer.files) : [];
-      files = files
-        .filter(function (f) {
-          return /\.pdf$/i.test(f.name);
-        })
-        .slice(0, 5);
-      setInvoiceList(files);
-    });
-  }
+  bindBillingSlotPickers();
 
   document.querySelectorAll('[data-nav-panel="billing-history"]').forEach(function (btn) {
     btn.addEventListener('click', function () {

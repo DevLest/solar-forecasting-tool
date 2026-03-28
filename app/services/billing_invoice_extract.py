@@ -132,10 +132,22 @@ def _find_wta_summary_numbers(full_text: str, _lines: list[str], for_arecoss: bo
     return out
 
 
-def parse_wta_cover(text: str) -> tuple[str, dict[str, Any]]:
-    """Returns ('areco'|'arecoss', patch dict for Input columns e..ad)."""
+def parse_wta_cover(
+    text: str,
+    force_branch: str | None = None,
+) -> tuple[str, dict[str, Any]]:
+    """Returns ('areco'|'arecoss', patch dict for Input columns e..ad).
+
+    ``force_branch`` — when set (``areco`` | ``arecoss``), use that branch instead of
+    detecting from PDF text (for uploads where the file name does not hint at type).
+    """
     t = text
-    is_ss = bool(re.search(r"ARECOSS|For the Account of ARECOSS", t, re.IGNORECASE))
+    if force_branch == "areco":
+        is_ss = False
+    elif force_branch == "arecoss":
+        is_ss = True
+    else:
+        is_ss = bool(re.search(r"ARECOSS|For the Account of ARECOSS", t, re.IGNORECASE))
     kind = "arecoss" if is_ss else "areco"
     sm = _find_wta_summary_numbers(t, _lines_after_summary(t), is_ss)
     patch: dict[str, Any] = {"kind": "wta", "wta_branch": kind}
@@ -185,29 +197,67 @@ class ExtractResult:
     warnings: list[str] = field(default_factory=list)
 
 
-def extract_invoice_pdf(filename: str, data: bytes) -> ExtractResult:
-    """Dispatch parser from filename + content."""
+def _wta_result_to_extract(filename: str, branch: str, patch: dict[str, Any]) -> ExtractResult:
+    ir: dict[str, Any] = {}
+    for k, v in patch.items():
+        if k in ("kind", "wta_branch"):
+            continue
+        if isinstance(v, (int, float)):
+            ir[str(k).lower()] = float(v)
+    meta = {k: v for k, v in patch.items() if k in ("kind", "wta_branch")}
+    return ExtractResult(
+        filename,
+        f"wta_{branch}",
+        input_patch=ir,
+        raw_meta=meta,
+    )
+
+
+def extract_invoice_pdf(
+    filename: str,
+    data: bytes,
+    *,
+    slot: str | None = None,
+) -> ExtractResult:
+    """Dispatch parser from PDF content; optional ``slot`` fixes invoice type (ignores filename)."""
     if not data:
         return ExtractResult(filename, "empty", warnings=["Empty file"])
     text = _extract_pdf_text(data)
     low = (filename or "").lower()
     fk = _kind_from_filename(filename)
 
+    # Explicit slot (UI: one file per invoice type — filenames may vary)
+    if slot in ("wta_areco", "wta_arecoss"):
+        fb = "areco" if slot == "wta_areco" else "arecoss"
+        branch, patch = parse_wta_cover(text, force_branch=fb)
+        return _wta_result_to_extract(filename, branch, patch)
+
+    if slot in ("emf_regular", "emf_iemms", "emf_supplemental"):
+        if "market fees" not in text.lower() or "net settlement amount" not in text.lower():
+            return ExtractResult(
+                filename,
+                slot,
+                warnings=[
+                    "Expected an EMF market fees PDF for this slot (look for Market Fees / Net Settlement Amount).",
+                ],
+            )
+        emf = parse_emf_market_fee(text)
+        amt = emf.get("net_settlement_amount")
+        if amt is None:
+            amt = emf.get("amount_parentheses")
+        if amt is None:
+            return ExtractResult(
+                filename,
+                slot,
+                raw_meta=emf,
+                warnings=["Could not read net settlement amount from this EMF PDF."],
+            )
+        col = {"emf_regular": "aa", "emf_iemms": "ab", "emf_supplemental": "ac"}[slot]
+        return ExtractResult(filename, slot, input_patch={col: float(amt)}, raw_meta=emf)
+
     if fk == "wta" or "wesm transaction" in text.lower():
         branch, patch = parse_wta_cover(text)
-        ir: dict[str, Any] = {}
-        for k, v in patch.items():
-            if k in ("kind", "wta_branch"):
-                continue
-            if isinstance(v, (int, float)):
-                ir[str(k).lower()] = float(v)
-        meta = {k: v for k, v in patch.items() if k in ("kind", "wta_branch")}
-        return ExtractResult(
-            filename,
-            f"wta_{branch}",
-            input_patch=ir,
-            raw_meta=meta,
-        )
+        return _wta_result_to_extract(filename, branch, patch)
 
     if "market fees" in text.lower() and "net settlement amount" in text.lower():
         emf = parse_emf_market_fee(text)
