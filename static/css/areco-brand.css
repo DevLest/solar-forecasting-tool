@@ -111,6 +111,11 @@
     #accuracy-backfill-dialog[open] { display: flex; }
     #accuracy-backfill-dialog:not([open]) { display: none; }
     #accuracy-backfill-dialog .modal-panel { background: #1e293b; border: 1px solid #334155; border-radius: 1rem; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); max-height: 90vh; overflow: auto; }
+    #accuracy-mq-dialog::backdrop { background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(4px); }
+    #accuracy-mq-dialog { border: none; padding: 0; background: transparent; max-width: none; max-height: none; width: 100%; height: 100%; align-items: center; justify-content: center; z-index: 105; }
+    #accuracy-mq-dialog[open] { display: flex; }
+    #accuracy-mq-dialog:not([open]) { display: none; }
+    #accuracy-mq-dialog .modal-panel { background: #1e293b; border: 1px solid #334155; border-radius: 1rem; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); max-height: 90vh; overflow: auto; }
     #accuracy-run-policy-dialog::backdrop { background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(4px); }
     #accuracy-run-policy-dialog { border: none; padding: 0; background: transparent; max-width: none; max-height: none; width: 100%; height: 100%; align-items: center; justify-content: center; z-index: 110; }
     #accuracy-run-policy-dialog[open] { display: flex; }

@@ -3,14 +3,14 @@
       {{ page_hero('Forecast Percentage Error', 'State of the art app from Daniel Rex Cosas') }}
 
       <p class="text-sm text-brand-muted max-w-3xl leading-relaxed">
-        <span class="font-semibold text-brand-text">Historical backfill:</span> use <span class="font-mono text-[11px]">Backfill (RTD + MIRF)</span> to open the dialog — one trade day at a time with the RTD workbook and MIRF Daily MQ (the calendar blocks days that already have a saved run). For MPI compliance CSV + MIRF, use the two drop zones and <span class="font-semibold text-brand-text">Run analysis</span> below.
+        <span class="font-semibold text-brand-text">MPI compliance CSV</span> is uploaded under <span class="font-semibold text-brand-text">Reporting</span> and stored by trade day. Use <span class="font-semibold text-brand-text">Upload MQ workbook</span> to open the MIRF Daily MQ upload — after you choose a file, analysis runs automatically and results appear below. RTD/Actual come from the saved MPI export. <span class="font-semibold text-brand-text">Historical backfill:</span> use <span class="font-mono text-[11px]">Backfill (RTD + MIRF)</span> for one day at a time with RTD + MQ workbooks (calendar blocks days that already have a saved run).
       </p>
 
       <dialog id="accuracy-backfill-dialog" aria-labelledby="accuracy-backfill-title">
         <div class="modal-panel p-6 sm:p-7 max-w-xl w-[min(100vw-2rem,40rem)]">
           <h2 id="accuracy-backfill-title" class="text-sm font-bold uppercase tracking-wider text-brand-muted mb-2">Backfill: RTD workbook + MIRF Daily MQ</h2>
           <p class="text-xs text-brand-muted leading-relaxed mb-3">
-            <span class="font-semibold text-brand-text">One day per upload.</span> Sheet <span class="font-mono text-[11px] text-brand-text">RTD -Actual -Day Ahead</span>: C interval time, D RTD (MW), E Actual (F Day Ahead is ignored when MIRF MQ is supplied). MIRF MQ uses the same DEL grid as <span class="font-semibold text-brand-text">Run analysis</span> (B13:Y36). The <span class="font-semibold text-brand-text">trade date</span> you select is the database key; filenames may still be checked for mismatches (warnings only).
+            <span class="font-semibold text-brand-text">One day per upload.</span> Sheet <span class="font-mono text-[11px] text-brand-text">RTD -Actual -Day Ahead</span>: C interval time, D RTD (MW), E Actual (F Day Ahead is ignored when MIRF MQ is supplied). MIRF MQ uses the same DEL grid as <span class="font-semibold text-brand-text">Forecast Percentage MQ analysis</span> (B13:Y36). The <span class="font-semibold text-brand-text">trade date</span> you select is the database key; filenames may still be checked for mismatches (warnings only).
           </p>
           <label for="accuracy-backfill-trade-date" class="block text-[10px] font-bold uppercase tracking-wider text-brand-muted mb-1">Trade date (target day)</label>
           <input type="date" id="accuracy-backfill-trade-date" class="w-full max-w-[12rem] bg-brand-dark border border-brand-border rounded-lg px-2 py-1.5 text-sm text-brand-text font-mono [color-scheme:dark] focus:outline-none focus:ring-2 focus:ring-brand-accent/40" />
@@ -65,37 +65,10 @@
         </div>
       </dialog>
 
-      <div class="grid gap-6 md:grid-cols-2">
-        <section class="bg-brand-card rounded-xl border border-brand-border p-5 sm:p-6 shadow-lg flex flex-col gap-4 group transition-shadow hover:shadow-xl hover:border-brand-border/80" aria-labelledby="accuracy-upload-compliance-heading">
-          <div>
-            <h3 id="accuracy-upload-compliance-heading" class="text-sm font-semibold text-brand-muted uppercase tracking-wider">MPI compliance export (CSV)</h3>
-            <p class="text-sm text-brand-muted mt-1 leading-relaxed">CSV (e.g. <span class="font-mono text-[11px]">mpi_areco_01_Compliance-Output … .csv</span>). Uses <span class="font-mono">Interval End</span>, <span class="font-mono">Market DOT</span>, <span class="font-mono">Actual Output</span>. Rows from 05:05–19:00 on the dominant day are mapped into the 5‑minute grid like your Trading Report paste. For RTD + Actual plus MIRF MQ from workbooks, use <span class="font-semibold text-brand-text">Backfill (RTD + MIRF)</span>.</p>
-          </div>
-          <input type="file" id="accuracy-file-compliance" accept=".csv,text/csv" class="sr-only" />
-          <div
-            id="accuracy-drop-compliance"
-            class="accuracy-dropzone relative rounded-xl border-2 border-dashed border-brand-border/70 bg-brand-dark/25 px-4 py-8 sm:py-10 text-center transition-all duration-200 hover:border-brand-accent/45 hover:bg-brand-dark/40 focus-within:border-brand-accent/50 focus-within:ring-2 focus-within:ring-brand-accent/25 outline-none cursor-pointer"
-            role="button"
-            tabindex="0"
-            aria-label="Choose or drop compliance CSV file"
-          >
-            <div class="pointer-events-none absolute inset-0 rounded-xl opacity-0 transition-opacity duration-200 bg-brand-accent/5 accuracy-drop-overlay" aria-hidden="true"></div>
-            <p class="text-xs text-brand-muted mb-3"><span class="text-brand-text font-semibold">Drop file here</span> or use the button — <kbd class="px-1.5 py-0.5 rounded border border-brand-border/80 bg-brand-dark font-mono text-[10px] text-brand-muted">Enter</kbd> when focused also opens the picker</p>
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-center gap-3 relative z-[1]">
-              <button type="button" id="accuracy-btn-compliance" class="shrink-0 py-3 px-4 rounded-xl border border-brand-border bg-brand-dark hover:bg-brand-border/40 active:scale-[0.98] text-brand-text font-bold uppercase text-xs tracking-wide transition-all text-center focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent/50">
-                Choose MPI CSV
-              </button>
-              <p id="accuracy-name-compliance" class="text-xs text-brand-muted font-mono truncate min-w-0 max-w-full sm:max-w-[14rem] text-left sm:text-center" title="">No file selected</p>
-            </div>
-            <p id="accuracy-ready-compliance" class="mt-3 text-[11px] font-semibold uppercase tracking-wider text-brand-muted transition-colors" aria-live="polite">○ Waiting for file</p>
-          </div>
-        </section>
-
-        <section class="bg-brand-card rounded-xl border border-brand-border p-5 sm:p-6 shadow-lg flex flex-col gap-4 group transition-shadow hover:shadow-xl hover:border-brand-border/80" aria-labelledby="accuracy-upload-mq-heading">
-          <div>
-            <h3 id="accuracy-upload-mq-heading" class="text-sm font-semibold text-brand-muted uppercase tracking-wider">MIRF Daily MQ workbook</h3>
-            <p class="text-sm text-brand-muted mt-1 leading-relaxed">XLSX (e.g. <span class="font-mono text-[11px]">ARECO_YYYYMMDD_MIRF_MT_WESM_DailyMQ.xlsx</span>). Reads sheet <span class="font-mono">06VISTASOL_G01_BCLVASP01_DEL</span>, range <span class="font-mono">B13:Y36</span> — DEL kWh ÷ 1000 → MW, same as your MQ sheet paste.</p>
-          </div>
+      <dialog id="accuracy-mq-dialog" class="z-[105]" aria-labelledby="accuracy-mq-dialog-title">
+        <div class="modal-panel p-6 sm:p-7 max-w-xl w-[min(100vw-2rem,36rem)]">
+          <h2 id="accuracy-mq-dialog-title" class="text-sm font-bold uppercase tracking-wider text-brand-muted mb-2">MIRF Daily MQ workbook</h2>
+          <p class="text-xs text-brand-muted leading-relaxed mb-4">XLSX (e.g. <span class="font-mono text-[11px]">ARECO_YYYYMMDD_MIRF_MT_WESM_DailyMQ.xlsx</span>). The <span class="font-mono">ARECO_YYYYMMDD</span> is the <span class="font-semibold text-brand-text">intended trade day</span> (even if you download the file the next day). The server loads MPI (RTD) from Reporting for that day. Sheet <span class="font-mono">06VISTASOL_G01_BCLVASP01_DEL</span>, range <span class="font-mono">B13:Y36</span>.</p>
           <input type="file" id="accuracy-file-mq" accept=".xlsx,.xlsm,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" class="sr-only" />
           <div
             id="accuracy-drop-mq"
@@ -105,7 +78,7 @@
             aria-label="Choose or drop MIRF Daily MQ workbook"
           >
             <div class="pointer-events-none absolute inset-0 rounded-xl opacity-0 transition-opacity duration-200 bg-brand-accent/5 accuracy-drop-overlay" aria-hidden="true"></div>
-            <p class="text-xs text-brand-muted mb-3"><span class="text-brand-text font-semibold">Drop file here</span> or use the button — <kbd class="px-1.5 py-0.5 rounded border border-brand-border/80 bg-brand-dark font-mono text-[10px] text-brand-muted">Enter</kbd> when focused also opens the picker</p>
+            <p class="text-xs text-brand-muted mb-3"><span class="text-brand-text font-semibold">Drop file here</span> or use the button — analysis starts automatically after you choose a file.</p>
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-center gap-3 relative z-[1]">
               <button type="button" id="accuracy-btn-mq" class="shrink-0 py-3 px-4 rounded-xl border border-brand-border bg-brand-dark hover:bg-brand-border/40 active:scale-[0.98] text-brand-text font-bold uppercase text-xs tracking-wide transition-all text-center focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent/50">
                 Choose workbook
@@ -114,19 +87,32 @@
             </div>
             <p id="accuracy-ready-mq" class="mt-3 text-[11px] font-semibold uppercase tracking-wider text-brand-muted transition-colors" aria-live="polite">○ Waiting for file</p>
           </div>
-        </section>
-      </div>
+          <div class="rounded-lg border border-brand-border/60 bg-brand-dark/20 px-4 py-3 space-y-2 mt-4">
+            <label for="accuracy-trade-date" class="block text-[10px] font-bold uppercase tracking-wider text-brand-muted">Trade date (only if the MQ filename has no <span class="font-mono">ARECO_YYYYMMDD</span>)</label>
+            <input type="date" id="accuracy-trade-date" class="max-w-[12rem] bg-brand-dark border border-brand-border rounded-lg px-2 py-1.5 text-sm text-brand-text font-mono [color-scheme:dark] focus:outline-none focus:ring-2 focus:ring-brand-accent/40" />
+            <p class="text-[11px] text-brand-muted leading-relaxed">Set this only when the filename has no ARECO date; it must match the MPI you saved under <span class="font-semibold text-brand-text">Reporting</span>.</p>
+          </div>
+          <div id="accuracy-mq-modal-status-row" class="mt-4 min-h-[1.5rem] flex items-center gap-2.5 text-xs text-brand-muted" role="status" aria-live="polite">
+            <span id="accuracy-mq-modal-spinner" class="hidden inline-flex shrink-0" aria-hidden="true">
+              <svg class="animate-spin h-4 w-4 text-brand-accent" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            </span>
+            <span id="accuracy-mq-modal-status"></span>
+          </div>
+          <div class="mt-4 flex flex-wrap justify-end gap-2">
+            <button type="button" id="accuracy-mq-dialog-cancel" class="px-4 py-2 rounded-lg border border-brand-border text-brand-muted hover:bg-brand-border/20 text-sm font-medium">Close</button>
+          </div>
+        </div>
+      </dialog>
 
       <div class="flex flex-wrap items-center gap-3">
         <button type="button" id="accuracy-btn-backfill" class="py-3 px-4 rounded-xl border border-amber-500/50 bg-amber-500/10 hover:bg-amber-500/20 text-amber-200 font-bold uppercase text-xs tracking-wide transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50 active:scale-[0.98]">
           Backfill (RTD + MIRF)
         </button>
-        <button type="button" id="accuracy-btn-run" class="inline-flex items-center justify-center gap-2 py-3 px-6 rounded-xl border border-brand-accent/60 bg-brand-accent/20 hover:bg-brand-accent/30 text-brand-accent font-bold uppercase text-xs tracking-wide transition-all disabled:opacity-40 disabled:pointer-events-none focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent/50 active:scale-[0.98]">
-          <svg id="accuracy-run-spinner" class="hidden h-4 w-4 animate-spin text-brand-accent" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-          </svg>
-          <span id="accuracy-run-label">Run analysis</span>
+        <button type="button" id="accuracy-btn-open-mq-modal" class="inline-flex items-center justify-center gap-2 py-3 px-6 rounded-xl border border-brand-accent/60 bg-brand-accent/20 hover:bg-brand-accent/30 text-brand-accent font-bold uppercase text-xs tracking-wide transition-all disabled:opacity-40 disabled:pointer-events-none focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent/50 active:scale-[0.98]">
+          Upload MQ workbook
         </button>
         <button type="button" id="accuracy-btn-load-runs" class="py-3 px-4 rounded-xl border border-brand-border bg-brand-dark hover:bg-brand-border/40 text-brand-muted font-semibold uppercase text-xs tracking-wide transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent/40 active:scale-[0.98]" aria-expanded="false" aria-controls="accuracy-saved-runs-panel">
           Saved runs
@@ -182,7 +168,7 @@
               </div>
             </dl>
             <p class="mt-4 text-xs text-brand-muted"><span class="font-semibold text-brand-text">Dominant day in CSV:</span> <span id="accuracy-out-day">—</span> · <span class="font-semibold text-brand-text">Compliance rows in window:</span> <span id="accuracy-out-rows">—</span> · <span class="font-semibold text-brand-text">MQ sheet:</span> <span id="accuracy-out-sheet" class="font-mono text-[11px]">—</span></p>
-            <p class="mt-2 text-xs text-brand-muted"><span class="font-semibold text-brand-text">Saved trade date (DB key):</span> <button type="button" id="accuracy-btn-copy-storage" class="font-mono text-brand-text underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent/50 rounded px-0.5" title="Copy ISO date">—</button> <span class="text-brand-muted">(from MIRF MQ filename <span class="font-mono">ARECO_YYYYMMDD_…</span> when present)</span></p>
+            <p class="mt-2 text-xs text-brand-muted"><span class="font-semibold text-brand-text">Saved trade date (DB key):</span> <button type="button" id="accuracy-btn-copy-storage" class="font-mono text-brand-text underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent/50 rounded px-0.5" title="Copy ISO date">—</button> <span class="text-brand-muted">(from MIRF MQ filename <span class="font-mono">ARECO_YYYYMMDD_…</span> when present; MPI CSV is matched from Reporting uploads)</span></p>
           </section>
         </div>
 
@@ -403,10 +389,9 @@
       </section>
 
       <section id="accuracy-analysis-placeholder" class="rounded-xl border border-dashed border-brand-border bg-brand-card/40 px-6 py-8 text-center transition-colors hover:border-brand-accent/25">
-        <p class="text-sm text-brand-muted max-w-lg mx-auto leading-relaxed">Upload both files and choose <span class="text-brand-text font-semibold">Run analysis</span>. Results are saved once per trade day (by MQ filename date when present) and can be rolled up by billing period (26th–25th).</p>
+        <p class="text-sm text-brand-muted max-w-lg mx-auto leading-relaxed">Open <span class="text-brand-text font-semibold">Upload MQ workbook</span> (MPI CSV must already be saved under Reporting). Analysis starts when you pick a file. Results are stored once per trade day and can be rolled up by billing period (26th–25th).</p>
         <ul class="mt-4 flex flex-wrap justify-center gap-4 text-xs text-brand-muted" aria-label="Upload readiness">
-          <li id="accuracy-placeholder-li-c" class="flex items-center gap-2"><span class="accuracy-ph-dot inline-block h-2 w-2 rounded-full bg-brand-border" aria-hidden="true"></span> MPI compliance CSV</li>
-          <li id="accuracy-placeholder-li-m" class="flex items-center gap-2"><span class="accuracy-ph-dot inline-block h-2 w-2 rounded-full bg-brand-border" aria-hidden="true"></span> MQ workbook</li>
+          <li id="accuracy-placeholder-li-m" class="flex items-center gap-2"><span class="accuracy-ph-dot inline-block h-2 w-2 rounded-full bg-brand-border" aria-hidden="true"></span> MIRF Daily MQ workbook</li>
         </ul>
       </section>
     </div>

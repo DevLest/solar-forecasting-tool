@@ -87,6 +87,34 @@ def _migrate(conn: sqlite3.Connection) -> None:
     )
     conn.execute("CREATE INDEX IF NOT EXISTS idx_nar_created ON nomination_accuracy_run(created_at)")
 
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS nomination_compliance_csv (
+          compliance_day TEXT PRIMARY KEY,
+          csv_blob BLOB NOT NULL,
+          source_filename TEXT,
+          uploaded_at TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_ncc_uploaded ON nomination_compliance_csv(uploaded_at)"
+    )
+
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS nomination_market_result_csv (
+          compliance_day TEXT PRIMARY KEY,
+          csv_blob BLOB NOT NULL,
+          source_filename TEXT,
+          uploaded_at TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_nmrc_uploaded ON nomination_market_result_csv(uploaded_at)"
+    )
+
 
 def init_nomination_accuracy_db() -> None:
     path = db_path()
@@ -192,6 +220,114 @@ def list_uploaded_compliance_days() -> list[str]:
     with sqlite3.connect(db_path()) as conn:
         cur = conn.execute(
             "SELECT compliance_day FROM nomination_accuracy_run ORDER BY compliance_day ASC"
+        )
+        return [str(r[0]) for r in cur.fetchall() if r[0]]
+
+
+def save_compliance_csv_blob(
+    compliance_day_iso: str,
+    csv_bytes: bytes,
+    source_filename: str,
+) -> tuple[bool, bool]:
+    """
+    Upsert raw MPI compliance CSV for a trade day.
+    Returns ``(success, overwritten)``.
+    """
+    init_nomination_accuracy_db()
+    trade_iso = str(compliance_day_iso).strip()
+    created = datetime.now(timezone.utc).isoformat()
+    with sqlite3.connect(db_path()) as conn:
+        prev = conn.execute(
+            "SELECT 1 FROM nomination_compliance_csv WHERE compliance_day = ?",
+            (trade_iso,),
+        ).fetchone()
+        overwritten = prev is not None
+        conn.execute(
+            """
+            INSERT INTO nomination_compliance_csv (compliance_day, csv_blob, source_filename, uploaded_at)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(compliance_day) DO UPDATE SET
+              csv_blob = excluded.csv_blob,
+              source_filename = excluded.source_filename,
+              uploaded_at = excluded.uploaded_at
+            """,
+            (trade_iso, csv_bytes, source_filename or None, created),
+        )
+        conn.commit()
+        return True, overwritten
+
+
+def get_compliance_csv_blob(compliance_day_iso: str) -> tuple[bytes | None, str | None]:
+    """Return ``(csv_bytes, source_filename)`` for a trade day, or ``(None, None)`` if missing."""
+    init_nomination_accuracy_db()
+    iso = str(compliance_day_iso).strip()
+    with sqlite3.connect(db_path()) as conn:
+        r = conn.execute(
+            "SELECT csv_blob, source_filename FROM nomination_compliance_csv WHERE compliance_day = ?",
+            (iso,),
+        ).fetchone()
+        if not r or r[0] is None:
+            return None, None
+        return bytes(r[0]), (str(r[1]) if r[1] else None)
+
+
+def list_stored_compliance_csv_days() -> list[str]:
+    """ISO trade dates with a stored MPI compliance CSV, ascending."""
+    init_nomination_accuracy_db()
+    with sqlite3.connect(db_path()) as conn:
+        cur = conn.execute(
+            "SELECT compliance_day FROM nomination_compliance_csv ORDER BY compliance_day ASC"
+        )
+        return [str(r[0]) for r in cur.fetchall() if r[0]]
+
+
+def save_market_result_csv_blob(
+    compliance_day_iso: str,
+    csv_bytes: bytes,
+    source_filename: str,
+) -> tuple[bool, bool]:
+    init_nomination_accuracy_db()
+    trade_iso = str(compliance_day_iso).strip()
+    created = datetime.now(timezone.utc).isoformat()
+    with sqlite3.connect(db_path()) as conn:
+        prev = conn.execute(
+            "SELECT 1 FROM nomination_market_result_csv WHERE compliance_day = ?",
+            (trade_iso,),
+        ).fetchone()
+        overwritten = prev is not None
+        conn.execute(
+            """
+            INSERT INTO nomination_market_result_csv (compliance_day, csv_blob, source_filename, uploaded_at)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(compliance_day) DO UPDATE SET
+              csv_blob = excluded.csv_blob,
+              source_filename = excluded.source_filename,
+              uploaded_at = excluded.uploaded_at
+            """,
+            (trade_iso, csv_bytes, source_filename or None, created),
+        )
+        conn.commit()
+        return True, overwritten
+
+
+def get_market_result_csv_blob(compliance_day_iso: str) -> tuple[bytes | None, str | None]:
+    init_nomination_accuracy_db()
+    iso = str(compliance_day_iso).strip()
+    with sqlite3.connect(db_path()) as conn:
+        r = conn.execute(
+            "SELECT csv_blob, source_filename FROM nomination_market_result_csv WHERE compliance_day = ?",
+            (iso,),
+        ).fetchone()
+        if not r or r[0] is None:
+            return None, None
+        return bytes(r[0]), (str(r[1]) if r[1] else None)
+
+
+def list_stored_market_result_days() -> list[str]:
+    init_nomination_accuracy_db()
+    with sqlite3.connect(db_path()) as conn:
+        cur = conn.execute(
+            "SELECT compliance_day FROM nomination_market_result_csv ORDER BY compliance_day ASC"
         )
         return [str(r[0]) for r in cur.fetchall() if r[0]]
 

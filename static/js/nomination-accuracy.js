@@ -42,17 +42,18 @@
         nameEl.classList.add('text-brand-muted');
         nameEl.classList.remove('text-brand-text');
       }
-      setRunEnabled();
       updateReadinessUi();
     });
   }
 
-  wirePair('accuracy-btn-compliance', 'accuracy-file-compliance', 'accuracy-name-compliance');
   wirePair('accuracy-btn-mq', 'accuracy-file-mq', 'accuracy-name-mq');
 
-  var runBtn = document.getElementById('accuracy-btn-run');
-  var runSpinner = document.getElementById('accuracy-run-spinner');
-  var runLabel = document.getElementById('accuracy-run-label');
+  var mqDialog = document.getElementById('accuracy-mq-dialog');
+  var openMqBtn = document.getElementById('accuracy-btn-open-mq-modal');
+  var mqModalSpinner = document.getElementById('accuracy-mq-modal-spinner');
+  var mqModalStatus = document.getElementById('accuracy-mq-modal-status');
+  var mqDialogCancel = document.getElementById('accuracy-mq-dialog-cancel');
+  var accuracyMqAnalyzing = false;
   var statusEl = document.getElementById('accuracy-run-status');
   var resultsEl = document.getElementById('accuracy-results');
   var analyticsEl = document.getElementById('accuracy-analytics');
@@ -143,43 +144,18 @@
     billPreviewEl.classList.add('text-brand-accent');
   }
 
-  function setRunEnabled() {
-    var c = document.getElementById('accuracy-file-compliance');
-    var m = document.getElementById('accuracy-file-mq');
-    var ok = c && c.files && c.files[0] && m && m.files && m.files[0];
-    if (runBtn) runBtn.disabled = !ok;
-  }
-
   function updateReadinessUi() {
-    var c = document.getElementById('accuracy-file-compliance');
     var m = document.getElementById('accuracy-file-mq');
-    var cOk = !!(c && c.files && c.files[0]);
     var mOk = !!(m && m.files && m.files[0]);
 
-    var rc = document.getElementById('accuracy-ready-compliance');
     var rm = document.getElementById('accuracy-ready-mq');
-    if (rc) {
-      rc.textContent = cOk ? '✓ File ready' : '○ Waiting for file';
-      rc.classList.toggle('text-emerald-400', cOk);
-      rc.classList.toggle('text-brand-muted', !cOk);
-    }
     if (rm) {
       rm.textContent = mOk ? '✓ File ready' : '○ Waiting for file';
       rm.classList.toggle('text-emerald-400', mOk);
       rm.classList.toggle('text-brand-muted', !mOk);
     }
 
-    var liC = document.getElementById('accuracy-placeholder-li-c');
     var liM = document.getElementById('accuracy-placeholder-li-m');
-    if (liC) {
-      var dotC = liC.querySelector('.accuracy-ph-dot');
-      if (dotC) {
-        dotC.classList.toggle('bg-emerald-500', cOk);
-        dotC.classList.toggle('bg-brand-border', !cOk);
-      }
-      liC.classList.toggle('text-brand-text', cOk);
-      liC.classList.toggle('text-brand-muted', !cOk);
-    }
     if (liM) {
       var dotM = liM.querySelector('.accuracy-ph-dot');
       if (dotM) {
@@ -199,7 +175,11 @@
     if (accept.indexOf('.csv') >= 0 && name.indexOf('.csv') < 0) ok = false;
     if (accept.indexOf('.xlsx') >= 0 && name.indexOf('.xlsx') < 0 && name.indexOf('.xlsm') < 0) ok = false;
     if (!ok) {
-      if (statusEl) statusEl.textContent = 'Wrong file type for that slot.';
+      if (mqDialog && mqDialog.open && mqModalStatus) {
+        mqModalStatus.textContent = 'Wrong file type — use .xlsx or .xlsm.';
+      } else if (statusEl) {
+        statusEl.textContent = 'Wrong file type for that slot.';
+      }
       return;
     }
     try {
@@ -253,9 +233,7 @@
     });
   }
 
-  wireDropzone('accuracy-drop-compliance', 'accuracy-file-compliance');
   wireDropzone('accuracy-drop-mq', 'accuracy-file-mq');
-  setRunEnabled();
   updateReadinessUi();
   updateBillPreview();
 
@@ -498,58 +476,124 @@
     }
   }
 
-  function setRunningUi(on) {
-    if (runSpinner) runSpinner.classList.toggle('hidden', !on);
-    if (runLabel) runLabel.textContent = on ? 'Running…' : 'Run analysis';
-    if (on) {
-      if (runBtn) runBtn.disabled = true;
+  function setMqModalBusy(on) {
+    accuracyMqAnalyzing = !!on;
+    if (mqModalSpinner) mqModalSpinner.classList.toggle('hidden', !on);
+    if (openMqBtn) openMqBtn.disabled = on;
+    if (mqDialogCancel) mqDialogCancel.disabled = on;
+    if (mqDialog) mqDialog.setAttribute('aria-busy', on ? 'true' : 'false');
+    var mqIn = document.getElementById('accuracy-file-mq');
+    var mqBtn = document.getElementById('accuracy-btn-mq');
+    var tdEl = document.getElementById('accuracy-trade-date');
+    if (mqIn) mqIn.disabled = on;
+    if (mqBtn) mqBtn.disabled = on;
+    if (tdEl) tdEl.disabled = on;
+    var dz = document.getElementById('accuracy-drop-mq');
+    if (dz) {
+      dz.style.pointerEvents = on ? 'none' : '';
+      dz.setAttribute('aria-disabled', on ? 'true' : 'false');
     }
   }
 
-  if (runBtn) {
-    runBtn.addEventListener('click', function() {
-      var c = document.getElementById('accuracy-file-compliance');
-      var m = document.getElementById('accuracy-file-mq');
-      if (!c || !c.files || !c.files[0] || !m || !m.files || !m.files[0]) return;
+  var tradeDateEl = document.getElementById('accuracy-trade-date');
 
-      var fd = new FormData();
-      fd.append('compliance_csv', c.files[0]);
-      fd.append('mq_xlsx', m.files[0]);
+  function resetMqFileAfterSuccess() {
+    var m = document.getElementById('accuracy-file-mq');
+    if (m) {
+      try {
+        m.value = '';
+      } catch (e) {}
+      m.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+  }
 
-      if (statusEl) statusEl.textContent = '';
-      setRunningUi(true);
+  function runNominationAccuracyAnalysis() {
+    var m = document.getElementById('accuracy-file-mq');
+    if (!m || !m.files || !m.files[0] || accuracyMqAnalyzing) return;
 
-      fetch('/api/nomination-accuracy', { method: 'POST', body: fd })
-        .then(function(r) {
-          return r.json().then(function(j) {
-            return { httpOk: r.ok, j: j };
-          });
-        })
-        .then(function(ref) {
-          var j = ref.j;
-          if (!ref.httpOk || !j.ok) {
-            if (statusEl) statusEl.textContent = j.error || 'Request failed';
-            return;
-          }
-          if (statusEl) statusEl.textContent = 'Done';
-          hasAnalysisResults = true;
-          showNominationSection('analysis');
-          selectResultTab('compliance');
-          if (resultsEl) resultsEl.classList.remove('hidden');
-          if (placeholderEl) placeholderEl.classList.add('hidden');
+    var fd = new FormData();
+    fd.append('mq_xlsx', m.files[0]);
+    var td = tradeDateEl && tradeDateEl.value ? tradeDateEl.value.trim() : '';
+    if (td) fd.append('trade_date', td);
 
-          renderSummary(j.summary || {}, j.storage_day || '');
-          renderDateWarnings(j.date_warnings || []);
-          renderPolicy(j.policy || {}, j.run_id, j.overwritten);
-          renderAnalytics(j.analytics || {});
-        })
-        .catch(function() {
-          if (statusEl) statusEl.textContent = 'Network error';
-        })
-        .finally(function() {
-          setRunningUi(false);
-          setRunEnabled();
+    if (mqModalStatus) mqModalStatus.textContent = '';
+    if (statusEl) statusEl.textContent = '';
+    setMqModalBusy(true);
+    if (mqModalStatus) mqModalStatus.textContent = 'Running analysis…';
+
+    fetch('/api/nomination-accuracy', { method: 'POST', body: fd })
+      .then(function(r) {
+        return r.json().then(function(j) {
+          return { httpOk: r.ok, j: j };
         });
+      })
+      .then(function(ref) {
+        var j = ref.j;
+        if (!ref.httpOk || !j.ok) {
+          if (mqModalStatus) mqModalStatus.textContent = j.error || 'Request failed';
+          if (statusEl) statusEl.textContent = '';
+          return;
+        }
+        if (mqDialog && mqDialog.close) mqDialog.close();
+        if (mqModalStatus) mqModalStatus.textContent = '';
+        if (statusEl) statusEl.textContent = 'Analysis complete.';
+        setTimeout(function() {
+          if (statusEl && statusEl.textContent === 'Analysis complete.') statusEl.textContent = '';
+        }, 4000);
+        resetMqFileAfterSuccess();
+        hasAnalysisResults = true;
+        showNominationSection('analysis');
+        selectResultTab('compliance');
+        if (resultsEl) resultsEl.classList.remove('hidden');
+        if (placeholderEl) placeholderEl.classList.add('hidden');
+
+        renderSummary(j.summary || {}, j.storage_day || '');
+        renderDateWarnings(j.date_warnings || []);
+        renderPolicy(j.policy || {}, j.run_id, j.overwritten);
+        renderAnalytics(j.analytics || {});
+      })
+      .catch(function() {
+        if (mqModalStatus) mqModalStatus.textContent = 'Network error';
+      })
+      .finally(function() {
+        setMqModalBusy(false);
+      });
+  }
+
+  if (mqDialog && openMqBtn && openMqBtn.addEventListener) {
+    openMqBtn.addEventListener('click', function() {
+      if (accuracyMqAnalyzing) return;
+      if (mqModalStatus) mqModalStatus.textContent = '';
+      if (mqDialog.showModal) mqDialog.showModal();
+    });
+  }
+  if (mqDialog) {
+    mqDialog.addEventListener('cancel', function(e) {
+      if (accuracyMqAnalyzing) e.preventDefault();
+    });
+  }
+  if (mqDialogCancel && mqDialog) {
+    mqDialogCancel.addEventListener('click', function() {
+      if (accuracyMqAnalyzing) return;
+      mqDialog.close();
+    });
+  }
+
+  var mqFileForAutoRun = document.getElementById('accuracy-file-mq');
+  if (mqFileForAutoRun) {
+    mqFileForAutoRun.addEventListener('change', function() {
+      if (!mqFileForAutoRun.files || !mqFileForAutoRun.files[0]) return;
+      if (!mqDialog || !mqDialog.open) return;
+      if (accuracyMqAnalyzing) return;
+      runNominationAccuracyAnalysis();
+    });
+  }
+  if (tradeDateEl) {
+    tradeDateEl.addEventListener('change', function() {
+      if (!mqFileForAutoRun || !mqFileForAutoRun.files || !mqFileForAutoRun.files[0]) return;
+      if (!mqDialog || !mqDialog.open) return;
+      if (accuracyMqAnalyzing) return;
+      runNominationAccuracyAnalysis();
     });
   }
 

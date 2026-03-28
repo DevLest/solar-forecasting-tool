@@ -1,7 +1,7 @@
 {# Reusable UI primitives — import: {% from 'components/ui_macros.html' import nav_tile, page_hero %} #}
 
-{% macro nav_tile(panel_id, label, current=False) %}
-<button type="button" data-nav-panel="{{ panel_id }}" class="nav-panel-btn min-w-0 flex-1 shrink-0 md:flex-none md:w-full text-left px-4 py-3 rounded-lg border border-transparent text-sm font-semibold text-brand-text hover:bg-brand-border/30 transition-colors"{% if current %} aria-current="page"{% endif %}>{{ label }}</button>
+{% macro nav_tile(panel_id, label, current=False, sub=False) %}
+<button type="button" data-nav-panel="{{ panel_id }}" class="nav-panel-btn min-w-0 {% if sub %}w-full flex-none pl-3 pr-3 py-2 text-[13px]{% else %}flex-1 shrink-0 md:flex-none md:w-full px-4 py-3 text-sm{% endif %} text-left rounded-lg border border-transparent font-semibold text-brand-text hover:bg-brand-border/30 transition-colors"{% if current %} aria-current="page"{% endif %}>{{ label }}</button>
 {% endmacro %}
 
 {% macro page_hero(title, subtitle=None) %}

@@ -152,6 +152,30 @@ def _dominant_date(rows: list[tuple[datetime, float, float]]) -> date | None:
     return max(counts, key=counts.get)
 
 
+def dominant_day_from_compliance_csv_bytes(content: bytes) -> date | None:
+    """Dominant calendar day in an MPI compliance export (storage key for Reporting uploads)."""
+    return _dominant_date(parse_compliance_csv(content))
+
+
+def compliance_blob_must_match_trade_day(comp_bytes: bytes, expected: date) -> str | None:
+    """
+    After loading a stored MPI export by trade-day key, verify interval timestamps (RTD/Actual
+    rows) are for that same calendar day — i.e. Market DOT data matches the intended schedule day
+    (typically aligned with ``ARECO_YYYYMMDD`` on the MIRF MQ file, even if downloaded later).
+    Returns an error message if verification fails, else ``None``.
+    """
+    got = dominant_day_from_compliance_csv_bytes(comp_bytes)
+    if got is None:
+        return "The stored MPI compliance file has no usable interval dates."
+    if got != expected:
+        return (
+            f"The MPI export stored for {expected.isoformat()} has its dominant interval day "
+            f"{got.isoformat()} (Market DOT / RTD rows). Re-upload the correct MPI CSV under Reporting "
+            f"for {expected.isoformat()}, or use an MQ workbook whose ARECO date matches that export."
+        )
+    return None
+
+
 def fill_rtd_actual(
     compliance: list[tuple[datetime, float, float]],
     day: date,

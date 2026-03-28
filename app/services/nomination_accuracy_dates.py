@@ -108,6 +108,36 @@ def parse_date_from_compliance_filename(filename: str) -> date | None:
     return None
 
 
+def resolve_mq_forecast_lookup_date(
+    mq_filename: str,
+    trade_date_raw: str,
+) -> tuple[date | None, str | None]:
+    """
+    Trade day used to load stored MPI compliance CSV when the MQ file is uploaded alone.
+
+    **Primary:** ``ARECO_YYYYMMDD`` in the MIRF MQ filename — this is the **intended schedule /
+    trade day** for DEL and for the MPI export (RTD in Market DOT), even if the workbook is only
+    downloadable the next calendar day.
+
+    **Fallback:** optional ``trade_date_raw`` (YYYY-MM-DD) when the filename has no ARECO date.
+
+    Returns ``(date, None)`` on success, or ``(None, error_message)``.
+    """
+    mq_d = parse_trade_date_from_mq_filename(mq_filename)
+    if mq_d:
+        return mq_d, None
+    raw = (trade_date_raw or "").strip()
+    if raw:
+        try:
+            return date.fromisoformat(raw), None
+        except ValueError:
+            return None, "trade_date must be YYYY-MM-DD."
+    return (
+        None,
+        "Add ARECO_YYYYMMDD to the MQ filename, or set Trade date when the filename has no date.",
+    )
+
+
 def resolve_storage_trade_date(
     mq_filename: str,
     compliance_filename: str,

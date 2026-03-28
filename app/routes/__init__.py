@@ -32,10 +32,20 @@ from app.services.history import (
     load_historical_exports,
     save_historical_export,
 )
-from app.services.nomination_accuracy import analyze_rtd_dispatch_workbook, analyze_uploads
+from app.services.nomination_accuracy import (
+    analyze_rtd_dispatch_workbook,
+    analyze_uploads,
+    compliance_blob_must_match_trade_day,
+    dominant_day_from_compliance_csv_bytes,
+)
 from app.services.nomination_accuracy_dates import (
+    resolve_mq_forecast_lookup_date,
     resolve_rtd_backfill_storage,
     resolve_storage_trade_date,
+)
+from app.services.reporting_marketplace import (
+    build_marketplace_chart_payload,
+    dominant_day_from_market_result_bytes,
 )
 from app.services.nomination_accuracy_store import (
     calendar_annual_rollup,
@@ -43,8 +53,14 @@ from app.services.nomination_accuracy_store import (
     calendar_monthly_rollup,
     compliance_day_exists,
     delete_run,
+    get_compliance_csv_blob,
+    get_market_result_csv_blob,
     list_runs_with_billing_meta,
+    list_stored_compliance_csv_days,
+    list_stored_market_result_days,
     list_uploaded_compliance_days,
+    save_compliance_csv_blob,
+    save_market_result_csv_blob,
     save_run,
 )
 from app.services.weather import get_weather_forecast
@@ -222,6 +238,141 @@ def api_nomination_accuracy_uploaded_dates():
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
+@bp.route("/api/nomination-reporting/compliance-csv/days", methods=["GET"])
+def api_nomination_reporting_compliance_csv_days():
+    try:
+        dates = list_stored_compliance_csv_days()
+        return jsonify({"ok": True, "dates": dates})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@bp.route("/api/nomination-reporting/compliance-csv", methods=["POST", "OPTIONS"])
+def api_nomination_reporting_compliance_csv():
+    """Store MPI compliance export CSV by dominant trade day (for Forecast Percentage + reports)."""
+    if request.method == "OPTIONS":
+        return "", 204
+    comp_f = request.files.get("compliance_csv")
+    if not comp_f or not comp_f.filename:
+        return jsonify({"ok": False, "error": "Missing compliance export (.csv)."}), 400
+    if not comp_f.filename.lower().endswith(".csv"):
+        return jsonify({"ok": False, "error": "Compliance file must be .csv."}), 400
+    raw = comp_f.read()
+    try:
+        day = dominant_day_from_compliance_csv_bytes(raw)
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
+    if not day:
+        return jsonify({"ok": False, "error": "No compliance rows with a parseable date."}), 400
+    try:
+        _, overwritten = save_compliance_csv_blob(
+            day.isoformat(),
+            raw,
+            os.path.basename(comp_f.filename or "") or "compliance.csv",
+        )
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+    return jsonify(
+        {
+            "ok": True,
+            "compliance_day": day.isoformat(),
+            "overwritten": overwritten,
+        }
+    )
+
+
+def _marketplace_ready_trade_days() -> list[str]:
+    c = set(list_stored_compliance_csv_days())
+    m = set(list_stored_market_result_days())
+    return sorted(c & m)
+
+
+@bp.route("/api/nomination-reporting/marketplace-ready-days", methods=["GET"])
+def api_nomination_reporting_marketplace_ready_days():
+    try:
+        return jsonify({"ok": True, "dates": _marketplace_ready_trade_days()})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@bp.route("/api/nomination-reporting/market-result-csv/days", methods=["GET"])
+def api_nomination_reporting_market_result_csv_days():
+    try:
+        dates = list_stored_market_result_days()
+        return jsonify({"ok": True, "dates": dates})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@bp.route("/api/nomination-reporting/market-result-csv", methods=["POST", "OPTIONS"])
+def api_nomination_reporting_market_result_csv():
+    """Store MPI Market Result — Energy Schedules CSV by dominant trade day."""
+    if request.method == "OPTIONS":
+        return "", 204
+    f = request.files.get("market_result_csv")
+    if not f or not f.filename:
+        return jsonify({"ok": False, "error": "Missing Market Result export (.csv)."}), 400
+    if not f.filename.lower().endswith(".csv"):
+        return jsonify({"ok": False, "error": "File must be .csv."}), 400
+    raw = f.read()
+    try:
+        day = dominant_day_from_market_result_bytes(raw)
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
+    if not day:
+        return jsonify({"ok": False, "error": "No usable Interval End dates in file."}), 400
+    try:
+        _, overwritten = save_market_result_csv_blob(
+            day.isoformat(),
+            raw,
+            os.path.basename(f.filename or "") or "market_result.csv",
+        )
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+    return jsonify(
+        {"ok": True, "compliance_day": day.isoformat(), "overwritten": overwritten}
+    )
+
+
+@bp.route("/api/nomination-reporting/marketplace-chart", methods=["GET"])
+def api_nomination_reporting_marketplace_chart():
+    """Charts: compliance (RTD/Actual) + Market Result (day-ahead MW, LMP). Requires both CSVs for ``day``."""
+    day_raw = (request.args.get("day") or "").strip()
+    if not day_raw:
+        return jsonify({"ok": False, "error": "Query parameter day=YYYY-MM-DD is required."}), 400
+    try:
+        trade_day = date.fromisoformat(day_raw)
+    except ValueError:
+        return jsonify({"ok": False, "error": "day must be YYYY-MM-DD."}), 400
+    comp_b, _ = get_compliance_csv_blob(trade_day.isoformat())
+    mkt_b, _ = get_market_result_csv_blob(trade_day.isoformat())
+    if not comp_b:
+        return (
+            jsonify(
+                {
+                    "ok": False,
+                    "error": f"No MPI compliance CSV stored for {trade_day.isoformat()}. Upload it first.",
+                }
+            ),
+            400,
+        )
+    if not mkt_b:
+        return (
+            jsonify(
+                {
+                    "ok": False,
+                    "error": f"No Market Result (Energy Schedules) CSV stored for {trade_day.isoformat()}.",
+                }
+            ),
+            400,
+        )
+    try:
+        payload = build_marketplace_chart_payload(comp_b, mkt_b, trade_day)
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
+    return jsonify({"ok": True, **payload})
+
+
 @bp.route("/api/nomination-accuracy", methods=["POST", "OPTIONS"])
 def api_nomination_accuracy():
     if request.method == "OPTIONS":
@@ -230,22 +381,64 @@ def api_nomination_accuracy():
     comp_f = request.files.get("compliance_csv")
     if not mq_f or not mq_f.filename:
         return jsonify({"ok": False, "error": "Missing MQ workbook (.xlsx)."}), 400
-    if not comp_f or not comp_f.filename:
-        return jsonify({"ok": False, "error": "Missing compliance export (.csv)."}), 400
     if not mq_f.filename.lower().endswith((".xlsx", ".xlsm")):
         return jsonify({"ok": False, "error": "MQ file must be .xlsx or .xlsm."}), 400
-    if not comp_f.filename.lower().endswith(".csv"):
-        return jsonify({"ok": False, "error": "Compliance file must be .csv."}), 400
+
+    mq_bytes = mq_f.read()
+    stored_comp_filename = ""
+    used_db_compliance = False
+    lookup_trade_date_iso: str | None = None
+    if comp_f and comp_f.filename:
+        if not comp_f.filename.lower().endswith(".csv"):
+            return jsonify({"ok": False, "error": "Compliance file must be .csv."}), 400
+        comp_bytes = comp_f.read()
+        stored_comp_filename = comp_f.filename or ""
+    else:
+        used_db_compliance = True
+        trade_raw = (request.form.get("trade_date") or "").strip()
+        lookup_d, err = resolve_mq_forecast_lookup_date(mq_f.filename or "", trade_raw)
+        if err or lookup_d is None:
+            return jsonify({"ok": False, "error": err or "Could not determine trade date."}), 400
+        lookup_trade_date_iso = lookup_d.isoformat()
+        comp_bytes, fn = get_compliance_csv_blob(lookup_trade_date_iso)
+        if not comp_bytes:
+            return (
+                jsonify(
+                    {
+                        "ok": False,
+                        "error": (
+                            f"No MPI compliance CSV saved for {lookup_trade_date_iso}. "
+                            "Upload it under Reporting first."
+                        ),
+                    }
+                ),
+                400,
+            )
+        stored_comp_filename = fn or ""
+        mismatch = compliance_blob_must_match_trade_day(comp_bytes, lookup_d)
+        if mismatch:
+            return jsonify({"ok": False, "error": mismatch}), 400
+
     try:
-        result = analyze_uploads(mq_f.read(), comp_f.read())
+        result = analyze_uploads(mq_bytes, comp_bytes)
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 400
 
     storage_day, date_warnings = resolve_storage_trade_date(
         mq_f.filename or "",
-        comp_f.filename or "",
+        stored_comp_filename,
         result["summary"]["compliance_day"],
     )
+    if used_db_compliance and lookup_trade_date_iso:
+        date_warnings = [
+            (
+                f"Trade day {lookup_trade_date_iso} is taken from the MIRF MQ filename "
+                f"(ARECO_YYYYMMDD when present — the intended schedule day, even if the file was "
+                f"downloaded later). RTD (Market DOT) and Actual are loaded from the MPI compliance "
+                f"export stored in the database for that same day."
+            ),
+            *date_warnings,
+        ]
     row = {
         **result["summary"],
         "mape_ok": result["policy"]["mape_ok"],
