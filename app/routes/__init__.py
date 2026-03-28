@@ -351,23 +351,16 @@ def api_nomination_reporting_marketplace_chart():
             jsonify(
                 {
                     "ok": False,
-                    "error": f"No MPI compliance CSV stored for {trade_day.isoformat()}. Upload it first.",
-                }
-            ),
-            400,
-        )
-    if not mkt_b:
-        return (
-            jsonify(
-                {
-                    "ok": False,
-                    "error": f"No Market Result (Energy Schedules) CSV stored for {trade_day.isoformat()}.",
+                    "error": f"No MPI compliance CSV stored for {trade_day.isoformat()}. Upload it under Reporting first.",
                 }
             ),
             400,
         )
     try:
-        payload = build_marketplace_chart_payload(comp_b, mkt_b, trade_day)
+        if mkt_b:
+            payload = build_marketplace_chart_payload(comp_b, trade_day, mkt_b)
+        else:
+            payload = build_marketplace_chart_payload(comp_b, trade_day, None)
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 400
     return jsonify({"ok": True, **payload})

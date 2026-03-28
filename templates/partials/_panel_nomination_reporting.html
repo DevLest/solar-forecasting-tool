@@ -1,95 +1,99 @@
 {% from 'components/ui_macros.html' import page_hero %}
-    <div id="panel-nomination-reporting" class="hidden flex-grow p-6 max-w-[960px] mx-auto w-full space-y-6">
-      {{ page_hero('Reporting', 'MPI compliance for Forecast Percentage; marketplace CSVs for dispatch vs price charts') }}
+    <div id="panel-nomination-reporting" class="hidden flex-grow p-6 max-w-[1200px] mx-auto w-full space-y-5">
+      {{ page_hero('Reporting', 'MPI compliance for Forecast Percentage; marketplace charts from stored data') }}
 
-      <p class="text-sm text-brand-muted max-w-3xl leading-relaxed">
-        Upload the <span class="font-semibold text-brand-text">MPI compliance export</span> for Forecast Percentage. Optionally upload <span class="font-semibold text-brand-text">Market Result — Energy Schedules</span> for the same trade day to build marketplace charts (RTD &amp; Actual from compliance; day-ahead MW &amp; LMP from the market file). Re-uploading the same day replaces the stored file.
+      <p class="text-sm text-brand-muted max-w-4xl leading-relaxed">
+        <span class="font-semibold text-brand-text">MPI compliance</span> is stored per trade day and <span class="font-semibold text-brand-text">read from the database</span> for Forecast Percentage and charts. <span class="font-semibold text-brand-text">Choosing a CSV saves it automatically.</span> Add <span class="font-semibold text-brand-text">Market Result — Energy Schedules</span> when available; charts gain LMP &amp; day-ahead for that same day.
       </p>
 
-      <section class="bg-brand-card rounded-xl border border-brand-border p-5 sm:p-6 shadow-lg flex flex-col gap-4" aria-labelledby="reporting-upload-compliance-heading">
-        <div>
-          <h3 id="reporting-upload-compliance-heading" class="text-sm font-semibold text-brand-muted uppercase tracking-wider">MPI compliance export (CSV)</h3>
-          <p class="text-sm text-brand-muted mt-1 leading-relaxed">CSV (e.g. <span class="font-mono text-[11px]">mpi_areco_01_Compliance-Output … .csv</span>). Uses <span class="font-mono">Interval End</span>, <span class="font-mono">Market DOT</span>, <span class="font-mono">Actual Output</span>.</p>
-        </div>
-        <input type="file" id="reporting-file-compliance" accept=".csv,text/csv" class="sr-only" />
-        <div
-          id="reporting-drop-compliance"
-          class="accuracy-dropzone relative rounded-xl border-2 border-dashed border-brand-border/70 bg-brand-dark/25 px-4 py-8 sm:py-10 text-center transition-all duration-200 hover:border-brand-accent/45 hover:bg-brand-dark/40 focus-within:border-brand-accent/50 focus-within:ring-2 focus-within:ring-brand-accent/25 outline-none cursor-pointer"
-          role="button"
-          tabindex="0"
-          aria-label="Choose or drop compliance CSV file"
-        >
-          <div class="pointer-events-none absolute inset-0 rounded-xl opacity-0 transition-opacity duration-200 bg-brand-accent/5 accuracy-drop-overlay" aria-hidden="true"></div>
-          <p class="text-xs text-brand-muted mb-3"><span class="text-brand-text font-semibold">Drop file here</span> or use the button</p>
-          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-center gap-3 relative z-[1]">
-            <button type="button" id="reporting-btn-compliance" class="shrink-0 py-3 px-4 rounded-xl border border-brand-border bg-brand-dark hover:bg-brand-border/40 active:scale-[0.98] text-brand-text font-bold uppercase text-xs tracking-wide transition-all text-center focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent/50">
-              Choose MPI CSV
-            </button>
-            <p id="reporting-name-compliance" class="text-xs text-brand-muted font-mono truncate min-w-0 max-w-full sm:max-w-[14rem] text-left sm:text-center" title="">No file selected</p>
+      <div class="grid gap-4 lg:grid-cols-2 lg:items-stretch">
+        <section class="bg-brand-card rounded-xl border border-brand-border p-4 sm:p-5 shadow-lg flex flex-col gap-3 min-h-0" aria-labelledby="reporting-upload-compliance-heading">
+          <div>
+            <h3 id="reporting-upload-compliance-heading" class="text-sm font-semibold text-brand-muted uppercase tracking-wider">MPI compliance (CSV)</h3>
+            <p class="text-xs text-brand-muted mt-1 leading-relaxed">Stored by trade day. <span class="font-mono text-[11px]">Interval End</span>, <span class="font-mono">Market DOT</span>, <span class="font-mono">Actual Output</span>.</p>
           </div>
-          <p id="reporting-ready-compliance" class="mt-3 text-[11px] font-semibold uppercase tracking-wider text-brand-muted transition-colors" aria-live="polite">○ Waiting for file</p>
-        </div>
-        <div class="flex flex-wrap items-center gap-3">
-          <button type="button" id="reporting-btn-save" class="inline-flex items-center justify-center gap-2 py-3 px-6 rounded-xl border border-brand-accent/60 bg-brand-accent/20 hover:bg-brand-accent/30 text-brand-accent font-bold uppercase text-xs tracking-wide transition-all disabled:opacity-40 disabled:pointer-events-none focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent/50 active:scale-[0.98]">
-            <svg id="reporting-save-spinner" class="hidden h-4 w-4 animate-spin text-brand-accent" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            <span id="reporting-save-label">Save to database</span>
-          </button>
-          <p id="reporting-save-status" class="text-xs text-brand-muted min-h-[1.25rem]" role="status"></p>
-        </div>
-      </section>
+          <input type="file" id="reporting-file-compliance" accept=".csv,text/csv" class="sr-only" />
+          <div
+            id="reporting-drop-compliance"
+            class="accuracy-dropzone relative rounded-lg border-2 border-dashed border-brand-border/70 bg-brand-dark/25 px-3 py-4 text-center transition-all duration-200 hover:border-brand-accent/45 hover:bg-brand-dark/40 focus-within:border-brand-accent/50 focus-within:ring-2 focus-within:ring-brand-accent/25 outline-none cursor-pointer flex-1 min-h-[5.5rem] flex flex-col justify-center"
+            role="button"
+            tabindex="0"
+            aria-label="Choose or drop compliance CSV file"
+          >
+            <div class="pointer-events-none absolute inset-0 rounded-lg opacity-0 transition-opacity duration-200 bg-brand-accent/5 accuracy-drop-overlay" aria-hidden="true"></div>
+            <div class="flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:justify-center gap-2 relative z-[1]">
+              <button type="button" id="reporting-btn-compliance" class="shrink-0 py-2 px-3 rounded-lg border border-brand-border bg-brand-dark hover:bg-brand-border/40 text-brand-text font-bold uppercase text-[11px] tracking-wide transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent/50">
+                Choose MPI CSV
+              </button>
+              <p id="reporting-name-compliance" class="text-xs text-brand-muted font-mono truncate min-w-0 max-w-full flex-1 text-left sm:text-center" title="">No file selected</p>
+            </div>
+            <p id="reporting-ready-compliance" class="mt-2 text-[10px] font-semibold uppercase tracking-wider text-brand-muted transition-colors" aria-live="polite">○ Waiting for file</p>
+          </div>
+          <div class="flex items-start gap-2 min-h-[1.35rem]">
+            <span id="reporting-compliance-spinner" class="hidden shrink-0 mt-0.5 inline-flex" aria-hidden="true">
+              <svg class="h-4 w-4 animate-spin text-brand-accent" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            </span>
+            <p id="reporting-save-status" class="text-xs text-brand-muted flex-1 min-w-0 leading-relaxed" role="status"></p>
+          </div>
+        </section>
 
-      <section class="rounded-xl border border-brand-border bg-brand-card/80 p-5 sm:p-6 shadow-lg" aria-labelledby="reporting-stored-heading">
-        <h3 id="reporting-stored-heading" class="text-sm font-semibold text-brand-muted uppercase tracking-wider mb-3">Stored compliance days</h3>
-        <p class="text-xs text-brand-muted mb-3">Trade dates with an MPI CSV saved in the database (used when you run Forecast Percentage with the MIRF MQ workbook).</p>
+        <section class="bg-brand-card rounded-xl border border-brand-border p-4 sm:p-5 shadow-lg flex flex-col gap-3 min-h-0" aria-labelledby="reporting-upload-market-heading">
+          <div>
+            <h3 id="reporting-upload-market-heading" class="text-sm font-semibold text-brand-muted uppercase tracking-wider">Market Result — Energy Schedules (CSV)</h3>
+            <p class="text-xs text-brand-muted mt-1 leading-relaxed">LMP &amp; day-ahead MW. Same trade day as MPI. LMP summary: rows <span class="font-mono">7–19</span> / Excel <span class="font-mono">E7:E19</span>.</p>
+          </div>
+          <input type="file" id="reporting-file-market-result" accept=".csv,text/csv" class="sr-only" />
+          <div class="rounded-lg border border-dashed border-brand-border/70 bg-brand-dark/20 px-3 py-4 flex-1 min-h-[5.5rem] flex flex-col justify-center">
+            <div class="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2">
+              <button type="button" id="reporting-btn-market-result" class="shrink-0 py-2 px-3 rounded-lg border border-brand-border bg-brand-dark hover:bg-brand-border/40 text-brand-text font-bold uppercase text-[11px] tracking-wide transition-all">Choose CSV</button>
+              <p id="reporting-name-market-result" class="text-xs text-brand-muted font-mono truncate min-w-0 flex-1" title="">No file selected</p>
+            </div>
+            <div class="flex items-start gap-2 mt-2 min-h-[1.35rem]">
+              <span id="reporting-market-spinner" class="hidden shrink-0 mt-0.5 inline-flex" aria-hidden="true">
+                <svg class="h-4 w-4 animate-spin text-brand-accent" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+              </span>
+              <p id="reporting-save-market-status" class="text-xs text-brand-muted flex-1 min-w-0 leading-relaxed" role="status"></p>
+            </div>
+          </div>
+          <p class="text-[11px] text-brand-muted">Market days in DB: <span id="reporting-market-stored-inline" class="font-mono text-brand-text">—</span></p>
+        </section>
+      </div>
+
+      <section class="rounded-xl border border-brand-border bg-brand-card/80 p-4 sm:p-5 shadow-lg" aria-labelledby="reporting-stored-heading">
+        <h3 id="reporting-stored-heading" class="text-sm font-semibold text-brand-muted uppercase tracking-wider mb-2">Stored MPI compliance days</h3>
+        <p class="text-xs text-brand-muted mb-2">Used for Forecast Percentage (from DB). Marketplace charts can use these days even before the market CSV is added.</p>
         <ul id="reporting-stored-days" class="flex flex-wrap gap-2 text-xs font-mono text-brand-text" aria-live="polite"></ul>
         <p id="reporting-stored-empty" class="text-xs text-brand-muted mt-2 hidden">No compliance CSVs stored yet.</p>
       </section>
 
-      <section class="bg-brand-card rounded-xl border border-brand-border p-5 sm:p-6 shadow-lg flex flex-col gap-4" aria-labelledby="reporting-upload-market-heading">
-        <div>
-          <h3 id="reporting-upload-market-heading" class="text-sm font-semibold text-brand-muted uppercase tracking-wider">Market Result — Energy Schedules (CSV)</h3>
-          <p class="text-sm text-brand-muted mt-1 leading-relaxed">e.g. <span class="font-mono text-[11px]">mpi_areco_01_Market Result-Market Projections Displays-Energy Schedules.csv</span>. Must match the same trade day as the MPI compliance file you use for charts. LMP summary uses rows 7–19 of the export (same as Excel <span class="font-mono">E7:E19</span>).</p>
-        </div>
-        <input type="file" id="reporting-file-market-result" accept=".csv,text/csv" class="sr-only" />
-        <div class="flex flex-wrap items-center gap-3">
-          <button type="button" id="reporting-btn-market-result" class="shrink-0 py-3 px-4 rounded-xl border border-brand-border bg-brand-dark hover:bg-brand-border/40 text-brand-text font-bold uppercase text-xs tracking-wide transition-all">Choose CSV</button>
-          <p id="reporting-name-market-result" class="text-xs text-brand-muted font-mono truncate min-w-0 max-w-[18rem]" title="">No file selected</p>
-          <button type="button" id="reporting-btn-save-market" class="inline-flex items-center justify-center gap-2 py-3 px-5 rounded-xl border border-brand-accent/60 bg-brand-accent/20 hover:bg-brand-accent/30 text-brand-accent font-bold uppercase text-xs tracking-wide transition-all disabled:opacity-40 disabled:pointer-events-none">
-            <svg id="reporting-save-market-spinner" class="hidden h-4 w-4 animate-spin text-brand-accent" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-            <span id="reporting-save-market-label">Save to database</span>
-          </button>
-          <p id="reporting-save-market-status" class="text-xs text-brand-muted min-h-[1.25rem]" role="status"></p>
-        </div>
-        <p id="reporting-market-stored-hint" class="text-xs text-brand-muted">Stored market-result days: <span id="reporting-market-stored-inline" class="font-mono text-brand-text">—</span></p>
-      </section>
-
-      <section class="rounded-xl border border-brand-border bg-brand-card/80 p-5 sm:p-6 shadow-lg space-y-4" aria-labelledby="reporting-charts-heading">
+      <section class="rounded-xl border border-brand-border bg-brand-card/80 p-4 sm:p-5 shadow-lg space-y-3" aria-labelledby="reporting-charts-heading">
         <div class="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h3 id="reporting-charts-heading" class="text-sm font-semibold text-brand-muted uppercase tracking-wider">Marketplace charts</h3>
-            <p class="text-xs text-brand-muted mt-1 max-w-2xl">Uses MPI compliance (5‑min RTD &amp; Actual) plus Energy Schedules (hourly day‑ahead MW &amp; LMP). Pick a day that has <span class="font-semibold text-brand-text">both</span> files saved.</p>
+            <p class="text-xs text-brand-muted mt-1 max-w-3xl">Data is <span class="font-semibold text-brand-text">loaded from the database</span> for the trade day you select. With MPI only: RTD &amp; Actual. After Energy Schedules is stored for that day: LMP &amp; day-ahead MW.</p>
           </div>
           <div class="flex flex-wrap items-center gap-2">
             <label for="reporting-chart-day" class="text-[10px] font-bold uppercase tracking-wider text-brand-muted">Trade day</label>
             <select id="reporting-chart-day" class="bg-brand-dark border border-brand-border rounded-lg px-2 py-1.5 text-sm font-mono text-brand-text [color-scheme:dark] focus:outline-none focus:ring-2 focus:ring-brand-accent/40 min-w-[11rem]">
-              <option value="">— Load days —</option>
+              <option value="">— Select day —</option>
             </select>
-            <button type="button" id="reporting-btn-refresh-charts" class="py-2 px-3 rounded-lg border border-brand-border bg-brand-dark hover:bg-brand-border/30 text-xs font-semibold uppercase tracking-wide text-brand-muted">Refresh charts</button>
+            <button type="button" id="reporting-btn-refresh-charts" class="py-2 px-3 rounded-lg border border-brand-border bg-brand-dark hover:bg-brand-border/30 text-xs font-semibold uppercase tracking-wide text-brand-muted">Refresh</button>
           </div>
         </div>
+        <p id="reporting-chart-partial-banner" class="hidden text-xs text-amber-100/95 rounded-lg border border-amber-500/40 bg-amber-950/30 px-3 py-2 leading-relaxed" role="status"></p>
         <p id="reporting-chart-summary" class="text-sm text-brand-text font-mono hidden" role="status"></p>
-        <div class="rounded-lg border border-brand-border/60 bg-brand-dark/20 p-4">
+        <div class="rounded-lg border border-brand-border/60 bg-brand-dark/20 p-3">
           <p class="text-[10px] font-bold uppercase tracking-wider text-brand-muted mb-2">Dispatch vs day-ahead (compliance window 05:05–19:00)</p>
-          <div class="h-72 min-h-[14rem] relative">
+          <div class="h-64 min-h-[12rem] relative">
             <canvas id="reporting-chart-dispatch" aria-label="RTD, Actual, and day-ahead MW by interval"></canvas>
           </div>
         </div>
-        <div class="rounded-lg border border-brand-border/60 bg-brand-dark/20 p-4">
+        <div class="rounded-lg border border-brand-border/60 bg-brand-dark/20 p-3">
           <p class="text-[10px] font-bold uppercase tracking-wider text-brand-muted mb-2">6:00 AM – 6:00 PM — hourly actual vs LMP</p>
-          <div class="h-72 min-h-[14rem] relative">
+          <div class="h-80 min-h-[18rem] sm:min-h-[20rem] relative">
             <canvas id="reporting-chart-hourly" aria-label="Hourly actual dispatch and LMP"></canvas>
           </div>
         </div>

@@ -180,26 +180,39 @@ def _market_maps_for_day(
 
 def build_marketplace_chart_payload(
     compliance_bytes: bytes,
-    market_bytes: bytes,
     trade_day: date,
+    market_bytes: bytes | None = None,
 ) -> dict[str, Any]:
     """
-    Build JSON-serializable chart data: dispatch series, 6AM–6PM hourly chart, LMP stats.
+    Build JSON-serializable chart data from stored MPI compliance.
+
+    If ``market_bytes`` is set, adds day-ahead MW, LMP, and E7:E19 LMP average from Energy Schedules.
+    If omitted, returns the same shape with market fields ``null`` and ``partial: True`` (MPI-only charts).
     """
     parsed = parse_compliance_csv(compliance_bytes)
-    mrows = parse_market_result_energy_schedules(market_bytes)
-
-    lmp_avg_e7_e19 = lmp_average_excel_rows_e7_through_e19(market_bytes)
     hourly_c = _hourly_from_compliance(parsed, trade_day)
-    mw_map, lmp_map = _market_maps_for_day(mrows, trade_day)
+
+    mw_map: dict[int, float] = {}
+    lmp_map: dict[int, float] = {}
+    lmp_avg_e7_e19: float | None = None
+    lmp_disp: float | None = None
+    partial = market_bytes is None
+
+    if market_bytes:
+        mrows = parse_market_result_energy_schedules(market_bytes)
+        mw_map, lmp_map = _market_maps_for_day(mrows, trade_day)
+        lmp_avg_e7_e19 = lmp_average_excel_rows_e7_through_e19(market_bytes)
+        lmp_disp = round(lmp_avg_e7_e19 / 1000.0, 3)
 
     win_rows = _compliance_rows_for_day(parsed, trade_day)
     dispatch: list[dict[str, Any]] = []
     for i, (dt, rtd, act) in enumerate(win_rows, start=1):
         h = dt.hour
-        da = mw_map.get(h)
-        if da is None and h == 0 and 24 in mw_map:
-            da = mw_map.get(24)
+        da = None
+        if mw_map:
+            da = mw_map.get(h)
+            if da is None and h == 0 and 24 in mw_map:
+                da = mw_map.get(24)
         dispatch.append(
             {
                 "i": i,
@@ -223,26 +236,32 @@ def build_marketplace_chart_payload(
                 "label": _hour_label_ampm(h),
                 "rtd_mw_avg": rtd_m,
                 "actual_mw_avg": act_m,
-                "day_ahead_mw": mw_map.get(h),
-                "lmp": lmp_map.get(h),
+                "day_ahead_mw": mw_map.get(h) if mw_map else None,
+                "lmp": lmp_map.get(h) if lmp_map else None,
             }
         )
 
     actual_avg_6_to_18 = float(mean(actual_for_avg)) if actual_for_avg else None
     total_actual_mwh_hint = None
     if win_rows:
-        # MWh from MW over 5-min: each slot = MW/12
         total_actual_mwh_hint = float(sum(act for _, _, act in win_rows) / 12.0)
 
-    return {
+    out: dict[str, Any] = {
         "trade_day": trade_day.isoformat(),
+        "partial": partial,
         "lmp_average_e7_e19": lmp_avg_e7_e19,
-        "lmp_average_e7_e19_display": round(lmp_avg_e7_e19 / 1000.0, 3),
+        "lmp_average_e7_e19_display": lmp_disp,
         "actual_dispatch_avg_mw_6am_6pm": actual_avg_6_to_18,
         "actual_dispatch_mwh_compliance_window": total_actual_mwh_hint,
         "dispatch_series": dispatch,
         "hourly_6am_6pm": hourly_chart,
     }
+    if partial:
+        out["partial_message"] = (
+            "MPI compliance is loaded from the database. Upload Market Result — Energy Schedules "
+            "for this trade day to add LMP, day-ahead MW, and the E7:E19 LMP average."
+        )
+    return out
 
 
 def _hour_label_ampm(h: int) -> str:
