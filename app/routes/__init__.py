@@ -833,6 +833,17 @@ def api_billing_history_upload():
                 400,
             )
         merged = merge_input_patches(patches)
+        import_notes: list[str] = []
+        emf_kinds = ("emf_regular", "emf_iemms", "emf_supplemental")
+        if any(d.get("kind") in emf_kinds for d in details) and all(
+            merged.get(k) is None for k in ("aa", "ab", "ac")
+        ):
+            import_notes.append(
+                "No market fee amounts (EMF regular, IEMMS, supplemental) were extracted. Final TS-WF "
+                "market fee PDFs are often scanned images with no selectable text—use a text-based export "
+                "from IEMOP if available, or enter those three lines manually in Input. Include the main "
+                "EMF statement for the regular fee (file names often contain PS_EMF or FS_EMF), same as Prelim."
+            )
         row_id, amounts = upsert_input_row(
             year=year,
             billing_month=billing_month,
@@ -859,6 +870,7 @@ def api_billing_history_upload():
                     "statement_ref": statement_ref,
                 },
                 "period_warnings": period_warnings,
+                "import_notes": import_notes,
             }
         )
     except Exception as e:

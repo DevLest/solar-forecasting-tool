@@ -159,28 +159,28 @@
     var s = display.sales;
     var p = display.purchases;
     var salesRows = [
-      ['ARECO — VATABLE (E)', s.vatable_g01],
-      ['ARECO — NON-VATABLE (F)', s.non_vatable_g01],
-      ['ARECOSS — VATABLE (H)', s.vatable_l01],
-      ['ARECOSS — NON VATABLE (I)', s.non_vatable_l01],
-      ['VAT ON 06VISTASOL_G01 (J)', s.vat_on_g01],
-      ['VAT ON 06VISTASOL_L01 (K)', s.vat_on_l01],
-      ['EWT ON TRADING (M)', s.ewt],
+      ['ARECO — VATable sales', s.vatable_g01],
+      ['ARECO — Non-VATable sales', s.non_vatable_g01],
+      ['ARECOSS — VATable sales', s.vatable_l01],
+      ['ARECOSS — Non-VATable sales', s.non_vatable_l01],
+      ['VAT — 06VISTASOL_G01', s.vat_on_g01],
+      ['VAT — 06VISTASOL_L01', s.vat_on_l01],
+      ['EWT on trading', s.ewt],
     ];
     var tp =
       display.total_payable_to_iemop != null && display.total_payable_to_iemop !== ''
         ? display.total_payable_to_iemop
         : p.total_payable;
     var purchDetailRows = [
-      ['Purchases — VATABLE (R)', p.vatable_g01],
-      ['Purchases — NON-VATABLE (S)', p.non_vatable_g01],
-      ['ARECOSS — VATABLE (U)', p.vatable_l01],
-      ['ARECOSS — NON VATABLE (V)', p.non_vatable_l01],
-      ['VAT on G01 / L01 (W–X)', p.vat_on_g01 + p.vat_on_l01],
-      ['EWT (Z)', p.ewt],
-      ['Market fee 1 (AA)', p.market_fee_1],
-      ['Market fee 2 (AB)', p.market_fee_2],
-      ['Market fee 3 (AC)', p.market_fee_3],
+      ['Purchases — VATable (ARECO)', p.vatable_g01],
+      ['Purchases — Non-VATable (ARECO)', p.non_vatable_g01],
+      ['Purchases — VATable (ARECOSS)', p.vatable_l01],
+      ['Purchases — Non-VATable (ARECOSS)', p.non_vatable_l01],
+      ['VAT on G01 / L01', p.vat_on_g01 + p.vat_on_l01],
+      ['EWT (purchases)', p.ewt],
+      ['Market fee — EMF regular', p.market_fee_1],
+      ['Market fee — IEMMS', p.market_fee_2],
+      ['Market fee — supplemental', p.market_fee_3],
     ];
     if (displaySales) {
       displaySales.innerHTML = salesRows
@@ -483,6 +483,9 @@
         }
         if (j.period_warnings && j.period_warnings.length) {
           parts.push(j.period_warnings.join(' '));
+        }
+        if (j.import_notes && j.import_notes.length) {
+          parts.push(j.import_notes.join(' '));
         }
         if (uploadStatus) uploadStatus.textContent = parts.join(' ');
         clearBulkInput();

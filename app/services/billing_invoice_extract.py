@@ -450,8 +450,8 @@ def extract_invoice_pdf(
             if col is None:
                 col = "aa"
                 warn.append(
-                    "EMF type unclear from file name and PDF text; amount placed in Market fee 1 (AA). "
-                    "Use per-slot upload, or names like *_MF1.pdf (AB) and *_MF.pdf (AC)."
+                    "EMF type unclear from file name and PDF text; amount placed under EMF regular. "
+                    "Rename files like *_MF1.pdf (IEMMS) and *_MF.pdf (supplemental), or assign amounts manually."
                 )
             ir[col] = float(amt)
         return ExtractResult(
