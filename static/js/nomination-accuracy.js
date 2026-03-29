@@ -3,17 +3,23 @@
   /** ISO dates (YYYY-MM-DD) that already have a saved nomination-accuracy run */
   var uploadedTradeDates = new Set();
 
+  /** @returns {Promise<boolean>} true if the server list was applied to ``uploadedTradeDates`` */
   function refreshUploadedTradeDates() {
     return fetch('/api/nomination-accuracy/uploaded-dates')
       .then(function(r) {
+        if (!r.ok) return Promise.reject(new Error('uploaded-dates HTTP ' + r.status));
         return r.json();
       })
       .then(function(j) {
         if (j && j.ok && Array.isArray(j.dates)) {
           uploadedTradeDates = new Set(j.dates);
+          return true;
         }
+        return Promise.reject(new Error('uploaded-dates bad payload'));
       })
-      .catch(function() {});
+      .catch(function() {
+        return false;
+      });
   }
 
   function isTradeDateUnavailable(iso) {
@@ -604,7 +610,7 @@
       parts.push('Period ' + bp.start + ' → ' + bp.end);
     }
     parts.push(
-      'days in view: ' +
+      'trade days in period: ' +
         (st.days_in_selection != null ? st.days_in_selection : '0') +
         '; compliant: ' +
         (st.compliant_days != null ? st.compliant_days : '0') +
@@ -1174,6 +1180,16 @@
     );
     yearTotalsStrip.appendChild(mini('Year avg MAPE', fmtPctFromFraction(yt.mape_avg)));
     yearTotalsStrip.appendChild(mini('Year avg PERC95', fmtPctFromFraction(yt.perc95_avg)));
+    yearTotalsStrip.appendChild(
+      mini(
+        'BP max MQ (MW)',
+        yt.billing_period_max_mq_mw != null && isFinite(Number(yt.billing_period_max_mq_mw))
+          ? Number(yt.billing_period_max_mq_mw).toFixed(3)
+          : '—'
+      )
+    );
+    yearTotalsStrip.appendChild(mini('Year BP MAPE', fmtPctFromFraction(yt.mape_bp_pooled)));
+    yearTotalsStrip.appendChild(mini('Year BP P95', fmtPctFromFraction(yt.perc95_bp_pooled)));
   }
 
   function hideMonthDetail() {
@@ -1315,6 +1331,25 @@
               : j.calendar_days != null
                 ? j.calendar_days
                 : '—';
+          var bps = j.billing_period_stats && typeof j.billing_period_stats === 'object' ? j.billing_period_stats : null;
+          var bpLine = '';
+          if (bps) {
+            bpLine =
+              ' · BP-pooled MAPE ' +
+              fmtPctFromFraction(bps.mape_bp_pooled) +
+              ' · BP-pooled P95 ' +
+              fmtPctFromFraction(bps.perc95_bp_pooled);
+            if (bps.billing_period_max_mq_mw != null && isFinite(Number(bps.billing_period_max_mq_mw))) {
+              bpLine += ' · max MQ in period ' + Number(bps.billing_period_max_mq_mw).toFixed(3) + ' MW';
+            }
+            if (
+              bps.perc95_bp_pooled == null &&
+              (j.days_with_saved || 0) > 0 &&
+              (bps.perc95_bp_runs_with_series == null || bps.perc95_bp_runs_with_series < 1)
+            ) {
+              bpLine += ' (re-save days to populate BP P95)';
+            }
+          }
           monthDetailSummary.textContent =
             (rangeLine ? rangeLine + ' · ' : '') +
             String(nDays) +
@@ -1322,7 +1357,8 @@
             String(j.days_with_saved != null ? j.days_with_saved : 0) +
             ' with saved run · ' +
             String(j.days_missing != null ? j.days_missing : 0) +
-            ' missing';
+            ' missing' +
+            bpLine;
         }
         if (monthDetailMissing) {
           var miss = j.missing_dates || [];
@@ -1397,6 +1433,12 @@
         '<td class="py-2 px-3 text-right">' +
         fmtPctFromFraction(st.perc95_avg) +
         '</td>' +
+        '<td class="py-2 px-3 text-right text-emerald-200/90" title="Billing-period max MQ denominator">' +
+        fmtPctFromFraction(st.mape_bp_pooled) +
+        '</td>' +
+        '<td class="py-2 px-3 text-right text-sky-200/90" title="Pooled intervals; needs FPE on save">' +
+        fmtPctFromFraction(st.perc95_bp_pooled) +
+        '</td>' +
         '<td class="py-2 px-3 text-right">' +
         fmtCompliancePct(cp) +
         '</td>';
@@ -1410,7 +1452,7 @@
     if (!years || !years.length) {
       var empty = document.createElement('tr');
       empty.innerHTML =
-        '<td colspan="7" class="py-6 px-3 text-center text-brand-muted text-sm">No saved runs in the database yet.</td>';
+        '<td colspan="9" class="py-6 px-3 text-center text-brand-muted text-sm">No saved runs in the database yet.</td>';
       annualTbody.appendChild(empty);
       return;
     }
@@ -1438,6 +1480,12 @@
         '</td>' +
         '<td class="py-2 px-3 text-right">' +
         fmtPctFromFraction(st.perc95_avg) +
+        '</td>' +
+        '<td class="py-2 px-3 text-right text-emerald-200/90">' +
+        fmtPctFromFraction(st.mape_bp_pooled) +
+        '</td>' +
+        '<td class="py-2 px-3 text-right text-sky-200/90">' +
+        fmtPctFromFraction(st.perc95_bp_pooled) +
         '</td>' +
         '<td class="py-2 px-3 text-right">' +
         fmtCompliancePct(cp) +
@@ -1489,6 +1537,14 @@
       var v = m.stats && m.stats.perc95_avg;
       return v != null && isFinite(v) ? v * 100 : null;
     });
+    var mapeBpPct = (months || []).map(function(m) {
+      var v = m.stats && m.stats.mape_bp_pooled;
+      return v != null && isFinite(v) ? v * 100 : null;
+    });
+    var p95BpPct = (months || []).map(function(m) {
+      var v = m.stats && m.stats.perc95_bp_pooled;
+      return v != null && isFinite(v) ? v * 100 : null;
+    });
     var compPct = (months || []).map(function(m) {
       return compliancePct(m.stats || {});
     });
@@ -1519,6 +1575,28 @@
               tension: 0.25,
               fill: false,
               spanGaps: false
+            },
+            {
+              label: 'BP pooled MAPE %',
+              data: mapeBpPct,
+              borderColor: 'rgba(16, 185, 129, 0.45)',
+              backgroundColor: 'transparent',
+              borderDash: [6, 4],
+              tension: 0.25,
+              fill: false,
+              spanGaps: true,
+              pointRadius: 2
+            },
+            {
+              label: 'BP pooled P95 %',
+              data: p95BpPct,
+              borderColor: 'rgba(56, 189, 248, 0.45)',
+              backgroundColor: 'transparent',
+              borderDash: [6, 4],
+              tension: 0.25,
+              fill: false,
+              spanGaps: true,
+              pointRadius: 2
             }
           ]
         },
@@ -1556,7 +1634,11 @@
           var o = baseChartOptions();
           o.scales.y.min = 0;
           o.scales.y.max = 100;
-          o.scales.y.title = { display: true, text: '% days compliant', color: CHART.muted };
+          o.scales.y.title = {
+            display: true,
+            text: '% trade days compliant (in billing period)',
+            color: CHART.muted
+          };
           return o;
         })()
       });
@@ -1581,6 +1663,10 @@
       var v = y.stats && y.stats.mape_avg;
       return v != null && isFinite(v) ? v * 100 : null;
     });
+    var mapeBpPct = (years || []).map(function(y) {
+      var v = y.stats && y.stats.mape_bp_pooled;
+      return v != null && isFinite(v) ? v * 100 : null;
+    });
 
     chartRefs.annual = new Chart(el, {
       data: {
@@ -1588,7 +1674,7 @@
         datasets: [
           {
             type: 'bar',
-            label: 'Days with data',
+            label: 'Trade days (billing year)',
             data: dayCounts,
             backgroundColor: 'rgba(51, 65, 85, 0.65)',
             borderColor: CHART.grid,
@@ -1604,6 +1690,18 @@
             tension: 0.2,
             yAxisID: 'y1',
             spanGaps: true
+          },
+          {
+            type: 'line',
+            label: 'BP pooled MAPE %',
+            data: mapeBpPct,
+            borderColor: 'rgba(16, 185, 129, 0.5)',
+            backgroundColor: 'transparent',
+            borderDash: [6, 4],
+            tension: 0.2,
+            yAxisID: 'y1',
+            spanGaps: true,
+            pointRadius: 2
           }
         ]
       },
@@ -1636,7 +1734,7 @@
           },
           y1: {
             position: 'right',
-            title: { display: true, text: 'MAPE %', color: CHART.muted },
+            title: { display: true, text: 'MAPE % (daily vs BP)', color: CHART.muted },
             ticks: { color: CHART.muted },
             grid: { drawOnChartArea: false }
           }
@@ -1739,6 +1837,8 @@
     var progressWrap = document.getElementById('accuracy-backfill-progress-wrap');
     var progressSummary = document.getElementById('accuracy-backfill-progress-summary');
     var backfillUploading = false;
+    var backfillSeq = 0;
+    var backfillAbort = null;
 
     function updateBackfillDateHint() {
       if (!tradeDateEl || !dateHint) return;
@@ -1774,8 +1874,18 @@
       if (backfillUploading) e.preventDefault();
     });
     openBtn.addEventListener('click', function() {
-      refreshUploadedTradeDates().then(function() {
+      refreshUploadedTradeDates().then(function(datesOk) {
         updateBackfillDateHint();
+        if (datesOk && tradeDateEl) {
+          tradeDateEl.classList.remove('ring-2', 'ring-amber-500/35');
+        }
+        if (!datesOk && dateHint) {
+          var existing = (dateHint.textContent || '').trim();
+          var warn =
+            'Could not load which days already have saved runs. Duplicate dates may not be highlighted until you refresh the page.';
+          dateHint.textContent = existing ? existing + ' ' + warn : warn;
+          if (tradeDateEl) tradeDateEl.classList.add('ring-2', 'ring-amber-500/35');
+        }
         if (progressWrap) progressWrap.classList.add('hidden');
         if (progressSummary) progressSummary.textContent = '';
         if (dlg.showModal) dlg.showModal();
@@ -1815,18 +1925,31 @@
         if (statusMsg) statusMsg.textContent = 'Uploading and processing…';
         setBackfillBusy(true);
 
+        if (backfillAbort) {
+          try {
+            backfillAbort.abort();
+          } catch (abErr) {}
+        }
+        backfillAbort = new AbortController();
+        var seq = ++backfillSeq;
+
         var fd = new FormData();
         fd.append('rtd_file', rtdInput.files[0]);
         fd.append('mq_xlsx', mqInput.files[0]);
         fd.append('trade_date', tradeDateEl.value);
 
-        fetch('/api/nomination-accuracy/rtd-dispatch-backfill', { method: 'POST', body: fd })
+        fetch('/api/nomination-accuracy/rtd-dispatch-backfill', {
+          method: 'POST',
+          body: fd,
+          signal: backfillAbort.signal
+        })
           .then(function(r) {
             return r.json().then(function(j) {
               return { httpOk: r.ok, status: r.status, j: j };
             });
           })
           .then(function(ref) {
+            if (seq !== backfillSeq) return;
             var j = ref.j;
             if (!ref.httpOk || !j.ok) {
               var errTop =
@@ -1878,7 +2001,9 @@
             });
             setBackfillBusy(false);
           })
-          .catch(function() {
+          .catch(function(err) {
+            if (seq !== backfillSeq) return;
+            if (err && err.name === 'AbortError') return;
             if (statusMsg) statusMsg.textContent = 'Network error';
             if (progressSummary) progressSummary.textContent = '';
             setBackfillBusy(false);

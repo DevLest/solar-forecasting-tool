@@ -277,7 +277,7 @@
         <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
           <div>
             <h3 class="text-sm font-semibold text-brand-muted uppercase tracking-wider">Monthly &amp; annual analysis</h3>
-            <p class="text-xs text-brand-muted mt-1 max-w-3xl leading-relaxed">Monthly rollups and the day-detail view use the same <span class="font-semibold text-brand-text">billing period</span> as saved runs: <span class="font-semibold text-brand-text">26th–25th</span>, labeled by the calendar month in which the period <span class="font-semibold text-brand-text">ends</span> (e.g. January = Dec&nbsp;26–Jan&nbsp;25). The year selector applies to those end months. Charts use Chart.js on the same theme as the rest of the app.</p>
+            <p class="text-xs text-brand-muted mt-1 max-w-3xl leading-relaxed">Monthly rollups, the day-detail view, and the annual table use the same <span class="font-semibold text-brand-text">billing period</span> as saved runs: <span class="font-semibold text-brand-text">26th–25th</span>, labeled by the calendar month in which the period <span class="font-semibold text-brand-text">ends</span> (e.g. January = Dec&nbsp;26–Jan&nbsp;25). The year selector applies to those end months. <span class="font-semibold text-brand-text">Compliance %</span> and <span class="font-semibold text-brand-text">Days</span> count every trade day in that window (missing days count as not compliant). <span class="font-semibold text-brand-text">Avg MAPE / Avg P95</span> are simple averages of each saved day&rsquo;s Compliance-template metrics (daily max MQ in the FPE denominator; daily P95). <span class="font-semibold text-brand-text">BP MAPE / BP P95</span> use the WESM-style billing-period maximum MQ as the FPE denominator and pool intervals across saved days in the period (matches filing-style rollups; BP P95 needs per-interval series stored on save — re-run analysis for older days if BP P95 shows &ldquo;—&rdquo;). Charts use Chart.js on the same theme as the rest of the app.</p>
           </div>
           <button type="button" id="accuracy-btn-rollup-refresh" class="shrink-0 py-2 px-3 rounded-lg border border-brand-border bg-brand-dark hover:bg-brand-border/40 text-brand-text text-xs font-bold uppercase tracking-wide transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent/40">
             Refresh data
@@ -298,15 +298,17 @@
 
           <h4 class="text-xs font-bold uppercase tracking-wider text-brand-accent">Monthly — <span id="accuracy-rollup-year-label" class="font-mono text-brand-text">—</span></h4>
           <div class="overflow-x-auto rounded-lg border border-brand-border/60">
-            <table class="w-full text-left text-xs sm:text-sm border-collapse min-w-[44rem]">
+            <table class="w-full text-left text-xs sm:text-sm border-collapse min-w-[56rem]">
               <thead class="bg-brand-dark/90 border-b border-brand-border">
                 <tr class="text-brand-muted">
                   <th class="py-2.5 px-3 font-bold uppercase tracking-wider text-[10px] sm:text-xs">Month</th>
-                  <th class="py-2.5 px-3 font-bold uppercase tracking-wider text-[10px] sm:text-xs text-right">Days</th>
+                  <th class="py-2.5 px-3 font-bold uppercase tracking-wider text-[10px] sm:text-xs text-right" title="Trade days in the billing period (26th–25th)">Days</th>
                   <th class="py-2.5 px-3 font-bold uppercase tracking-wider text-[10px] sm:text-xs text-right">Compliant</th>
                   <th class="py-2.5 px-3 font-bold uppercase tracking-wider text-[10px] sm:text-xs text-right">Non-comp.</th>
-                  <th class="py-2.5 px-3 font-bold uppercase tracking-wider text-[10px] sm:text-xs text-right">Avg MAPE</th>
-                  <th class="py-2.5 px-3 font-bold uppercase tracking-wider text-[10px] sm:text-xs text-right">Avg P95</th>
+                  <th class="py-2.5 px-3 font-bold uppercase tracking-wider text-[10px] sm:text-xs text-right" title="Mean of daily MAPE (daily max MQ denominator)">Avg MAPE</th>
+                  <th class="py-2.5 px-3 font-bold uppercase tracking-wider text-[10px] sm:text-xs text-right" title="Mean of daily PERC95">Avg P95</th>
+                  <th class="py-2.5 px-3 font-bold uppercase tracking-wider text-[10px] sm:text-xs text-right" title="Pooled MAPE: billing-period max MQ denominator (WESM-style)">BP MAPE</th>
+                  <th class="py-2.5 px-3 font-bold uppercase tracking-wider text-[10px] sm:text-xs text-right" title="Pooled PERC95 over intervals; needs saved FPE series">BP P95</th>
                   <th class="py-2.5 px-3 font-bold uppercase tracking-wider text-[10px] sm:text-xs text-right">Compliance %</th>
                 </tr>
               </thead>
@@ -346,25 +348,26 @@
           </div>
           <div class="grid gap-4 lg:grid-cols-2">
             <div class="rounded-lg border border-brand-border/60 bg-brand-card/50 p-3">
-              <p class="text-[10px] font-bold uppercase tracking-wider text-brand-muted mb-2">Avg MAPE &amp; PERC95 by month (%)</p>
+              <p class="text-[10px] font-bold uppercase tracking-wider text-brand-muted mb-2">MAPE &amp; P95 by month (%): solid = daily-template averages; dashed = BP pooled (WESM-style denominator)</p>
               <div class="h-56 min-h-[14rem] relative">
                 <canvas id="accuracy-chart-monthly-errors" aria-label="Line chart of average MAPE and PERC95 percent by month"></canvas>
               </div>
             </div>
             <div class="rounded-lg border border-brand-border/60 bg-brand-card/50 p-3">
-              <p class="text-[10px] font-bold uppercase tracking-wider text-brand-muted mb-2">Compliance rate by month (% of days)</p>
+              <p class="text-[10px] font-bold uppercase tracking-wider text-brand-muted mb-2">Compliance rate by month (% of trade days in each billing period)</p>
               <div class="h-56 min-h-[14rem] relative">
                 <canvas id="accuracy-chart-monthly-compliance" aria-label="Bar chart of monthly compliance rate"></canvas>
               </div>
             </div>
           </div>
-          <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-4 text-xs" id="accuracy-year-totals-strip" aria-live="polite"></div>
+          <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 text-xs" id="accuracy-year-totals-strip" aria-live="polite"></div>
         </div>
 
         <div class="rounded-xl border border-brand-border/80 bg-brand-dark/25 p-4 sm:p-5 space-y-4">
-          <h4 class="text-xs font-bold uppercase tracking-wider text-brand-accent">Annual — all years in database</h4>
+          <h4 class="text-xs font-bold uppercase tracking-wider text-brand-accent">Annual — billing years in database</h4>
+          <p class="text-[11px] text-brand-muted -mt-1 mb-2">Each row is the year of the period end (25th), e.g. <span class="font-mono text-brand-text/90">2026</span> = <span class="font-mono">Dec&nbsp;26,&nbsp;2025</span>–<span class="font-mono">Dec&nbsp;25,&nbsp;2026</span> trade days (same as summing the 12 monthly rows for that end year).</p>
           <div class="overflow-x-auto rounded-lg border border-brand-border/60">
-            <table class="w-full text-left text-xs sm:text-sm border-collapse min-w-[40rem]">
+            <table class="w-full text-left text-xs sm:text-sm border-collapse min-w-[52rem]">
               <thead class="bg-brand-dark/90 border-b border-brand-border">
                 <tr class="text-brand-muted">
                   <th class="py-2.5 px-3 font-bold uppercase tracking-wider text-[10px] sm:text-xs">Year</th>
@@ -373,6 +376,8 @@
                   <th class="py-2.5 px-3 font-bold uppercase tracking-wider text-[10px] sm:text-xs text-right">Non-comp.</th>
                   <th class="py-2.5 px-3 font-bold uppercase tracking-wider text-[10px] sm:text-xs text-right">Avg MAPE</th>
                   <th class="py-2.5 px-3 font-bold uppercase tracking-wider text-[10px] sm:text-xs text-right">Avg P95</th>
+                  <th class="py-2.5 px-3 font-bold uppercase tracking-wider text-[10px] sm:text-xs text-right">BP MAPE</th>
+                  <th class="py-2.5 px-3 font-bold uppercase tracking-wider text-[10px] sm:text-xs text-right">BP P95</th>
                   <th class="py-2.5 px-3 font-bold uppercase tracking-wider text-[10px] sm:text-xs text-right">Compliance %</th>
                 </tr>
               </thead>
@@ -380,9 +385,9 @@
             </table>
           </div>
           <div class="rounded-lg border border-brand-border/60 bg-brand-card/50 p-3">
-            <p class="text-[10px] font-bold uppercase tracking-wider text-brand-muted mb-2">Days per year &amp; average MAPE (%)</p>
+            <p class="text-[10px] font-bold uppercase tracking-wider text-brand-muted mb-2">Trade days per billing year &amp; MAPE (%): solid = daily avg; dashed = BP pooled</p>
             <div class="h-64 min-h-[16rem] relative">
-              <canvas id="accuracy-chart-annual-overview" aria-label="Bar and line chart of annual days and MAPE"></canvas>
+              <canvas id="accuracy-chart-annual-overview" aria-label="Bar and line chart of billing-year trade days and MAPE"></canvas>
             </div>
           </div>
         </div>

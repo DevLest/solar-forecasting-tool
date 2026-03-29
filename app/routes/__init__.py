@@ -618,6 +618,7 @@ def api_nomination_accuracy_analytics_month_detail():
 
 @bp.route("/api/nomination-accuracy/analytics/annual", methods=["GET"])
 def api_nomination_accuracy_analytics_annual():
+    """Roll up by billing year (period end on the 25th), not calendar year of trade date."""
     try:
         payload = calendar_annual_rollup()
     except Exception as e:

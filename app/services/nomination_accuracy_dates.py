@@ -1,9 +1,12 @@
 """Trade-day and billing-period helpers for nomination accuracy storage."""
 from __future__ import annotations
 
+import math
 import re
-from datetime import date
+from datetime import date, timedelta
 from typing import Any
+
+from app.services.nomination_accuracy import linear_perc95_from_values
 
 
 def parse_trade_date_from_mq_filename(filename: str) -> date | None:
@@ -240,6 +243,139 @@ def billing_period_label(start: date, end: date) -> str:
     return f"{start.isoformat()}_{end.isoformat()}"
 
 
+def billing_year_trade_day_span(year: int) -> tuple[date, date]:
+    """
+    Inclusive trade-day range covered by all billing periods whose end (25th) falls in ``year``.
+
+    Example: ``2026`` → ``2025-12-26`` .. ``2026-12-25`` (same union as the 12 monthly rows for
+    that year in ``calendar_monthly_rollup``).
+    """
+    if year < 1990 or year > 2100:
+        raise ValueError("year out of range")
+    return date(year - 1, 12, 26), date(year, 12, 25)
+
+
+def billing_end_year_from_run(row: dict[str, Any]) -> int | None:
+    """Calendar year of the billing period end date (the 25th), matching monthly rollup labels."""
+    be = row.get("billing_period_end")
+    if be:
+        try:
+            return date.fromisoformat(str(be)).year
+        except ValueError:
+            pass
+    cd = str(row.get("compliance_day") or "").strip()
+    if not cd:
+        return None
+    try:
+        d = date.fromisoformat(cd)
+    except ValueError:
+        return None
+    _start, end = billing_period_containing(d)
+    return end.year
+
+
+def aggregate_run_stats_for_billing_window(
+    runs: list[dict[str, Any]], period_start: date, period_end: date
+) -> dict[str, Any]:
+    """
+    Same keys as ``aggregate_run_stats``, but ``days_in_selection`` counts every trade day in the
+    inclusive billing window; ``compliant_days`` is days with a saved run that passed policy;
+    ``non_compliant_days`` is the rest (missing uploads or saved non-compliance). MAPE/PERC95
+    averages are over saved rows only.
+
+    **Billing-period (WESM-style) rollups** (``mape_bp_pooled``, ``perc95_bp_pooled``): FPE
+    denominator is ``max(MQ)`` over all saved days in the window; pooled MAPE is the mean of
+    interval FPEs re-scaled from the daily template. PERC95 uses the same linear rule on all
+    pooled intervals when ``analytics.fpe_by_interval`` is present (new uploads); otherwise null.
+    """
+    period_days = (period_end - period_start).days + 1
+    if period_days < 1:
+        return aggregate_run_stats([])
+
+    by_day: dict[str, dict[str, Any]] = {}
+    for r in runs:
+        cd = str(r.get("compliance_day") or "").strip()
+        if cd:
+            by_day[cd] = r
+
+    compliant_days = 0
+    d = period_start
+    while d <= period_end:
+        row = by_day.get(d.isoformat())
+        if row and row.get("day_compliant"):
+            compliant_days += 1
+        d += timedelta(days=1)
+
+    mapes = [float(r["mape"]) for r in runs if r.get("mape") is not None]
+    p95s = [float(r["perc95"]) for r in runs if r.get("perc95") is not None]
+
+    mq_peaks = [float(r["max_mq_mw"]) for r in runs if r.get("max_mq_mw") is not None]
+    bp_max_mq = max(mq_peaks) if mq_peaks else None
+
+    mape_bp_pooled = None
+    mape_bp_days_used = 0
+    if bp_max_mq is not None and bp_max_mq > 0:
+        weighted: list[float] = []
+        for r in runs:
+            if r.get("mape") is None or r.get("max_mq_mw") is None:
+                continue
+            hd = float(r["max_mq_mw"])
+            if hd <= 0:
+                continue
+            weighted.append(float(r["mape"]) * hd / bp_max_mq)
+        if weighted:
+            mape_bp_pooled = sum(weighted) / len(weighted)
+            mape_bp_days_used = len(weighted)
+
+    perc95_bp_pooled = None
+    bp_intervals_used = 0
+    bp_runs_with_fpe = 0
+    if bp_max_mq is not None and bp_max_mq > 0:
+        scaled_all: list[float] = []
+        for r in runs:
+            if r.get("max_mq_mw") is None:
+                continue
+            hd = float(r["max_mq_mw"])
+            if hd <= 0:
+                continue
+            an = r.get("analytics")
+            if not isinstance(an, dict):
+                continue
+            series = an.get("fpe_by_interval")
+            if not isinstance(series, list) or len(series) != 288:
+                continue
+            bp_runs_with_fpe += 1
+            scale = hd / bp_max_mq
+            for x in series:
+                if x is None:
+                    continue
+                try:
+                    fv = float(x)
+                except (TypeError, ValueError):
+                    continue
+                if not math.isfinite(fv):
+                    continue
+                scaled_all.append(fv * scale)
+        bp_intervals_used = len(scaled_all)
+        perc95_bp_pooled = linear_perc95_from_values(scaled_all)
+
+    return {
+        "days_in_selection": period_days,
+        "compliant_days": compliant_days,
+        "non_compliant_days": period_days - compliant_days,
+        "mape_sum": sum(mapes) if mapes else None,
+        "mape_avg": sum(mapes) / len(mapes) if mapes else None,
+        "perc95_sum": sum(p95s) if p95s else None,
+        "perc95_avg": sum(p95s) / len(p95s) if p95s else None,
+        "billing_period_max_mq_mw": bp_max_mq,
+        "mape_bp_pooled": mape_bp_pooled,
+        "mape_bp_days_used": mape_bp_days_used,
+        "perc95_bp_pooled": perc95_bp_pooled,
+        "perc95_bp_intervals_used": bp_intervals_used,
+        "perc95_bp_runs_with_series": bp_runs_with_fpe,
+    }
+
+
 def aggregate_run_stats(runs: list[dict[str, Any]]) -> dict[str, Any]:
     if not runs:
         return {
@@ -250,6 +386,12 @@ def aggregate_run_stats(runs: list[dict[str, Any]]) -> dict[str, Any]:
             "mape_avg": None,
             "perc95_sum": None,
             "perc95_avg": None,
+            "billing_period_max_mq_mw": None,
+            "mape_bp_pooled": None,
+            "mape_bp_days_used": 0,
+            "perc95_bp_pooled": None,
+            "perc95_bp_intervals_used": 0,
+            "perc95_bp_runs_with_series": 0,
         }
     compliant = sum(1 for r in runs if r.get("day_compliant"))
     mapes = [float(r["mape"]) for r in runs if r.get("mape") is not None]
@@ -262,4 +404,11 @@ def aggregate_run_stats(runs: list[dict[str, Any]]) -> dict[str, Any]:
         "mape_avg": sum(mapes) / len(mapes) if mapes else None,
         "perc95_sum": sum(p95s) if p95s else None,
         "perc95_avg": sum(p95s) / len(p95s) if p95s else None,
+        # BP rollups only meaningful for a fixed billing window; not computed here.
+        "billing_period_max_mq_mw": None,
+        "mape_bp_pooled": None,
+        "mape_bp_days_used": 0,
+        "perc95_bp_pooled": None,
+        "perc95_bp_intervals_used": 0,
+        "perc95_bp_runs_with_series": 0,
     }

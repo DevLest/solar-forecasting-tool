@@ -12,9 +12,12 @@ from typing import Any
 from app.config import DATA_DIR
 from app.services.nomination_accuracy_dates import (
     aggregate_run_stats,
+    aggregate_run_stats_for_billing_window,
+    billing_end_year_from_run,
     billing_period_containing,
     billing_period_for_end_month,
     billing_period_label,
+    billing_year_trade_day_span,
 )
 
 DB_FILENAME = "nomination_accuracy.sqlite3"
@@ -347,11 +350,18 @@ def list_runs(
     month: int | None = None,
     billing_period_year: int | None = None,
     billing_period_month: int | None = None,
+    trade_day_min: str | None = None,
+    trade_day_max: str | None = None,
     limit: int = 500,
+    include_analytics: bool = False,
 ) -> list[dict[str, Any]]:
     init_nomination_accuracy_db()
     conditions: list[str] = []
     params: list[Any] = []
+
+    if trade_day_min is not None and trade_day_max is not None:
+        conditions.append("compliance_day >= ? AND compliance_day <= ?")
+        params.extend([str(trade_day_min), str(trade_day_max)])
 
     if billing_period_year is not None and billing_period_month is not None:
         p0, p1 = billing_period_for_end_month(billing_period_year, billing_period_month)
@@ -367,10 +377,14 @@ def list_runs(
         params.extend([f"{year:04d}-01-01", f"{year + 1:04d}-01-01"])
 
     where = (" WHERE " + " AND ".join(conditions)) if conditions else ""
+    base_cols = """
+        id, created_at, compliance_day, mape, perc95, max_mq_mw, n_intervals,
+        compliance_rows_in_window, mq_sheet, mape_ok, perc95_ok, day_compliant,
+        billing_period_start, billing_period_end, policy_json
+        """
+    extra = ", analytics_json" if include_analytics else ""
     q = f"""
-        SELECT id, created_at, compliance_day, mape, perc95, max_mq_mw, n_intervals,
-               compliance_rows_in_window, mq_sheet, mape_ok, perc95_ok, day_compliant,
-               billing_period_start, billing_period_end, policy_json
+        SELECT {base_cols}{extra}
         FROM nomination_accuracy_run{where}
         ORDER BY compliance_day DESC, id DESC
         LIMIT ?
@@ -390,6 +404,15 @@ def list_runs(
                     row["policy"] = None
             else:
                 row["policy"] = None
+            if include_analytics:
+                aj = row.pop("analytics_json", None)
+                if aj:
+                    try:
+                        row["analytics"] = json.loads(aj)
+                    except (json.JSONDecodeError, TypeError):
+                        row["analytics"] = None
+                else:
+                    row["analytics"] = None
             out.append(row)
         return out
 
@@ -416,6 +439,7 @@ def list_runs_with_billing_meta(
             "end": p1.isoformat(),
             "label": billing_period_label(p0, p1),
         }
+        out["stats"] = aggregate_run_stats_for_billing_window(runs, p0, p1)
     return out
 
 
@@ -424,7 +448,9 @@ def calendar_monthly_rollup(year: int, limit_per_year: int = 8000) -> dict[str, 
     Roll up saved runs by **billing period** (26th–25th, same as ``save_run``), for periods
     whose **end date** falls in ``year`` (month label = month of the 25th end date).
 
-    Always returns 12 rows (Jan–Dec); periods with no data have zero days and null averages.
+    Always returns 12 rows (Jan–Dec). Stats use the full billing window each month (trade-day
+    count); compliance % treats missing days as not compliant. MAPE/PERC95 averages use saved rows
+    only.
     """
     if year < 1990 or year > 2100:
         raise ValueError("year out of range")
@@ -435,9 +461,11 @@ def calendar_monthly_rollup(year: int, limit_per_year: int = 8000) -> dict[str, 
             billing_period_year=year,
             billing_period_month=m,
             limit=limit_per_year,
+            include_analytics=True,
         )
         all_in_year.extend(chunk)
-        st = aggregate_run_stats(chunk)
+        p0, p1 = billing_period_for_end_month(year, m)
+        st = aggregate_run_stats_for_billing_window(chunk, p0, p1)
         months.append(
             {
                 "month": m,
@@ -446,10 +474,11 @@ def calendar_monthly_rollup(year: int, limit_per_year: int = 8000) -> dict[str, 
                 "stats": st,
             }
         )
+    y0, y1 = billing_year_trade_day_span(year)
     return {
         "year": year,
         "months": months,
-        "year_totals": aggregate_run_stats(all_in_year),
+        "year_totals": aggregate_run_stats_for_billing_window(all_in_year, y0, y1),
     }
 
 
@@ -471,6 +500,7 @@ def calendar_month_detail(year: int, month: int) -> dict[str, Any]:
         billing_period_year=year,
         billing_period_month=month,
         limit=8000,
+        include_analytics=True,
     )
     by_day: dict[str, dict[str, Any]] = {}
     for r in runs:
@@ -489,6 +519,7 @@ def calendar_month_detail(year: int, month: int) -> dict[str, Any]:
             "mq_sheet": r.get("mq_sheet"),
             "policy": r.get("policy"),
         }
+    period_stats = aggregate_run_stats_for_billing_window(runs, p0, p1)
     missing_dates: list[str] = []
     rows: list[dict[str, Any]] = []
     d = p0
@@ -526,11 +557,16 @@ def calendar_month_detail(year: int, month: int) -> dict[str, Any]:
         "days_missing": len(missing_dates),
         "missing_dates": missing_dates,
         "rows": rows,
+        "billing_period_stats": period_stats,
     }
 
 
 def calendar_annual_rollup(limit_all: int = 50000) -> dict[str, Any]:
-    """One summary row per **calendar year** present in the database (by ``compliance_day``)."""
+    """
+    One summary row per **billing year** (year of the period end on the 25th), same labeling as
+    monthly rollups. Stats use the full trade-day span for that year; missing days count as not
+    compliant for compliance %.
+    """
     runs = list_runs(
         year=None,
         month=None,
@@ -540,23 +576,25 @@ def calendar_annual_rollup(limit_all: int = 50000) -> dict[str, Any]:
     )
     by_year: dict[int, list[dict[str, Any]]] = defaultdict(list)
     for r in runs:
-        cd = str(r.get("compliance_day") or "")
-        if len(cd) < 4:
-            continue
-        try:
-            y = int(cd[:4])
-        except ValueError:
+        y = billing_end_year_from_run(r)
+        if y is None:
             continue
         by_year[y].append(r)
 
     years_out: list[dict[str, Any]] = []
     for y in sorted(by_year.keys()):
-        chunk = by_year[y]
+        p0, p1 = billing_year_trade_day_span(y)
+        chunk = list_runs(
+            trade_day_min=p0.isoformat(),
+            trade_day_max=p1.isoformat(),
+            limit=limit_all,
+            include_analytics=True,
+        )
         years_out.append(
             {
                 "year": y,
                 "label": str(y),
-                "stats": aggregate_run_stats(chunk),
+                "stats": aggregate_run_stats_for_billing_window(chunk, p0, p1),
             }
         )
     return {"years": years_out}

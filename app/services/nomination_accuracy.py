@@ -13,6 +13,8 @@ FPE (per Excel Compliance col I): ABS((G - E) / H_max) with
   H_max = max(E over day).
 MAPE: mean(FPE) over intervals with numeric RTD (COUNT(C) in template).
 PERC95: linear interpolation on sorted FPE (p=0.95, h=p*(N+1)).
+Billing-period rollups (UI): ``fpe_by_interval`` in stored analytics enables WESM-style
+  pooled metrics using max(MQ) over the 26th–25th window as the FPE denominator.
 """
 from __future__ import annotations
 
@@ -350,19 +352,7 @@ def compute_fpe_and_metrics(
     # PERC95: sorted FPE ascending, h = 0.95*(N+1), Excel TRUNC + fractional
     sorted_f = sorted(x for x in fpe if x is not None)
     n = len(sorted_f)
-    perc95 = None
-    if n > 0:
-        h = 0.95 * (n + 1)
-        k = int(h)
-        d = h - k
-        if k <= 0:
-            perc95 = sorted_f[0]
-        elif k >= n:
-            perc95 = sorted_f[-1]
-        else:
-            yk = sorted_f[k - 1]
-            yk1 = sorted_f[k]
-            perc95 = yk + d * (yk1 - yk)
+    perc95 = linear_perc95_from_sorted(sorted_f) if n > 0 else None
 
     return {
         "mape": mape,
@@ -374,6 +364,36 @@ def compute_fpe_and_metrics(
         "mq_mw": mq_mw,
         "rtd_mw": rtd_mw,
     }
+
+
+def linear_perc95_from_sorted(sorted_fpe: list[float]) -> float | None:
+    """Same 95th-percentile rule as Excel / Compliance template (0.95×(N+1), linear blend)."""
+    n = len(sorted_fpe)
+    if n == 0:
+        return None
+    h = 0.95 * (n + 1)
+    k = int(h)
+    d = h - k
+    if k <= 0:
+        return sorted_fpe[0]
+    if k >= n:
+        return sorted_fpe[-1]
+    yk = sorted_fpe[k - 1]
+    yk1 = sorted_fpe[k]
+    return yk + d * (yk1 - yk)
+
+
+def linear_perc95_from_values(fpe_values: list[float]) -> float | None:
+    if not fpe_values:
+        return None
+    return linear_perc95_from_sorted(sorted(fpe_values))
+
+
+def attach_fpe_series_for_storage(analytics: dict[str, Any], fpe_list: list[float | None]) -> None:
+    """Persist 288×FPE (daily-template denominator) for billing-period pooled rollups."""
+    analytics["fpe_by_interval"] = [
+        None if x is None else round(float(x), 10) for x in fpe_list
+    ]
 
 
 def _cell_mw(val: Any) -> float:
@@ -516,6 +536,7 @@ def analyze_rtd_dispatch_workbook(
     metrics["mq_sheet"] = mq_sheet_label
     policy = evaluate_nomination_policy(metrics.get("mape"), metrics.get("perc95"))
     analytics = compute_summary_style_analytics(rtd, actual, mq_mw, fpe_list)
+    attach_fpe_series_for_storage(analytics, fpe_list)
 
     summary = {k: v for k, v in metrics.items() if k not in ("fpe", "mq_mw", "rtd_mw")}
     if summary.get("mape") is not None:
@@ -548,6 +569,7 @@ def analyze_uploads(mq_xlsx_bytes: bytes, compliance_csv_bytes: bytes) -> dict[s
     metrics["mq_sheet"] = sheet_used
     policy = evaluate_nomination_policy(metrics.get("mape"), metrics.get("perc95"))
     analytics = compute_summary_style_analytics(rtd, actual, mq_mw, fpe_list)
+    attach_fpe_series_for_storage(analytics, fpe_list)
 
     summary = {k: v for k, v in metrics.items() if k not in ("fpe", "mq_mw", "rtd_mw")}
     if summary.get("mape") is not None:
