@@ -1,6 +1,9 @@
 (function () {
   'use strict';
 
+  var bhAuth = typeof window !== 'undefined' && window.__ARECO_AUTH__;
+  var bhReadOnly = !!(bhAuth && bhAuth.role === 'spectator');
+
   var yearFilter = document.getElementById('bh-filter-year');
   var monthFilter = document.getElementById('bh-filter-month');
   var stmtFilter = document.getElementById('bh-filter-statement');
@@ -347,29 +350,37 @@
         fmt(sv) +
         '</td>' +
         '<td class="py-2 px-2 align-middle">' +
-        statusSelect(r.id, 'status_sales', r.status_sales) +
+        (bhReadOnly
+          ? '<span class="text-brand-text">' + escapeHtml(r.status_sales || '—') + '</span>'
+          : statusSelect(r.id, 'status_sales', r.status_sales)) +
         '</td>' +
         '<td class="py-2 px-2 align-middle">' +
-        statusSelect(r.id, 'status_purchases', r.status_purchases) +
+        (bhReadOnly
+          ? '<span class="text-brand-text">' + escapeHtml(r.status_purchases || '—') + '</span>'
+          : statusSelect(r.id, 'status_purchases', r.status_purchases)) +
         '</td>' +
-        '<td class="py-2 px-2 align-middle"><button type="button" class="bh-del inline-flex items-center h-8 px-0.5 text-rose-300 hover:text-rose-200 text-[11px] font-semibold uppercase leading-none" data-id="' +
-        r.id +
-        '">Delete</button></td>';
+        (bhReadOnly
+          ? ''
+          : '<td class="py-2 px-2 align-middle"><button type="button" class="bh-del inline-flex items-center h-8 px-0.5 text-rose-300 hover:text-rose-200 text-[11px] font-semibold uppercase leading-none" data-id="' +
+            r.id +
+            '">Delete</button></td>');
       inputTbody.appendChild(tr);
     });
     if (inputCount) inputCount.textContent = rows && rows.length ? rows.length + ' row(s)' : 'No rows';
-    inputTbody.querySelectorAll('select[data-bh-status]').forEach(function (sel) {
-      sel.addEventListener('change', onStatusChange);
-      sel.addEventListener('click', function (e) {
-        e.stopPropagation();
+    if (!bhReadOnly) {
+      inputTbody.querySelectorAll('select[data-bh-status]').forEach(function (sel) {
+        sel.addEventListener('change', onStatusChange);
+        sel.addEventListener('click', function (e) {
+          e.stopPropagation();
+        });
       });
-    });
-    inputTbody.querySelectorAll('.bh-del').forEach(function (b) {
-      b.addEventListener('click', function (ev) {
-        ev.stopPropagation();
-        onDelete(ev);
+      inputTbody.querySelectorAll('.bh-del').forEach(function (b) {
+        b.addEventListener('click', function (ev) {
+          ev.stopPropagation();
+          onDelete(ev);
+        });
       });
-    });
+    }
     inputTbody.querySelectorAll('tr[data-row-id]').forEach(function (tr) {
       tr.addEventListener('click', onInputRowClick);
       tr.addEventListener('keydown', onInputRowKeydown);
@@ -577,10 +588,10 @@
 
   if (btnApply) btnApply.addEventListener('click', onApply);
   if (btnClear) btnClear.addEventListener('click', onClearMonth);
-  if (btnUpload) btnUpload.addEventListener('click', onUpload);
+  if (!bhReadOnly && btnUpload) btnUpload.addEventListener('click', onUpload);
   if (displayClearSel) displayClearSel.addEventListener('click', onClearDisplaySelection);
 
-  bindBillingSlotPickers();
+  if (!bhReadOnly) bindBillingSlotPickers();
 
   document.querySelectorAll('[data-nav-panel="billing-history"]').forEach(function (btn) {
     btn.addEventListener('click', function () {

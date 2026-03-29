@@ -1,4 +1,7 @@
 (function () {
+  var auth = typeof window !== 'undefined' && window.__ARECO_AUTH__;
+  if (!auth || !auth.can_edit_settings) return;
+
   var API_BASE = (typeof window !== 'undefined' && window.location && window.location.origin) ? window.location.origin : '';
   var overlay = document.getElementById('settings-drawer-overlay');
   var panel = document.getElementById('settings-drawer-panel');
@@ -20,6 +23,7 @@
       panel.classList.remove('translate-x-full');
     });
     loadConfig();
+    if (typeof window.loadAdminUsers === 'function') window.loadAdminUsers();
   }
 
   function closeDrawer() {

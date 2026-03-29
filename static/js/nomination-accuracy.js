@@ -1,4 +1,8 @@
 (function initNominationAccuracy() {
+  var authAcc = typeof window !== 'undefined' && window.__ARECO_AUTH__;
+  var accuracyReadOnly = !!(authAcc && authAcc.role === 'spectator');
+  var savedRunsColspan = accuracyReadOnly ? 6 : 7;
+
   var lastStorageDayIso = '';
   /** ISO dates (YYYY-MM-DD) that already have a saved nomination-accuracy run */
   var uploadedTradeDates = new Set();
@@ -880,15 +884,17 @@
         '<td class="py-2 px-3 text-right text-brand-muted text-[11px]">#' +
         (x.id != null ? x.id : '—') +
         '</td>' +
-        '<td class="py-2 px-2 text-center">' +
-        (x.id != null
-          ? '<button type="button" class="accuracy-saved-delete-btn rounded border border-rose-500/35 bg-rose-950/30 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-rose-200 hover:bg-rose-900/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/50" data-run-id="' +
-            String(x.id) +
-            '" data-compliance-day="' +
-            escAttr(x.compliance_day || '') +
-            '" title="Remove this saved run for this trade day">Del</button>'
-          : '—') +
-        '</td>';
+        (accuracyReadOnly
+          ? ''
+          : '<td class="py-2 px-2 text-center">' +
+            (x.id != null
+              ? '<button type="button" class="accuracy-saved-delete-btn rounded border border-rose-500/35 bg-rose-950/30 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-rose-200 hover:bg-rose-900/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/50" data-run-id="' +
+                String(x.id) +
+                '" data-compliance-day="' +
+                escAttr(x.compliance_day || '') +
+                '" title="Remove this saved run for this trade day">Del</button>'
+              : '—') +
+            '</td>');
       savedTbody.appendChild(tr);
     });
     updateSortIndicators();
@@ -922,7 +928,9 @@
     }
     var row = document.createElement('tr');
     row.innerHTML =
-      '<td colspan="7" class="py-6 px-3 text-center text-brand-muted text-sm">Loading…</td>';
+      '<td colspan="' +
+      savedRunsColspan +
+      '" class="py-6 px-3 text-center text-brand-muted text-sm">Loading…</td>';
     savedTbody.appendChild(row);
 
     var statsEl = document.getElementById('accuracy-saved-stats');
@@ -946,7 +954,9 @@
         if (!j.ok) {
           var err = document.createElement('tr');
           err.innerHTML =
-            '<td colspan="7" class="py-6 px-3 text-center text-rose-300 text-sm">' +
+            '<td colspan="' +
+            savedRunsColspan +
+            '" class="py-6 px-3 text-center text-rose-300 text-sm">' +
             (j.error || 'Failed') +
             '</td>';
           savedTbody.appendChild(err);
@@ -971,7 +981,9 @@
         savedTbody.innerHTML = '';
         var err = document.createElement('tr');
         err.innerHTML =
-          '<td colspan="7" class="py-6 px-3 text-center text-rose-300 text-sm">Network error</td>';
+          '<td colspan="' +
+          savedRunsColspan +
+          '" class="py-6 px-3 text-center text-rose-300 text-sm">Network error</td>';
         savedTbody.appendChild(err);
         lastFetchedRuns = [];
       });

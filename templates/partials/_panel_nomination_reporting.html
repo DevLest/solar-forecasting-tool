@@ -6,6 +6,7 @@
         <span class="font-semibold text-brand-text">MPI compliance</span> is stored per trade day and <span class="font-semibold text-brand-text">read from the database</span> for Forecast Percentage and charts. <span class="font-semibold text-brand-text">Choosing a CSV saves it automatically.</span> Add <span class="font-semibold text-brand-text">Market Result — Energy Schedules</span> when available; charts gain LMP &amp; day-ahead for that same day.
       </p>
 
+      {% if areco_role != 'spectator' %}
       <div class="grid gap-4 lg:grid-cols-2 lg:items-stretch">
         <section class="bg-brand-card rounded-xl border border-brand-border p-4 sm:p-5 shadow-lg flex flex-col gap-3 min-h-0" aria-labelledby="reporting-upload-compliance-heading">
           <div>
@@ -61,6 +62,11 @@
           <p class="text-[11px] text-brand-muted">Market days in DB: <span id="reporting-market-stored-inline" class="font-mono text-brand-text">—</span></p>
         </section>
       </div>
+      {% else %}
+      <p class="text-sm text-brand-muted rounded-lg border border-brand-border/60 bg-brand-dark/20 px-4 py-3 max-w-3xl">
+        <span class="font-semibold text-brand-text">View only.</span> CSV uploads are disabled for your role; you can still browse stored days and marketplace charts below.
+      </p>
+      {% endif %}
 
       <section class="rounded-xl border border-brand-border bg-brand-card/80 p-4 sm:p-5 shadow-lg" aria-labelledby="reporting-stored-heading">
         <h3 id="reporting-stored-heading" class="text-sm font-semibold text-brand-muted uppercase tracking-wider mb-2">Stored MPI compliance days</h3>

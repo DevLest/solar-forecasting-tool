@@ -501,8 +501,8 @@
       if (payload.traderDuty != null && document.getElementById('ops-trader-duty')) {
         var tdEl = document.getElementById('ops-trader-duty');
         var tdv = String(payload.traderDuty);
-        if (tdv === 'DR Cosas') tdv = 'DR COSAS';
         tdEl.value = tdv;
+        if (tdEl.value !== tdv) tdEl.value = '';
       }
       var fixedSlots = getNominationIntervalDataSlots();
       var lookup = {};
@@ -1580,7 +1580,9 @@
     document.getElementById('btn-export-vre-csv').addEventListener('click', function() {
       var detail = getExportDetailStrings();
       var dateStr = String(detail.yyyy) + detail.mm + detail.dd;
-      var filename = 'VRE_NOM_{Vista Alegre Solar Power Plant}_' + dateStr + '.csv';
+      var vrePlantEl = document.getElementById('vre-plant-name');
+      var plant = (vrePlantEl && vrePlantEl.value && vrePlantEl.value.trim()) ? vrePlantEl.value.trim() : 'Solar Plant';
+      var filename = 'VRE_NOM_' + plant + '_' + dateStr + '.csv';
       var csv = buildVreCsvContent();
       setNominationExportStatus('Saving VRE CSV to server folder…');
       saveNominationFileToServer(filename, csv)

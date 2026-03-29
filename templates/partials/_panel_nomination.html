@@ -50,10 +50,11 @@
               <option value="Other">Other</option>
             </select>
             <label for="ops-trader-duty">On Duty:</label>
-            <select id="ops-trader-duty" class="focus:ring-1 focus:ring-brand-accent" title="Trader on duty">
+            <select id="ops-trader-duty" class="focus:ring-1 focus:ring-brand-accent" title="Users with admin or nominator role">
               <option value="">—</option>
-              <option value="DR COSAS">DR COSAS</option>
-              <option value="N Leal">N Leal</option>
+              {% for u in nomination_trader_options %}
+              <option value="{{ u }}">{{ u }}</option>
+              {% endfor %}
             </select>
           </div>
         </div>
@@ -205,7 +206,7 @@
           <h3 class="text-xl font-bold uppercase tracking-wider text-brand-accent">VRE Table</h3>
           <div class="flex items-center gap-4">
             <label class="text-[10px] text-brand-muted uppercase">Plant name for export</label>
-            <input type="text" id="vre-plant-name" value="Vista Alegre Solar Power Plant" class="bg-brand-dark border border-brand-border rounded px-3 py-1.5 text-sm w-64" placeholder="e.g. Vista Alegre Solar Power Plant" title="VRE CSV filename is always: VRE_NOM_{Vista Alegre Solar Power Plant}_YYYYMMDD.csv (only the date changes)"/>
+            <input type="text" id="vre-plant-name" value="" class="bg-brand-dark border border-brand-border rounded px-3 py-1.5 text-sm w-64" placeholder="e.g. ARECO Solar Plant" title="VRE CSV filename: VRE_NOM_{your plant name}_YYYYMMDD.csv"/>
             <button type="button" id="btn-export-vre-csv" class="bg-brand-accent hover:bg-brand-accent/80 text-brand-dark px-4 py-2 rounded font-bold text-sm uppercase tracking-tighter">Export CSV</button>
           </div>
         </div>

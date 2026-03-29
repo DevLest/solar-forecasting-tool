@@ -1,16 +1,36 @@
 {% extends 'layouts/app.html' %}
 {% block main_inner %}
+  {% if 'nomination' in areco_panels %}
   {% include 'partials/_panel_nomination.html' %}
+  {% endif %}
+  {% if 'nomination-reporting' in areco_panels %}
   {% include 'partials/_panel_nomination_reporting.html' %}
+  {% endif %}
+  {% if 'billing' in areco_panels %}
   {% include 'partials/_panel_billing.html' %}
+  {% endif %}
+  {% if 'nomination-accuracy' in areco_panels %}
   {% include 'partials/_panel_nomination_accuracy.html' %}
+  {% endif %}
+  {% if 'billing-history' in areco_panels %}
   {% include 'partials/_panel_billing_history.html' %}
+  {% endif %}
 {% endblock %}
 {% block page_scripts %}
+  {% if 'nomination' in areco_panels %}
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" defer></script>
   <script src="{{ url_for('static', filename='js/nomination-dashboard.js') }}" defer></script>
+  {% endif %}
+  {% if 'nomination-reporting' in areco_panels %}
   <script src="{{ url_for('static', filename='js/nomination-reporting.js') }}" defer></script>
+  {% endif %}
+  {% if 'nomination-accuracy' in areco_panels %}
   <script src="{{ url_for('static', filename='js/nomination-accuracy.js') }}" defer></script>
+  {% endif %}
+  {% if 'billing' in areco_panels %}
   <script src="{{ url_for('static', filename='js/billing-settlement.js') }}" defer></script>
+  {% endif %}
+  {% if 'billing-history' in areco_panels %}
   <script src="{{ url_for('static', filename='js/billing-history.js') }}" defer></script>
+  {% endif %}
 {% endblock %}

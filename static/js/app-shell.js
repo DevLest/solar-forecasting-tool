@@ -1,4 +1,15 @@
     (function initAppPanels() {
+      var auth = typeof window !== 'undefined' && window.__ARECO_AUTH__;
+      var allowed = {};
+      if (auth && auth.panels && auth.panels.length) {
+        auth.panels.forEach(function (p) { allowed[p] = 1; });
+      } else {
+        ['nomination', 'nomination-reporting', 'nomination-accuracy', 'billing', 'billing-history'].forEach(function (p) {
+          allowed[p] = 1;
+        });
+      }
+      var defaultPanel = (auth && auth.default_panel) || 'nomination';
+
       var panelNom = document.getElementById('panel-nomination');
       var panelReporting = document.getElementById('panel-nomination-reporting');
       var panelBill = document.getElementById('panel-billing');
@@ -41,8 +52,8 @@
         });
       }
       function showPanel(id) {
-        var valid = { nomination: 1, 'nomination-reporting': 1, billing: 1, 'nomination-accuracy': 1, 'billing-history': 1 };
-        if (!valid[id]) id = 'nomination';
+        if (!allowed[id]) id = defaultPanel;
+        if (!allowed[id]) id = Object.keys(allowed)[0] || 'nomination';
         if (panelNom) panelNom.classList.toggle('hidden', id !== 'nomination');
         if (panelReporting) panelReporting.classList.toggle('hidden', id !== 'nomination-reporting');
         if (panelBill) panelBill.classList.toggle('hidden', id !== 'billing');
@@ -71,8 +82,8 @@
       });
       var saved = '';
       try { saved = sessionStorage.getItem('areco_app_panel') || ''; } catch (e2) {}
-      if (saved === 'billing' || saved === 'nomination-reporting' || saved === 'nomination-accuracy' || saved === 'billing-history') showPanel(saved);
-      else showPanel('nomination');
+      if (saved && allowed[saved]) showPanel(saved);
+      else showPanel(defaultPanel);
     })();
 
     (function confirmationModal() {

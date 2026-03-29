@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html class="h-full" lang="en">
+<head>
+  {% include 'components/head_base.html' %}
+  <title>Sign in — ARECO Operations</title>
+</head>
+<body class="bg-brand-dark text-brand-text font-sans antialiased min-h-full flex flex-col items-center justify-center p-6">
+  <div class="w-full max-w-md rounded-2xl border border-brand-border bg-brand-card/90 shadow-2xl p-8 space-y-6">
+    <div class="flex items-center gap-3">
+      <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-white p-1 shadow-sm ring-1 ring-white/15">
+        <img src="{{ url_for('main.assets', filename='areco-logo.jpg') }}" alt="" width="40" height="40" class="h-full w-full object-contain" decoding="async" />
+      </div>
+      <div>
+        <h1 class="text-lg font-bold uppercase tracking-wider text-brand-accent">ARECO 65 MW Solar</h1>
+        <p class="text-xs text-brand-muted uppercase tracking-widest">Operations sign-in</p>
+      </div>
+    </div>
+    {% if error %}
+    <p class="text-sm text-rose-300/95 rounded-lg border border-rose-500/30 bg-rose-950/25 px-3 py-2" role="alert">{{ error }}</p>
+    {% endif %}
+    <form method="post" class="space-y-4" action="{{ url_for('main.login') }}">
+      {% if request.args.get('next') %}
+      <input type="hidden" name="next" value="{{ request.args.get('next') }}" />
+      {% endif %}
+      <div>
+        <label for="login-username" class="block text-[10px] font-bold uppercase tracking-wider text-brand-muted mb-1">Username</label>
+        <input id="login-username" name="username" type="text" autocomplete="username" required class="w-full bg-brand-dark border border-brand-border rounded-lg px-3 py-2.5 text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/40" />
+      </div>
+      <div>
+        <label for="login-password" class="block text-[10px] font-bold uppercase tracking-wider text-brand-muted mb-1">Password</label>
+        <input id="login-password" name="password" type="password" autocomplete="current-password" required class="w-full bg-brand-dark border border-brand-border rounded-lg px-3 py-2.5 text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/40" />
+      </div>
+      <button type="submit" class="w-full py-3 rounded-xl bg-brand-accent text-brand-dark font-bold uppercase text-xs tracking-wide hover:bg-brand-accent/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent/50">
+        Sign in
+      </button>
+    </form>
+    <p class="text-[11px] text-brand-muted leading-relaxed">
+      Default accounts live in <code class="text-brand-accent/90 font-mono text-[10px]">data/users.json</code> (seeded from <code class="text-brand-accent/90 font-mono text-[10px]">users.example.json</code> in the project root on first run). Set a strong <code class="font-mono text-[10px]">ARECO_SECRET_KEY</code> in <code class="font-mono text-[10px]">.env</code> for production.
+    </p>
+  </div>
+</body>
+</html>

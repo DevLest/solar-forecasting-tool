@@ -1,11 +1,12 @@
 {% from 'components/ui_macros.html' import page_hero %}
     <div id="panel-nomination-accuracy" class="hidden flex-grow p-6 max-w-[1600px] mx-auto w-full space-y-6">
-      {{ page_hero('Forecast Percentage Error', 'State of the art app from Daniel Rex Cosas') }}
+      {{ page_hero('Forecast Percentage Error', 'MPI compliance vs MIRF MQ analysis, saved runs, and billing-period rollups.') }}
 
       <p class="text-sm text-brand-muted max-w-3xl leading-relaxed">
         <span class="font-semibold text-brand-text">MPI compliance CSV</span> is uploaded under <span class="font-semibold text-brand-text">Reporting</span> and stored by trade day. Use <span class="font-semibold text-brand-text">Upload MQ workbook</span> to open the MIRF Daily MQ upload — after you choose a file, analysis runs automatically and results appear below. RTD/Actual come from the saved MPI export. <span class="font-semibold text-brand-text">Historical backfill:</span> use <span class="font-mono text-[11px]">Backfill (RTD + MIRF)</span> for one day at a time with RTD + MQ workbooks (calendar blocks days that already have a saved run).
       </p>
 
+      {% if areco_role != 'spectator' %}
       <dialog id="accuracy-backfill-dialog" aria-labelledby="accuracy-backfill-title">
         <div class="modal-panel p-6 sm:p-7 max-w-xl w-[min(100vw-2rem,40rem)]">
           <h2 id="accuracy-backfill-title" class="text-sm font-bold uppercase tracking-wider text-brand-muted mb-2">Backfill: RTD workbook + MIRF Daily MQ</h2>
@@ -40,6 +41,7 @@
           </div>
         </div>
       </dialog>
+      {% endif %}
 
       <dialog id="accuracy-run-policy-dialog" aria-labelledby="accuracy-run-policy-title" class="z-[110]">
         <div class="modal-panel p-6 sm:p-7 max-w-lg w-[min(100vw-2rem,28rem)]">
@@ -65,6 +67,7 @@
         </div>
       </dialog>
 
+      {% if areco_role != 'spectator' %}
       <dialog id="accuracy-mq-dialog" class="z-[105]" aria-labelledby="accuracy-mq-dialog-title">
         <div class="modal-panel p-6 sm:p-7 max-w-xl w-[min(100vw-2rem,36rem)]">
           <h2 id="accuracy-mq-dialog-title" class="text-sm font-bold uppercase tracking-wider text-brand-muted mb-2">MIRF Daily MQ workbook</h2>
@@ -106,14 +109,17 @@
           </div>
         </div>
       </dialog>
+      {% endif %}
 
       <div class="flex flex-wrap items-center gap-3">
+        {% if areco_role != 'spectator' %}
         <button type="button" id="accuracy-btn-backfill" class="py-3 px-4 rounded-xl border border-amber-500/50 bg-amber-500/10 hover:bg-amber-500/20 text-amber-200 font-bold uppercase text-xs tracking-wide transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50 active:scale-[0.98]">
           Backfill (RTD + MIRF)
         </button>
         <button type="button" id="accuracy-btn-open-mq-modal" class="inline-flex items-center justify-center gap-2 py-3 px-6 rounded-xl border border-brand-accent/60 bg-brand-accent/20 hover:bg-brand-accent/30 text-brand-accent font-bold uppercase text-xs tracking-wide transition-all disabled:opacity-40 disabled:pointer-events-none focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent/50 active:scale-[0.98]">
           Upload MQ workbook
         </button>
+        {% endif %}
         <button type="button" id="accuracy-btn-load-runs" class="py-3 px-4 rounded-xl border border-brand-border bg-brand-dark hover:bg-brand-border/40 text-brand-muted font-semibold uppercase text-xs tracking-wide transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent/40 active:scale-[0.98]" aria-expanded="false" aria-controls="accuracy-saved-runs-panel">
           Saved runs
         </button>
@@ -264,7 +270,9 @@
                 <th scope="col" class="py-2.5 px-3 font-bold uppercase tracking-wider text-[10px] sm:text-xs text-center">Status</th>
                 <th scope="col" class="py-2.5 px-3 font-bold uppercase tracking-wider text-[10px] sm:text-xs text-left max-w-[14rem] hidden lg:table-cell">Analysis</th>
                 <th scope="col" class="py-2.5 px-3 font-bold uppercase tracking-wider text-[10px] sm:text-xs text-right font-mono">ID</th>
+                {% if areco_role != 'spectator' %}
                 <th scope="col" class="py-2.5 px-3 font-bold uppercase tracking-wider text-[10px] sm:text-xs text-center w-[4.5rem]">Delete</th>
+                {% endif %}
               </tr>
             </thead>
             <tbody id="accuracy-saved-runs-tbody" class="font-mono tabular-nums text-brand-text"></tbody>

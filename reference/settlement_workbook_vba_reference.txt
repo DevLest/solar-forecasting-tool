@@ -1,7 +1,7 @@
 # Reference only — the Flask app does NOT read this file. Logic lives in
 # app/services/billing_settlement_extract.py. Safe to delete this export when you no longer need it.
 #
-# Extracted VBA from Extract Template_Pears_.xlsm (oletools). Not a round-trip to the workbook.
+# Extracted VBA from a settlement template workbook .xlsm (oletools). Not a round-trip to the workbook.
 
 ========================================================================
 # File: xl/vbaProject.bin  Stream: VBA/ThisWorkbook  Module: ThisWorkbook.cls

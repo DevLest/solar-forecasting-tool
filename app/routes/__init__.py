@@ -9,9 +9,11 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
-from flask import Blueprint, Response, jsonify, render_template, request, send_from_directory
+from flask import Blueprint, Response, abort, jsonify, redirect, render_template, request, send_from_directory, url_for
+from flask_login import current_user, login_required, login_user, logout_user
 from werkzeug.utils import secure_filename
 
+from app.auth import ROLE_ADMIN, api_forbidden, authenticate, request_allowed_for_role, unauthorized_callback
 from app.config import DATA_DIR, ROOT, nomination_export_dir, settlement_zip_passwords_from_env
 from app.services.env_config import ALLOWED_ENV_KEYS, merge_env_updates, read_env_file_dict
 from app.services.billing_invoice_extract import extract_invoice_pdf, merge_input_patches
@@ -63,9 +65,25 @@ from app.services.nomination_accuracy_store import (
     save_market_result_csv_blob,
     save_run,
 )
+from app.services.users_store import ROLES, create_user, delete_user, list_users_public, update_user
 from app.services.weather import get_weather_forecast
 
 bp = Blueprint("main", __name__)
+
+
+@bp.before_request
+def enforce_access():
+    if request.endpoint == "main.login":
+        return None
+    if not current_user.is_authenticated:
+        return unauthorized_callback()
+    if request.endpoint == "main.logout":
+        return None
+    if not request_allowed_for_role(request.endpoint, request.method, current_user.role):
+        if request.path.startswith("/api/"):
+            return api_forbidden()
+        abort(403)
+
 
 _NOM_XML_FILENAME = re.compile(r"^ARECO_\d{2}_\d{2}_\d{4}\.xml$")
 
@@ -125,7 +143,7 @@ def _no_cache(resp: Response) -> Response:
     resp.headers["Pragma"] = "no-cache"
     resp.headers["Expires"] = "0"
     resp.headers["Access-Control-Allow-Origin"] = "*"
-    resp.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+    resp.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS, PATCH, DELETE"
     resp.headers["Access-Control-Allow-Headers"] = "Content-Type"
     return resp
 
@@ -133,6 +151,33 @@ def _no_cache(resp: Response) -> Response:
 @bp.route("/assets/<path:filename>")
 def assets(filename: str):
     return send_from_directory(os.path.join(ROOT, "assets"), filename)
+
+
+@bp.route("/login", methods=["GET", "POST"])
+def login():
+    if current_user.is_authenticated:
+        return redirect(url_for("main.index"))
+    err: str | None = None
+    if request.method == "POST":
+        user = authenticate(
+            request.form.get("username", ""),
+            request.form.get("password", ""),
+        )
+        if user:
+            login_user(user, remember=False)
+            nxt = (request.args.get("next") or request.form.get("next") or "").strip() or url_for("main.index")
+            if not nxt.startswith("/") or nxt.startswith("//"):
+                nxt = url_for("main.index")
+            return redirect(nxt)
+        err = "Invalid username or password."
+    return render_template("pages/login.html", error=err)
+
+
+@bp.route("/logout")
+@login_required
+def logout():
+    logout_user()
+    return redirect(url_for("main.login"))
 
 
 @bp.route("/")
@@ -902,6 +947,84 @@ def api_billing_settlement_extract():
     }
     status = 200 if result.ok else 422
     return jsonify(payload), status
+
+
+def _require_admin_api():
+    if getattr(current_user, "role", None) != ROLE_ADMIN:
+        return api_forbidden("Administrator access required.")
+
+
+@bp.route("/api/admin/users", methods=["GET", "OPTIONS"])
+def api_admin_users_list():
+    if request.method == "OPTIONS":
+        return "", 204
+    gate = _require_admin_api()
+    if gate:
+        return gate
+    try:
+        users = list_users_public()
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+    return jsonify({"ok": True, "users": users, "roles": list(ROLES)})
+
+
+@bp.route("/api/admin/users", methods=["POST", "OPTIONS"])
+def api_admin_users_create():
+    if request.method == "OPTIONS":
+        return "", 204
+    gate = _require_admin_api()
+    if gate:
+        return gate
+    data = request.get_json(silent=True) or {}
+    ok, err = create_user(
+        username=str(data.get("username") or ""),
+        password=str(data.get("password") or ""),
+        role=str(data.get("role") or ""),
+    )
+    if not ok:
+        return jsonify({"ok": False, "error": err}), 400
+    return jsonify({"ok": True, "users": list_users_public()})
+
+
+@bp.route("/api/admin/users/<username>", methods=["PATCH", "OPTIONS"])
+def api_admin_users_update(username: str):
+    if request.method == "OPTIONS":
+        return "", 204
+    gate = _require_admin_api()
+    if gate:
+        return gate
+    data = request.get_json(silent=True) or {}
+    role_kw: str | None = None
+    if "role" in data:
+        role_kw = str(data.get("role") or "").strip()
+    password_kw: str | None = None
+    if "password" in data:
+        password_kw = str(data.get("password") or "")
+    ok, err = update_user(
+        username=username,
+        role=role_kw,
+        password=password_kw,
+        actor_username=getattr(current_user, "username", "") or "",
+    )
+    if not ok:
+        return jsonify({"ok": False, "error": err}), 400
+    return jsonify({"ok": True, "users": list_users_public()})
+
+
+@bp.route("/api/admin/users/<username>", methods=["DELETE", "OPTIONS"])
+def api_admin_users_delete(username: str):
+    if request.method == "OPTIONS":
+        return "", 204
+    gate = _require_admin_api()
+    if gate:
+        return gate
+    ok, err = delete_user(
+        username=username,
+        actor_username=getattr(current_user, "username", "") or "",
+    )
+    if not ok:
+        return jsonify({"ok": False, "error": err}), 400
+    return jsonify({"ok": True, "users": list_users_public()})
 
 
 @bp.route("/api/weather-forecast", methods=["POST", "OPTIONS"])

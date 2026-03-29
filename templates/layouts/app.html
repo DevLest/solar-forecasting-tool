@@ -15,12 +15,28 @@
     </main>
   </div>
   {% include 'components/modal_confirmation.html' %}
+  {% if areco_auth.can_edit_settings %}
   {% include 'partials/_settings_drawer.html' %}
+  {% endif %}
   {% include 'components/app_footer.html' %}
+  {% if current_user.is_authenticated %}
+  <script type="application/json" id="areco-auth-json">{{ areco_auth | tojson }}</script>
+  <script>
+    try {
+      var __n = document.getElementById('areco-auth-json');
+      window.__ARECO_AUTH__ = __n ? JSON.parse(__n.textContent || '{}') : {};
+    } catch (__e) {
+      window.__ARECO_AUTH__ = {};
+    }
+  </script>
+  {% endif %}
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
   <script src="{{ url_for('static', filename='js/app-shell.js') }}" defer></script>
   <script src="{{ url_for('static', filename='js/settings-config.js') }}" defer></script>
+  {% if areco_auth.can_edit_settings %}
+  <script src="{{ url_for('static', filename='js/admin-users.js') }}" defer></script>
+  {% endif %}
   {% block page_scripts %}{% endblock %}
 </body>
 </html>

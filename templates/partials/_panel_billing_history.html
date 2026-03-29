@@ -1,5 +1,5 @@
 {% from 'components/ui_macros.html' import page_hero %}
-    <div id="panel-billing-history" class="hidden flex-grow p-6 max-w-[1600px] mx-auto w-full space-y-6">
+    <div id="panel-billing-history" class="hidden flex-grow p-6 max-w-[1600px] mx-auto w-full space-y-6" data-bh-readonly="{{ 'true' if areco_role == 'spectator' else 'false' }}">
       <style>
         #panel-billing-history .bh-slot-row--flash {
           animation: bhInvoiceSlotPop 0.75s cubic-bezier(0.34, 1.45, 0.64, 1);
@@ -42,6 +42,7 @@
         </div>
       </section>
 
+      {% if areco_role != 'spectator' %}
       <section class="bg-brand-card rounded-xl border border-brand-border p-5 sm:p-6 shadow-lg space-y-4">
         <h3 class="text-sm font-semibold text-brand-muted uppercase tracking-wider">Import invoices (max 5 PDFs)</h3>
         <p class="text-sm text-brand-muted leading-relaxed max-w-3xl">Each row is a fixed invoice type — file names can be anything. Put the EMF market fee PDFs in the three EMF rows (AA / AB / AC) and the two WTA cover PDFs in ARECO vs ARECOSS. Only chosen files are imported.</p>
@@ -146,6 +147,11 @@
           <p id="bh-upload-status" class="text-xs text-brand-muted" role="status"></p>
         </div>
       </section>
+      {% else %}
+      <p class="text-sm text-brand-muted rounded-lg border border-brand-border/60 bg-brand-dark/20 px-4 py-3 max-w-3xl">
+        <span class="font-semibold text-brand-text">View only.</span> Invoice import and row edits are disabled; use filters below to view display and stored rows.
+      </p>
+      {% endif %}
 
       <section class="bg-brand-card rounded-xl border border-brand-border p-5 sm:p-6 shadow-lg space-y-4 overflow-x-auto">
         <div class="flex flex-wrap items-start justify-between gap-3">
@@ -204,7 +210,9 @@
                 <th class="py-2.5 px-2 border-b border-brand-border/50 text-right align-middle">S / V</th>
                 <th class="py-2.5 px-2 border-b border-brand-border/50 align-middle">Status (sales)</th>
                 <th class="py-2.5 px-2 border-b border-brand-border/50 align-middle">Status (purch.)</th>
+                {% if areco_role != 'spectator' %}
                 <th class="py-2.5 px-2 border-b border-brand-border/50 align-middle w-16"></th>
+                {% endif %}
               </tr>
             </thead>
             <tbody id="bh-input-tbody"></tbody>

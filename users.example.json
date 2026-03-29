@@ -1,0 +1,19 @@
+{
+  "users": [
+    {
+      "username": "admin",
+      "role": "admin",
+      "password_hash": "scrypt:32768:8:1$M60fGyBL4h3HfYjB$f011882c7a7f4579322b04fa6cfa485a53d60e96a0c7f5382f8a6d7ceac5ee4ec8e08f55f27b7daef38eda553e047eed48589d28bfb698cd4c37468b9acda03b"
+    },
+    {
+      "username": "nominator",
+      "role": "nominator",
+      "password_hash": "scrypt:32768:8:1$M60fGyBL4h3HfYjB$f011882c7a7f4579322b04fa6cfa485a53d60e96a0c7f5382f8a6d7ceac5ee4ec8e08f55f27b7daef38eda553e047eed48589d28bfb698cd4c37468b9acda03b"
+    },
+    {
+      "username": "viewer",
+      "role": "spectator",
+      "password_hash": "scrypt:32768:8:1$M60fGyBL4h3HfYjB$f011882c7a7f4579322b04fa6cfa485a53d60e96a0c7f5382f8a6d7ceac5ee4ec8e08f55f27b7daef38eda553e047eed48589d28bfb698cd4c37468b9acda03b"
+    }
+  ]
+}

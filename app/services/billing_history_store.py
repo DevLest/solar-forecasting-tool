@@ -322,7 +322,7 @@ def compute_display_totals(rows: list[dict[str, Any]]) -> dict[str, float]:
 
 def display_layout(totals: dict[str, float]) -> dict[str, Any]:
     """
-    Mirrors ``Display`` sheet logic from ``Areco billing 2025 - EDITED.xlsx``.
+    Mirrors a typical billing workbook ``Display`` sheet layout (line items and totals).
 
     - **Total Receivable from IEMOP** (Display ``B16``) = ``B7+B8+B10+B11+B12+B13+B15``
       i.e. Input ``E+F+H+I+J+K+M`` (same line items as SUMIFS on those columns; excludes ``G``, ``L``).

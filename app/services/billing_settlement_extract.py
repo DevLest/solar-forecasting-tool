@@ -14,7 +14,7 @@
    based on whether the **daily zip** name is ``…Energy_YYYYMMDD…`` vs ``…Energy-SEIN_YYYYMMDD…``
    (also accepts ``Energy_SEIN_``).
 
-Reimplements the *intent* of ``Extract Template_Pears_.xlsm`` / WinRAR batch for steps 2–3.
+Reimplements the *intent* of a typical Excel + WinRAR settlement extraction batch (steps 2–3).
 This module does not run VBA, ``.bat``, or WinRAR — only ``zipfile`` + filesystem layout.
 """
 from __future__ import annotations

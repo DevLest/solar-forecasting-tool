@@ -3,6 +3,7 @@
   <p class="hidden md:block text-[10px] font-bold uppercase tracking-widest text-brand-muted mb-0.5 px-1">Sections</p>
 
   <nav class="flex flex-col gap-1.5 w-full min-w-0" aria-label="App sections">
+    {% if 'nomination' in areco_panels or 'nomination-reporting' in areco_panels or 'nomination-accuracy' in areco_panels %}
     {# Nomination: dashboard, reporting, forecast accuracy #}
     <div class="flex flex-col min-w-0 rounded-lg border border-brand-border/50 bg-brand-dark/25 overflow-hidden" data-nav-section="nomination">
       <button
@@ -19,12 +20,20 @@
         </svg>
       </button>
       <div id="nav-subs-nomination" class="nav-section-subs space-y-0.5 border-t border-brand-border/40 px-2 py-2" role="region" aria-labelledby="nav-section-btn-nomination">
+        {% if 'nomination' in areco_panels %}
         {{ nav_tile('nomination', 'Dashboard', sub=True) }}
+        {% endif %}
+        {% if 'nomination-reporting' in areco_panels %}
         {{ nav_tile('nomination-reporting', 'Reporting', sub=True) }}
+        {% endif %}
+        {% if 'nomination-accuracy' in areco_panels %}
         {{ nav_tile('nomination-accuracy', 'Forecast % error', sub=True) }}
+        {% endif %}
       </div>
     </div>
+    {% endif %}
 
+    {% if 'billing' in areco_panels or 'billing-history' in areco_panels %}
     {# Billing & settlement #}
     <div class="flex flex-col min-w-0 rounded-lg border border-brand-border/50 bg-brand-dark/25 overflow-hidden" data-nav-section="billing">
       <button
@@ -41,15 +50,22 @@
         </svg>
       </button>
       <div id="nav-subs-billing" class="nav-section-subs hidden space-y-0.5 border-t border-brand-border/40 px-2 py-2" role="region" aria-labelledby="nav-section-btn-billing">
+        {% if 'billing' in areco_panels %}
         {{ nav_tile('billing', 'Settlement', sub=True) }}
+        {% endif %}
+        {% if 'billing-history' in areco_panels %}
         {{ nav_tile('billing-history', 'History', sub=True) }}
+        {% endif %}
       </div>
     </div>
+    {% endif %}
   </nav>
 
+  {% if areco_auth.can_edit_settings %}
   <div class="hidden md:block mt-auto pt-4 border-t border-brand-border/60 w-full">
     <button type="button" data-open-settings class="w-full text-left px-4 py-3 rounded-lg border border-brand-border/60 text-sm font-semibold text-brand-muted hover:text-brand-accent hover:bg-brand-border/20 transition-colors">
       App settings
     </button>
   </div>
+  {% endif %}
 </aside>
