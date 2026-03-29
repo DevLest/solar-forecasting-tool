@@ -14,7 +14,8 @@ try:
 except ImportError:
     pass
 
-PORT = int(os.environ.get("ARECO_PORT", "8765"))
+# PaaS (e.g. Render, Heroku) set PORT; ARECO_PORT overrides for local dev when PORT is unset.
+PORT = int(os.environ.get("PORT", os.environ.get("ARECO_PORT", "8765")))
 
 KEY_FILE = os.path.join(ROOT, "openai_api_key.txt")
 ACCUWEATHER_KEY_FILE = os.path.join(ROOT, "accuweather_api_key.txt")

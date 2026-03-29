@@ -45,6 +45,13 @@ def _local_ip():
         return None
 
 
+def _open_browser_in_dev() -> bool:
+    """Skip auto-open on PaaS / non-interactive shells (e.g. Render)."""
+    if os.environ.get("RENDER") or os.environ.get("DYNO"):
+        return False
+    return sys.stdin.isatty()
+
+
 def main():
     app = create_app()
     url_local = f"http://127.0.0.1:{PORT}/"
@@ -53,7 +60,8 @@ def main():
     if lan_ip:
         print(f"  From another device: http://{lan_ip}:{PORT}/")
     print("Press Ctrl+C to stop.")
-    webbrowser.open(url_local)
+    if _open_browser_in_dev():
+        webbrowser.open(url_local)
     # threaded=True so browser + API calls don't block each other under load
     app.run(host="0.0.0.0", port=PORT, debug=False, threaded=True, use_reloader=False)
 
