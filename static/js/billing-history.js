@@ -15,6 +15,8 @@
   var uploadStmt = document.getElementById('bh-upload-statement');
   var btnUpload = document.getElementById('bh-btn-upload');
   var uploadStatus = document.getElementById('bh-upload-status');
+  var bulkInput = document.getElementById('bh-invoices-bulk');
+  var bulkClearBtn = document.getElementById('bh-btn-bulk-clear');
 
   var displayEmpty = document.getElementById('bh-display-empty');
   var displayWrap = document.getElementById('bh-display-wrap');
@@ -46,131 +48,35 @@
     return 'text-brand-text/85 tabular-nums';
   }
 
-  function syncUploadYearDefault() {
-    var y = yearFilter && yearFilter.value ? parseInt(yearFilter.value, 10) : new Date().getFullYear();
-    if (uploadYear && !uploadYear.value) uploadYear.value = String(y);
+  function countBulkFiles() {
+    if (!bulkInput || !bulkInput.files) return 0;
+    return bulkInput.files.length;
   }
 
-  function updateSlotsSummary() {
-    var el = document.getElementById('bh-upload-slots-summary');
-    if (!el) return;
-    var n = countChosenSlotFiles();
-    var inputs = document.querySelectorAll('.bh-slot-input');
-    var total = inputs.length || 5;
-    if (n === 0) {
-      el.textContent = 'No files selected — choose PDFs in the rows above.';
-      el.className = 'text-[11px] text-brand-muted pt-1 min-h-[1.25rem]';
-    } else if (n === total) {
-      el.textContent = 'All ' + total + ' slots have a file — ready to import.';
-      el.className = 'text-[11px] text-emerald-400/95 font-medium pt-1 min-h-[1.25rem]';
-    } else {
-      el.textContent = n + ' of ' + total + ' slots have a file.';
-      el.className = 'text-[11px] text-brand-accent/90 font-medium pt-1 min-h-[1.25rem]';
-    }
-  }
-
-  function syncSlotRowState(inp) {
-    if (!inp) return;
-    var has = !!(inp.files && inp.files[0]);
-    var fname = has ? inp.files[0].name : '';
-    var row = inp.closest ? inp.closest('.bh-slot-row') : null;
-    var label = document.querySelector('[data-slot-for="' + inp.name + '"]');
-    if (label) {
-      label.textContent = has ? fname : 'No file chosen';
-      label.classList.toggle('text-emerald-300', has);
-      label.classList.toggle('text-brand-muted', !has);
-      label.classList.toggle('font-medium', has);
-    }
-    if (row) {
-      row.setAttribute('data-has-file', has ? 'true' : 'false');
-      row.setAttribute(
-        'aria-label',
-        has ? 'Invoice slot, file attached: ' + fname : 'Invoice slot, empty — choose a PDF'
-      );
-      row.classList.toggle('border-dashed', !has);
-      row.classList.toggle('border-solid', has);
-      row.classList.toggle('border-brand-border/45', !has);
-      row.classList.toggle('border-emerald-500/50', has);
-      row.classList.toggle('bg-brand-dark/15', !has);
-      row.classList.toggle('bg-emerald-950/30', has);
-      row.classList.toggle('shadow-sm', has);
-      var emptyIc = row.querySelector('.bh-slot-icon-empty');
-      var filledIc = row.querySelector('.bh-slot-icon-filled');
-      var status = row.querySelector('.bh-slot-status');
-      if (emptyIc) {
-        emptyIc.classList.toggle('hidden', has);
-        emptyIc.classList.toggle('flex', !has);
-      }
-      if (filledIc) {
-        filledIc.classList.toggle('hidden', !has);
-        filledIc.classList.toggle('flex', has);
-      }
-      if (status) {
-        status.classList.toggle('border-emerald-400/60', has);
-        status.classList.toggle('bg-emerald-500/20', has);
-        status.classList.toggle('text-emerald-400', has);
-        status.classList.toggle('ring-2', has);
-        status.classList.toggle('ring-emerald-500/25', has);
-        status.classList.toggle('border-brand-border/55', !has);
-        status.classList.toggle('bg-brand-dark/40', !has);
-        status.classList.toggle('text-brand-muted', !has);
-      }
-      if (has) {
-        row.classList.remove('bh-slot-row--flash');
-        void row.offsetWidth;
-        row.classList.add('bh-slot-row--flash');
-        window.clearTimeout(row._bhFlashTimer);
-        row._bhFlashTimer = window.setTimeout(function () {
-          row.classList.remove('bh-slot-row--flash');
-        }, 900);
+  function updateBulkSummary() {
+    var nb = countBulkFiles();
+    var bulkSummaryEl = document.getElementById('bh-upload-bulk-summary');
+    if (bulkSummaryEl) {
+      if (nb === 0) {
+        bulkSummaryEl.textContent = 'No PDFs selected.';
+        bulkSummaryEl.className = 'text-[11px] text-brand-muted min-h-[1.25rem]';
+      } else if (nb > 5) {
+        bulkSummaryEl.textContent =
+          nb + ' PDFs selected — at most 5 per import; remove extras before uploading.';
+        bulkSummaryEl.className = 'text-[11px] text-amber-400/90 font-medium min-h-[1.25rem]';
+      } else {
+        bulkSummaryEl.textContent =
+          nb + ' PDF(s) selected — invoice types and billing period are read on import.';
+        bulkSummaryEl.className = 'text-[11px] text-emerald-400/95 font-medium min-h-[1.25rem]';
       }
     }
-    updateSlotsSummary();
   }
 
-  function clearAllSlotInputs() {
-    document.querySelectorAll('.bh-slot-input').forEach(function (inp) {
-      inp.value = '';
-      syncSlotRowState(inp);
-    });
-  }
-
-  function countChosenSlotFiles() {
-    var n = 0;
-    document.querySelectorAll('.bh-slot-input').forEach(function (inp) {
-      if (inp.files && inp.files[0]) n += 1;
-    });
-    return n;
-  }
-
-  function bindBillingSlotPickers() {
-    document.querySelectorAll('.bh-slot-input').forEach(function (inp) {
-      inp.addEventListener('change', function () {
-        syncSlotRowState(inp);
-      });
-    });
-    document.querySelectorAll('.bh-slot-browse').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        var id = btn.getAttribute('data-bh-slot');
-        var el = id ? document.getElementById(id) : null;
-        if (el) el.click();
-      });
-    });
-    document.querySelectorAll('.bh-slot-clear').forEach(function (btn) {
-      btn.addEventListener('click', function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-        var id = btn.getAttribute('data-bh-slot');
-        var inp = id ? document.getElementById(id) : null;
-        if (inp) {
-          inp.value = '';
-          syncSlotRowState(inp);
-        }
-      });
-    });
-    document.querySelectorAll('.bh-slot-input').forEach(function (inp) {
-      syncSlotRowState(inp);
-    });
+  function clearBulkInput() {
+    if (bulkInput) {
+      bulkInput.value = '';
+      updateBulkSummary();
+    }
   }
 
   function updateDisplayContext(payload) {
@@ -178,7 +84,9 @@
     var sid = payload && payload.selected_row_id != null ? payload.selected_row_id : null;
     var rows = (payload && payload.rows) || [];
     if (sid != null) {
-      var row = rows.filter(function (r) { return r.id === sid; })[0];
+      var row = rows.filter(function (r) {
+        return r.id === sid;
+      })[0];
       displayContext.textContent = row
         ? 'Single row · #' +
           row.id +
@@ -532,24 +440,34 @@
     refreshAll();
   }
 
+  function applyDetectedPeriod(ap) {
+    if (!ap) return;
+    if (uploadYear && ap.year != null) uploadYear.value = String(ap.year);
+    if (uploadMonth && ap.billing_month) uploadMonth.value = ap.billing_month;
+    if (uploadStmt && ap.statement_ref) uploadStmt.value = ap.statement_ref;
+    if (yearFilter && ap.year != null) yearFilter.value = String(ap.year);
+    if (monthFilter && ap.billing_month) monthFilter.value = ap.billing_month;
+    if (stmtFilter && ap.statement_ref) stmtFilter.value = ap.statement_ref;
+  }
+
   function onUpload() {
-    if (!uploadYear || !uploadYear.value) {
-      if (uploadStatus) uploadStatus.textContent = 'Year is required.';
+    var nb = countBulkFiles();
+    if (!nb) {
+      if (uploadStatus) uploadStatus.textContent = 'Choose at least one PDF.';
       return;
     }
-    if (!countChosenSlotFiles()) {
-      if (uploadStatus) uploadStatus.textContent = 'Choose at least one PDF in the slots above.';
+    if (nb > 5) {
+      if (uploadStatus) uploadStatus.textContent = 'At most 5 PDFs per import.';
       return;
     }
     var fd = new FormData();
-    fd.append('year', uploadYear.value);
+    fd.append('year', uploadYear && uploadYear.value !== '' ? uploadYear.value : '');
     fd.append('billing_month', uploadMonth ? uploadMonth.value : '');
-    fd.append('statement_ref', uploadStmt ? uploadStmt.value : 'Final');
-    document.querySelectorAll('.bh-slot-input').forEach(function (inp) {
-      if (inp.files && inp.files[0]) {
-        fd.append(inp.name, inp.files[0], inp.files[0].name);
-      }
-    });
+    fd.append('statement_ref', uploadStmt ? uploadStmt.value : '');
+    for (var i = 0; i < bulkInput.files.length; i++) {
+      var bf = bulkInput.files[i];
+      fd.append('invoices', bf, bf.name);
+    }
     if (btnUpload) btnUpload.disabled = true;
     if (uploadStatus) uploadStatus.textContent = 'Uploading…';
     fetch('/api/billing-history/upload', { method: 'POST', body: fd })
@@ -558,13 +476,17 @@
       })
       .then(function (j) {
         if (!j.ok) throw new Error(j.error || 'Import failed');
-        if (uploadStatus) {
-          uploadStatus.textContent = 'Imported row #' + j.row_id + '.';
+        var parts = ['Imported row #' + j.row_id + '.'];
+        if (j.applied_period) {
+          var ap = j.applied_period;
+          parts.push(ap.billing_month + ' ' + ap.year + ' · ' + ap.statement_ref + '.');
         }
-        clearAllSlotInputs();
-        if (yearFilter) yearFilter.value = uploadYear.value;
-        if (monthFilter && uploadMonth) monthFilter.value = uploadMonth.value;
-        if (stmtFilter && uploadStmt) stmtFilter.value = uploadStmt.value;
+        if (j.period_warnings && j.period_warnings.length) {
+          parts.push(j.period_warnings.join(' '));
+        }
+        if (uploadStatus) uploadStatus.textContent = parts.join(' ');
+        clearBulkInput();
+        applyDetectedPeriod(j.applied_period);
         bhSelectedRowId = j.row_id != null ? j.row_id : null;
         return fetch('/api/billing-history/display' + qs()).then(function (r) {
           return r.json();
@@ -584,14 +506,23 @@
   }
 
   if (yearFilter) yearFilter.value = String(new Date().getFullYear());
-  syncUploadYearDefault();
 
   if (btnApply) btnApply.addEventListener('click', onApply);
   if (btnClear) btnClear.addEventListener('click', onClearMonth);
   if (!bhReadOnly && btnUpload) btnUpload.addEventListener('click', onUpload);
   if (displayClearSel) displayClearSel.addEventListener('click', onClearDisplaySelection);
 
-  if (!bhReadOnly) bindBillingSlotPickers();
+  if (!bhReadOnly && bulkInput) {
+    bulkInput.addEventListener('change', function () {
+      updateBulkSummary();
+    });
+    updateBulkSummary();
+  }
+  if (!bhReadOnly && bulkClearBtn && bulkInput) {
+    bulkClearBtn.addEventListener('click', function () {
+      clearBulkInput();
+    });
+  }
 
   document.querySelectorAll('[data-nav-panel="billing-history"]').forEach(function (btn) {
     btn.addEventListener('click', function () {

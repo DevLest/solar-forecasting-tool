@@ -1,16 +1,6 @@
 {% from 'components/ui_macros.html' import page_hero %}
     <div id="panel-billing-history" class="hidden flex-grow p-6 max-w-[1600px] mx-auto w-full space-y-6" data-bh-readonly="{{ 'true' if areco_role == 'spectator' else 'false' }}">
-      <style>
-        #panel-billing-history .bh-slot-row--flash {
-          animation: bhInvoiceSlotPop 0.75s cubic-bezier(0.34, 1.45, 0.64, 1);
-        }
-        @keyframes bhInvoiceSlotPop {
-          0% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0); }
-          35% { box-shadow: 0 0 0 4px rgba(52, 211, 153, 0.22), 0 0 20px -4px rgba(52, 211, 153, 0.35); }
-          100% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0); }
-        }
-      </style>
-      {{ page_hero('Billing History', 'Upload up to five IEMOP PDFs per billing period (EMF Regular / IEMMS / Supplemental + ARECO and ARECOSS WTA). Values populate the Input grid; the Display view mirrors your Excel Summary with filters.') }}
+      {{ page_hero('Billing History', 'Upload up to five IEMOP PDFs per billing period. The app detects invoice types from file names and text, fills the Input grid, and can set year, billing month, and Prelim/Final from the PDFs when you leave those on Auto.') }}
 
       <section class="bg-brand-card rounded-xl border border-brand-border p-5 sm:p-6 shadow-lg space-y-4">
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 items-end">
@@ -45,106 +35,40 @@
       {% if areco_role != 'spectator' %}
       <section class="bg-brand-card rounded-xl border border-brand-border p-5 sm:p-6 shadow-lg space-y-4">
         <h3 class="text-sm font-semibold text-brand-muted uppercase tracking-wider">Import invoices (max 5 PDFs)</h3>
-        <p class="text-sm text-brand-muted leading-relaxed max-w-3xl">Each row is a fixed invoice type — file names can be anything. Put the EMF market fee PDFs in the three EMF rows (AA / AB / AC) and the two WTA cover PDFs in ARECO vs ARECOSS. Only chosen files are imported.</p>
-        <div class="grid gap-4 sm:grid-cols-3">
-          <div>
-            <label for="bh-upload-year" class="block text-[10px] font-bold uppercase tracking-wider text-brand-muted mb-1">Year</label>
-            <input type="number" id="bh-upload-year" class="w-full rounded-lg border border-brand-border bg-brand-dark px-3 py-2 text-sm text-brand-text" min="2000" max="2100" />
+        <p class="text-sm text-brand-muted leading-relaxed max-w-3xl">Choose all PDFs in one go. Market fees: <span class="font-mono text-brand-text/90">*EMF*</span> → AA, <span class="font-mono text-brand-text/90">*MF1*</span> → AB, <span class="font-mono text-brand-text/90">*_MF.pdf</span> → AC (Prelim <span class="font-mono">TS-WP</span> / Final <span class="font-mono">TS-WF</span>). WTA covers: <span class="font-mono">*_WTA.pdf</span>. Leave year / month / statement on <span class="text-brand-text/90">Auto from PDFs</span> to fill them from invoice text when possible. Scanned PDFs with no text cannot be parsed.</p>
+        <div class="rounded-lg border-2 border-dashed border-brand-accent/35 bg-brand-accent/5 px-4 py-3 space-y-3">
+          <div class="flex flex-wrap items-center gap-3">
+            <input type="file" name="invoices" id="bh-invoices-bulk" class="text-xs text-brand-text file:mr-2 file:rounded-lg file:border-0 file:bg-brand-dark file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-brand-accent hover:file:bg-brand-border/30" accept=".pdf,application/pdf" multiple />
+            <button type="button" id="bh-btn-bulk-clear" class="text-[11px] font-semibold text-brand-muted hover:text-brand-text uppercase">Clear list</button>
           </div>
-          <div>
-            <label for="bh-upload-month" class="block text-[10px] font-bold uppercase tracking-wider text-brand-muted mb-1">Billing month</label>
-            <select id="bh-upload-month" class="w-full rounded-lg border border-brand-border bg-brand-dark px-3 py-2 text-sm text-brand-text">
-              <option>January</option><option>February</option><option>March</option><option>April</option>
-              <option>May</option><option>June</option><option>July</option><option>August</option>
-              <option>September</option><option>October</option><option>November</option><option>December</option>
-            </select>
-          </div>
-          <div>
-            <label for="bh-upload-statement" class="block text-[10px] font-bold uppercase tracking-wider text-brand-muted mb-1">Prelim / Final</label>
-            <select id="bh-upload-statement" class="w-full rounded-lg border border-brand-border bg-brand-dark px-3 py-2 text-sm text-brand-text">
-              <option>Prelim</option>
-              <option selected>Final</option>
-            </select>
-          </div>
-        </div>
-        <div class="space-y-2">
-          <p class="text-[10px] font-bold uppercase tracking-wider text-brand-muted">EMF — market fees</p>
-          <div class="bh-slot-row flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border-2 border-dashed border-brand-border/45 bg-brand-dark/15 px-3 py-2.5 transition-all duration-300 ease-out" role="group" aria-label="Invoice slot, empty" data-has-file="false">
-            <span class="bh-slot-status flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 border-brand-border/55 bg-brand-dark/40 text-brand-muted transition-all duration-300" aria-hidden="true">
-              <span class="bh-slot-icon-empty flex items-center justify-center"><span class="text-[8px] font-bold uppercase leading-none">···</span></span>
-              <span class="bh-slot-icon-filled hidden h-5 w-5 items-center justify-center text-emerald-400"><svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg></span>
-            </span>
-            <div class="min-w-[180px] flex-1 sm:flex-none">
-              <p class="text-[11px] font-semibold text-brand-text">Regular → AA</p>
-              <p class="text-[10px] text-brand-muted">EMF Regular statement</p>
+          <p id="bh-upload-bulk-summary" class="text-[11px] text-brand-muted min-h-[1.25rem]" aria-live="polite">No PDFs selected.</p>
+          <div class="grid gap-4 sm:grid-cols-3 pt-1 border-t border-brand-border/30">
+            <div>
+              <label for="bh-upload-year" class="block text-[10px] font-bold uppercase tracking-wider text-brand-muted mb-1">Year</label>
+              <input type="number" id="bh-upload-year" class="w-full rounded-lg border border-brand-border bg-brand-dark px-3 py-2 text-sm text-brand-text placeholder:text-brand-muted/70" min="2000" max="2100" placeholder="Auto from PDFs" />
             </div>
-            <span class="bh-slot-filename text-[11px] font-mono text-brand-muted truncate max-w-[200px] min-w-0 flex-1 transition-colors duration-200" data-slot-for="invoice_emf_regular">No file chosen</span>
-            <input type="file" name="invoice_emf_regular" id="bh-invoice_emf_regular" class="sr-only bh-slot-input" accept=".pdf,application/pdf" />
-            <button type="button" class="bh-slot-browse shrink-0 py-1.5 px-3 rounded-lg border border-brand-border bg-brand-dark text-[11px] font-semibold uppercase tracking-wide hover:bg-brand-border/25" data-bh-slot="bh-invoice_emf_regular">Browse</button>
-            <button type="button" class="bh-slot-clear shrink-0 text-[11px] font-semibold text-brand-muted hover:text-brand-text uppercase" data-bh-slot="bh-invoice_emf_regular">Clear</button>
-          </div>
-          <div class="bh-slot-row flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border-2 border-dashed border-brand-border/45 bg-brand-dark/15 px-3 py-2.5 transition-all duration-300 ease-out" role="group" aria-label="Invoice slot, empty" data-has-file="false">
-            <span class="bh-slot-status flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 border-brand-border/55 bg-brand-dark/40 text-brand-muted transition-all duration-300" aria-hidden="true">
-              <span class="bh-slot-icon-empty flex items-center justify-center"><span class="text-[8px] font-bold uppercase leading-none">···</span></span>
-              <span class="bh-slot-icon-filled hidden h-5 w-5 items-center justify-center text-emerald-400"><svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg></span>
-            </span>
-            <div class="min-w-[180px] flex-1 sm:flex-none">
-              <p class="text-[11px] font-semibold text-brand-text">IEMMS → AB</p>
-              <p class="text-[10px] text-brand-muted">EMF IEMMS statement</p>
+            <div>
+              <label for="bh-upload-month" class="block text-[10px] font-bold uppercase tracking-wider text-brand-muted mb-1">Billing month</label>
+              <select id="bh-upload-month" class="w-full rounded-lg border border-brand-border bg-brand-dark px-3 py-2 text-sm text-brand-text">
+                <option value="" selected>Auto from PDFs</option>
+                <option value="January">January</option><option value="February">February</option><option value="March">March</option><option value="April">April</option>
+                <option value="May">May</option><option value="June">June</option><option value="July">July</option><option value="August">August</option>
+                <option value="September">September</option><option value="October">October</option><option value="November">November</option><option value="December">December</option>
+              </select>
             </div>
-            <span class="bh-slot-filename text-[11px] font-mono text-brand-muted truncate max-w-[200px] min-w-0 flex-1 transition-colors duration-200" data-slot-for="invoice_emf_iemms">No file chosen</span>
-            <input type="file" name="invoice_emf_iemms" id="bh-invoice_emf_iemms" class="sr-only bh-slot-input" accept=".pdf,application/pdf" />
-            <button type="button" class="bh-slot-browse shrink-0 py-1.5 px-3 rounded-lg border border-brand-border bg-brand-dark text-[11px] font-semibold uppercase tracking-wide hover:bg-brand-border/25" data-bh-slot="bh-invoice_emf_iemms">Browse</button>
-            <button type="button" class="bh-slot-clear shrink-0 text-[11px] font-semibold text-brand-muted hover:text-brand-text uppercase" data-bh-slot="bh-invoice_emf_iemms">Clear</button>
-          </div>
-          <div class="bh-slot-row flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border-2 border-dashed border-brand-border/45 bg-brand-dark/15 px-3 py-2.5 transition-all duration-300 ease-out" role="group" aria-label="Invoice slot, empty" data-has-file="false">
-            <span class="bh-slot-status flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 border-brand-border/55 bg-brand-dark/40 text-brand-muted transition-all duration-300" aria-hidden="true">
-              <span class="bh-slot-icon-empty flex items-center justify-center"><span class="text-[8px] font-bold uppercase leading-none">···</span></span>
-              <span class="bh-slot-icon-filled hidden h-5 w-5 items-center justify-center text-emerald-400"><svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg></span>
-            </span>
-            <div class="min-w-[180px] flex-1 sm:flex-none">
-              <p class="text-[11px] font-semibold text-brand-text">Supplemental → AC</p>
-              <p class="text-[10px] text-brand-muted">EMF Supplemental statement</p>
+            <div>
+              <label for="bh-upload-statement" class="block text-[10px] font-bold uppercase tracking-wider text-brand-muted mb-1">Prelim / Final</label>
+              <select id="bh-upload-statement" class="w-full rounded-lg border border-brand-border bg-brand-dark px-3 py-2 text-sm text-brand-text">
+                <option value="" selected>Auto from PDFs</option>
+                <option value="Prelim">Prelim</option>
+                <option value="Final">Final</option>
+              </select>
             </div>
-            <span class="bh-slot-filename text-[11px] font-mono text-brand-muted truncate max-w-[200px] min-w-0 flex-1 transition-colors duration-200" data-slot-for="invoice_emf_supplemental">No file chosen</span>
-            <input type="file" name="invoice_emf_supplemental" id="bh-invoice_emf_supplemental" class="sr-only bh-slot-input" accept=".pdf,application/pdf" />
-            <button type="button" class="bh-slot-browse shrink-0 py-1.5 px-3 rounded-lg border border-brand-border bg-brand-dark text-[11px] font-semibold uppercase tracking-wide hover:bg-brand-border/25" data-bh-slot="bh-invoice_emf_supplemental">Browse</button>
-            <button type="button" class="bh-slot-clear shrink-0 text-[11px] font-semibold text-brand-muted hover:text-brand-text uppercase" data-bh-slot="bh-invoice_emf_supplemental">Clear</button>
           </div>
-          <p class="text-[10px] font-bold uppercase tracking-wider text-brand-muted pt-1">WTA — cover summary</p>
-          <div class="bh-slot-row flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border-2 border-dashed border-brand-border/45 bg-brand-dark/15 px-3 py-2.5 transition-all duration-300 ease-out" role="group" aria-label="Invoice slot, empty" data-has-file="false">
-            <span class="bh-slot-status flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 border-brand-border/55 bg-brand-dark/40 text-brand-muted transition-all duration-300" aria-hidden="true">
-              <span class="bh-slot-icon-empty flex items-center justify-center"><span class="text-[8px] font-bold uppercase leading-none">···</span></span>
-              <span class="bh-slot-icon-filled hidden h-5 w-5 items-center justify-center text-emerald-400"><svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg></span>
-            </span>
-            <div class="min-w-[180px] flex-1 sm:flex-none">
-              <p class="text-[11px] font-semibold text-brand-text">ARECO (G01)</p>
-              <p class="text-[10px] text-brand-muted">Columns E, F, S, M</p>
-            </div>
-            <span class="bh-slot-filename text-[11px] font-mono text-brand-muted truncate max-w-[200px] min-w-0 flex-1 transition-colors duration-200" data-slot-for="invoice_wta_areco">No file chosen</span>
-            <input type="file" name="invoice_wta_areco" id="bh-invoice_wta_areco" class="sr-only bh-slot-input" accept=".pdf,application/pdf" />
-            <button type="button" class="bh-slot-browse shrink-0 py-1.5 px-3 rounded-lg border border-brand-border bg-brand-dark text-[11px] font-semibold uppercase tracking-wide hover:bg-brand-border/25" data-bh-slot="bh-invoice_wta_areco">Browse</button>
-            <button type="button" class="bh-slot-clear shrink-0 text-[11px] font-semibold text-brand-muted hover:text-brand-text uppercase" data-bh-slot="bh-invoice_wta_areco">Clear</button>
-          </div>
-          <div class="bh-slot-row flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border-2 border-dashed border-brand-border/45 bg-brand-dark/15 px-3 py-2.5 transition-all duration-300 ease-out" role="group" aria-label="Invoice slot, empty" data-has-file="false">
-            <span class="bh-slot-status flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 border-brand-border/55 bg-brand-dark/40 text-brand-muted transition-all duration-300" aria-hidden="true">
-              <span class="bh-slot-icon-empty flex items-center justify-center"><span class="text-[8px] font-bold uppercase leading-none">···</span></span>
-              <span class="bh-slot-icon-filled hidden h-5 w-5 items-center justify-center text-emerald-400"><svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg></span>
-            </span>
-            <div class="min-w-[180px] flex-1 sm:flex-none">
-              <p class="text-[11px] font-semibold text-brand-text">ARECOSS (L01)</p>
-              <p class="text-[10px] text-brand-muted">Columns H, I, V, Z</p>
-            </div>
-            <span class="bh-slot-filename text-[11px] font-mono text-brand-muted truncate max-w-[200px] min-w-0 flex-1 transition-colors duration-200" data-slot-for="invoice_wta_arecoss">No file chosen</span>
-            <input type="file" name="invoice_wta_arecoss" id="bh-invoice_wta_arecoss" class="sr-only bh-slot-input" accept=".pdf,application/pdf" />
-            <button type="button" class="bh-slot-browse shrink-0 py-1.5 px-3 rounded-lg border border-brand-border bg-brand-dark text-[11px] font-semibold uppercase tracking-wide hover:bg-brand-border/25" data-bh-slot="bh-invoice_wta_arecoss">Browse</button>
-            <button type="button" class="bh-slot-clear shrink-0 text-[11px] font-semibold text-brand-muted hover:text-brand-text uppercase" data-bh-slot="bh-invoice_wta_arecoss">Clear</button>
-          </div>
-          <p id="bh-upload-slots-summary" class="text-[11px] text-brand-muted pt-1 min-h-[1.25rem]" aria-live="polite">No files selected — choose PDFs in the rows above.</p>
         </div>
         <div class="flex flex-wrap items-center gap-3">
           <button type="button" id="bh-btn-upload" class="py-3 px-5 rounded-xl border border-brand-accent/60 bg-brand-accent/20 hover:bg-brand-accent/30 text-brand-accent font-bold uppercase text-xs tracking-wide disabled:opacity-40">Import PDFs</button>
-          <p id="bh-upload-status" class="text-xs text-brand-muted" role="status"></p>
+          <p id="bh-upload-status" class="text-xs text-brand-muted max-w-xl" role="status"></p>
         </div>
       </section>
       {% else %}

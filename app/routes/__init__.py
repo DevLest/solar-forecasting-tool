@@ -16,7 +16,7 @@ from werkzeug.utils import secure_filename
 from app.auth import ROLE_ADMIN, api_forbidden, authenticate, request_allowed_for_role, unauthorized_callback
 from app.config import DATA_DIR, ROOT, nomination_export_dir, settlement_zip_passwords_from_env
 from app.services.env_config import ALLOWED_ENV_KEYS, merge_env_updates, read_env_file_dict
-from app.services.billing_invoice_extract import extract_invoice_pdf, merge_input_patches
+from app.services.billing_invoice_extract import extract_invoice_pdf, merge_input_patches, merge_period_metas
 from app.services.billing_history_store import (
     compute_display_totals,
     delete_row,
@@ -784,35 +784,12 @@ def api_billing_history_upload():
     if request.method == "OPTIONS":
         return "", 204
     try:
-        year = request.form.get("year", type=int)
-        billing_month = (request.form.get("billing_month") or "").strip()
-        statement_ref = (request.form.get("statement_ref") or "").strip()
-        if year is None or not billing_month or not statement_ref:
-            return (
-                jsonify({"ok": False, "error": "year, billing_month, and statement_ref (Prelim or Final) are required."}),
-                400,
-            )
-        slot_pairs: list[tuple[Any, str]] = [
-            ("invoice_emf_regular", "emf_regular"),
-            ("invoice_emf_iemms", "emf_iemms"),
-            ("invoice_emf_supplemental", "emf_supplemental"),
-            ("invoice_wta_areco", "wta_areco"),
-            ("invoice_wta_arecoss", "wta_arecoss"),
-        ]
-        work: list[tuple[Any, str | None]] = []
-        for field_name, slot in slot_pairs:
-            f = request.files.get(field_name)
-            if f and f.filename:
-                work.append((f, slot))
-        if not work:
-            files = request.files.getlist("invoices")
-            for f in files:
-                if f and f.filename:
-                    work.append((f, None))
-        if not work:
-            return jsonify({"ok": False, "error": "No PDF uploads. Use the five labeled slots or the legacy invoices field."}), 400
-        if len(work) > 5:
+        bulk_files = [f for f in request.files.getlist("invoices") if f and f.filename]
+        if not bulk_files:
+            return jsonify({"ok": False, "error": "No PDF uploads. Choose up to five PDF files."}), 400
+        if len(bulk_files) > 5:
             return jsonify({"ok": False, "error": "At most 5 invoice PDFs per request."}), 400
+        work = [(f, None) for f in bulk_files]
         patches: list[dict] = []
         details: list[dict] = []
         for f, slot in work:
@@ -830,7 +807,30 @@ def api_billing_history_upload():
                     "kind": res.detected_kind,
                     "patch": res.input_patch,
                     "warnings": res.warnings,
+                    "period_meta": res.period_meta,
                 }
+            )
+        inferred, period_warnings = merge_period_metas([d["period_meta"] for d in details])
+        year_raw = (request.form.get("year") or "").strip()
+        year_form: int | None = int(year_raw) if year_raw.isdigit() else None
+        billing_month_form = (request.form.get("billing_month") or "").strip()
+        statement_ref_form = (request.form.get("statement_ref") or "").strip()
+        year = year_form if year_form is not None else inferred.get("year")
+        billing_month = billing_month_form if billing_month_form else (inferred.get("billing_month") or "")
+        statement_ref = statement_ref_form if statement_ref_form else (inferred.get("statement_ref") or "")
+        if year is None or not billing_month or not statement_ref:
+            return (
+                jsonify(
+                    {
+                        "ok": False,
+                        "error": (
+                            "Could not determine year, billing month, and Prelim/Final from the PDFs. "
+                            "Set those fields manually or use PDFs with a readable billing period and statement type."
+                        ),
+                        "inferred_partial": inferred,
+                    }
+                ),
+                400,
             )
         merged = merge_input_patches(patches)
         row_id, amounts = upsert_input_row(
@@ -853,6 +853,12 @@ def api_billing_history_upload():
                 "rows": rows,
                 "totals": totals,
                 "display": layout,
+                "applied_period": {
+                    "year": year,
+                    "billing_month": billing_month,
+                    "statement_ref": statement_ref,
+                },
+                "period_warnings": period_warnings,
             }
         )
     except Exception as e:
