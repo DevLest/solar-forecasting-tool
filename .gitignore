@@ -1,7 +1,6 @@
-openai_api_key.txt
-accuweather_api_key.txt
-# All data and future generated files in data/
-data/
+# Runtime/generated files under data/ (users.json is tracked so deploys can log in)
+data/*
+!data/users.json
 __pycache__/
 *.pyc
 .env

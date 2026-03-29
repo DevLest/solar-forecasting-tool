@@ -1,6 +1,7 @@
 """ARECO Solar Operations — Flask application factory."""
 from __future__ import annotations
 
+import logging
 import os
 import shutil
 
@@ -10,6 +11,8 @@ from flask_login import current_user
 from app.auth import auth_context_dict, login_manager
 from app.services.users_store import users_file_path
 from app.config import DATA_DIR, ROOT
+
+logger = logging.getLogger(__name__)
 
 
 def create_app() -> Flask:
@@ -54,8 +57,19 @@ def create_app() -> Flask:
             try:
                 os.makedirs(os.path.dirname(uf) or ".", exist_ok=True)
                 shutil.copyfile(example, uf)
-            except OSError:
-                pass
+                logger.info("Seeded users file from users.example.json -> %s", uf)
+            except OSError as e:
+                logger.error(
+                    "Could not copy users.example.json to %s: %s — create data/users.json or fix permissions.",
+                    uf,
+                    e,
+                )
+        else:
+            logger.error(
+                "No users file at %s and users.example.json is missing under %s.",
+                uf,
+                ROOT,
+            )
 
     app.register_blueprint(main_bp)
 
