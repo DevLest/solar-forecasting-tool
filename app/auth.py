@@ -39,6 +39,7 @@ PANELS_BY_ROLE: dict[str, frozenset[str]] = {
     ROLE_NOMINATOR: frozenset({PANEL_NOMINATION}),
     ROLE_SPECTATOR: frozenset(
         {
+            PANEL_NOMINATION,
             PANEL_NOMINATION_REPORTING,
             PANEL_NOMINATION_ACCURACY,
             PANEL_BILLING_HISTORY,
@@ -207,6 +208,9 @@ def request_allowed_for_role(endpoint: str | None, method: str, role: str) -> bo
 
 def default_panel_for_role(role: str) -> str:
     panels = PANELS_BY_ROLE.get(role, frozenset())
+    # Spectators can open the nomination dashboard (read-only); keep Reporting as the default landing.
+    if role == ROLE_SPECTATOR and PANEL_NOMINATION_REPORTING in panels:
+        return PANEL_NOMINATION_REPORTING
     if PANEL_NOMINATION in panels:
         return PANEL_NOMINATION
     if PANEL_NOMINATION_REPORTING in panels:
@@ -245,6 +249,7 @@ def auth_context_dict(user: Any) -> dict[str, Any]:
             "panels": [],
             "default_panel": PANEL_NOMINATION,
             "can_edit_settings": False,
+            "nomination_read_only": False,
             "nomination_trader_options": [],
         }
     role = getattr(user, "role", ROLE_ADMIN)
@@ -255,5 +260,6 @@ def auth_context_dict(user: Any) -> dict[str, Any]:
         "panels": panels,
         "default_panel": default_panel_for_role(role),
         "can_edit_settings": role == ROLE_ADMIN,
+        "nomination_read_only": role == ROLE_SPECTATOR,
         "nomination_trader_options": nomination_trader_options_for_role(role),
     }

@@ -40,6 +40,7 @@ def create_app() -> Flask:
             "areco_auth": ctx,
             "areco_panels": set(ctx["panels"]),
             "areco_role": ctx["role"],
+            "areco_nomination_readonly": bool(ctx.get("nomination_read_only")),
             "nomination_trader_options": ctx.get("nomination_trader_options") or [],
         }
 

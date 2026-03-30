@@ -2,7 +2,7 @@
 <aside class="flex w-full flex-col md:h-full min-h-0 gap-2 p-3 md:p-4 border-b md:border-b-0 md:border-r border-brand-border bg-brand-card/95 backdrop-blur-sm shrink-0 md:overflow-y-auto md:z-30" aria-label="Main navigation">
   <p class="hidden md:block text-[10px] font-bold uppercase tracking-widest text-brand-muted mb-0.5 px-1">Sections</p>
 
-  <nav class="flex flex-col gap-1.5 w-full min-w-0" aria-label="App sections">
+  <nav class="flex flex-col gap-1.5 w-full min-w-0 flex-1 min-h-0" aria-label="App sections">
     {% if 'nomination' in areco_panels or 'nomination-reporting' in areco_panels or 'nomination-accuracy' in areco_panels %}
     {# Nomination: dashboard, reporting, forecast accuracy #}
     <div class="flex flex-col min-w-0 rounded-lg border border-brand-border/50 bg-brand-dark/25 overflow-hidden" data-nav-section="nomination">
@@ -61,11 +61,24 @@
     {% endif %}
   </nav>
 
-  {% if areco_auth.can_edit_settings %}
-  <div class="hidden md:block mt-auto pt-4 border-t border-brand-border/60 w-full">
-    <button type="button" data-open-settings class="w-full text-left px-4 py-3 rounded-lg border border-brand-border/60 text-sm font-semibold text-brand-muted hover:text-brand-accent hover:bg-brand-border/20 transition-colors">
-      App settings
-    </button>
+  {% if areco_auth.can_edit_settings or current_user.is_authenticated %}
+  <div class="mt-auto pt-4 border-t border-brand-border/60 w-full shrink-0 flex flex-col gap-3">
+    {% if areco_auth.can_edit_settings %}
+    <div class="hidden md:block w-full">
+      <button type="button" data-open-settings class="w-full text-left px-4 py-3 rounded-lg border border-brand-border/60 text-sm font-semibold text-brand-muted hover:text-brand-accent hover:bg-brand-border/20 transition-colors">
+        App settings
+      </button>
+    </div>
+    {% endif %}
+    {% if current_user.is_authenticated %}
+    <div class="flex items-center justify-between gap-2 px-1 w-full min-w-0">
+      <div class="leading-tight min-w-0 text-left">
+        <p class="text-[11px] font-semibold text-brand-text truncate">{{ current_user.username }}</p>
+        <p class="text-[9px] uppercase tracking-wider text-brand-muted">{{ areco_role }}</p>
+      </div>
+      <a href="{{ url_for('main.logout') }}" class="shrink-0 rounded-lg border border-brand-border px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-brand-muted hover:text-brand-accent hover:bg-brand-border/20 whitespace-nowrap">Log out</a>
+    </div>
+    {% endif %}
   </div>
   {% endif %}
 </aside>

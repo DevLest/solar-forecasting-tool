@@ -2,11 +2,33 @@
     var API_BASE = (typeof window !== 'undefined' && window.location && window.location.origin) ? window.location.origin : '';
 
     const STORAGE_KEY = 'areco_forecast_import';
+    /** Per forecast-reference-date revision counters (YYYY-MM-DD → 1–999). Lazily loaded from localStorage. */
+    var intervalRevByDateMemory = null;
     const LIVE_STREAM_STORAGE_KEY = 'areco_live_stream_url';
     const WEATHER_LOCATION_KEY = 'areco_weather_location';
     var weatherLocation = { lat: 10.638755644610793, lon: 123.00417639451439 };
     const DEFAULT_LIVE_STREAM_URL = 'https://vdo.ninja/?view=2vNAR9X';
     const PLANT_MAX_MW = 50;
+
+    function isNominationReadOnly() {
+      var p = document.getElementById('panel-nomination');
+      return !!(p && p.getAttribute('data-nomination-readonly') === 'true');
+    }
+
+    /** Spectator / viewer: disable all inputs and actions except history refresh (read-only dashboard). */
+    function applyNominationReadonlyUi() {
+      if (!isNominationReadOnly()) return;
+      var root = document.getElementById('panel-nomination');
+      if (!root) return;
+      root.querySelectorAll('input, select, textarea').forEach(function(el) {
+        el.disabled = true;
+      });
+      root.querySelectorAll('button').forEach(function(el) {
+        if (el.id === 'btn-refresh-history') return;
+        el.disabled = true;
+      });
+    }
+
     function clampMw(v) {
       var n = Number(v);
       if (isNaN(n) || n < 0) return 0;
@@ -149,6 +171,13 @@
     }
 
     function updateRtdIntervalLocks() {
+      if (isNominationReadOnly()) {
+        document.querySelectorAll('.interval-data-tbody tr.interval-row .rtd-input').forEach(function(inp) {
+          inp.disabled = true;
+          inp.readOnly = true;
+        });
+        return;
+      }
       var refIso = getForecastRefDateString();
       var today = todayIsoLocal();
       document.querySelectorAll('.interval-data-tbody tr.interval-row').forEach(function(tr) {
@@ -230,6 +259,67 @@
       if (isNaN(d.getTime())) return '';
       var y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, '0'), day = String(d.getDate()).padStart(2, '0');
       return y + '-' + m + '-' + day;
+    }
+
+    function clampIntervalRev(n) {
+      var v = parseInt(n, 10);
+      if (isNaN(v)) return 1;
+      return Math.max(1, Math.min(999, v));
+    }
+
+    /** Build rev map from stored payload (supports legacy single intervalRev). */
+    function migrateLegacyRevMap(o) {
+      if (!o || typeof o !== 'object') return {};
+      var map = {};
+      if (o.intervalRevByDate && typeof o.intervalRevByDate === 'object') {
+        Object.keys(o.intervalRevByDate).forEach(function(k) {
+          map[k] = clampIntervalRev(o.intervalRevByDate[k]);
+        });
+      }
+      if (Object.keys(map).length === 0 && o.intervalRev != null) {
+        var k = o.forecastRefDateIso || toIsoDateString(o.forecastRefDate || '');
+        if (k) map[k] = clampIntervalRev(o.intervalRev);
+      }
+      return map;
+    }
+
+    function getIntervalRevMap() {
+      if (intervalRevByDateMemory === null) {
+        try {
+          var raw = localStorage.getItem(STORAGE_KEY);
+          intervalRevByDateMemory = raw ? migrateLegacyRevMap(JSON.parse(raw)) : {};
+        } catch (e) {
+          intervalRevByDateMemory = {};
+        }
+      }
+      return Object.assign({}, intervalRevByDateMemory);
+    }
+
+    function setIntervalRevMap(map) {
+      intervalRevByDateMemory = Object.assign({}, map || {});
+    }
+
+    /** Rev# for the forecast ref date in a saved/history record. */
+    function resolveIntervalRevForRecord(data) {
+      if (!data) return 1;
+      var iso = data.forecastRefDateIso || toIsoDateString(data.forecastRefDate || '') || '';
+      if (data.intervalRevByDate && iso && data.intervalRevByDate[iso] != null) {
+        return clampIntervalRev(data.intervalRevByDate[iso]);
+      }
+      var map = getIntervalRevMap();
+      if (iso && map[iso] != null) return clampIntervalRev(map[iso]);
+      if (data.intervalRev != null) return clampIntervalRev(data.intervalRev);
+      return 1;
+    }
+
+    /** Update Rev# display when the forecast reference date changes (each day has its own sequence from 1). */
+    function syncIntervalRevDisplayToForecastDate() {
+      var iso = getForecastRefDateString();
+      var revSpan = document.getElementById('interval-rev-number');
+      if (!revSpan || !iso) return;
+      var map = getIntervalRevMap();
+      var r = map[iso] != null ? clampIntervalRev(map[iso]) : 1;
+      revSpan.textContent = r;
     }
 
     /** Format date for display as "Month dd, YYYY" (e.g. March 16, 2026). */
@@ -485,12 +575,18 @@
         var radio = document.querySelector('input[name="forecast"][value="' + mode + '"]');
         if (radio) radio.checked = true;
       }
-      if (payload.intervalRev != null) {
-        var revSpan = document.getElementById('interval-rev-number');
-        if (revSpan) {
-          var r = Math.max(1, Math.min(999, parseInt(payload.intervalRev, 10) || 1));
-          revSpan.textContent = r;
+      var revSpanApply = document.getElementById('interval-rev-number');
+      if (revSpanApply) {
+        var refIsoApply = getForecastRefDateString();
+        var rApply = 1;
+        if (payload.intervalRevByDate && refIsoApply && payload.intervalRevByDate[refIsoApply] != null) {
+          rApply = clampIntervalRev(payload.intervalRevByDate[refIsoApply]);
+        } else {
+          var mapApply = getIntervalRevMap();
+          if (refIsoApply && mapApply[refIsoApply] != null) rApply = clampIntervalRev(mapApply[refIsoApply]);
+          else if (payload.intervalRev != null) rApply = clampIntervalRev(payload.intervalRev);
         }
+        revSpanApply.textContent = rApply;
       }
       if (payload.weatherCondition != null && document.getElementById('ops-weather-condition')) {
         document.getElementById('ops-weather-condition').value = String(payload.weatherCondition);
@@ -762,10 +858,18 @@
       var modeVal = modeEl ? modeEl.value : 'custom';
       var vrePlantEl = document.getElementById('vre-plant-name');
       var plantNameForVre = (vrePlantEl && vrePlantEl.value && vrePlantEl.value.trim()) ? vrePlantEl.value.trim() : '';
+      var refIsoPersist = toIsoDateString(extra.forecastRefDate || getForecastRefDateString()) || getForecastRefDateString();
+      var revByDate = getIntervalRevMap();
+      if (extra.intervalRevByDate && typeof extra.intervalRevByDate === 'object') {
+        Object.keys(extra.intervalRevByDate).forEach(function(k) {
+          revByDate[k] = clampIntervalRev(extra.intervalRevByDate[k]);
+        });
+      }
       var revEl = document.getElementById('interval-rev-number');
       var revNum = (revEl && revEl.textContent) ? (parseInt(revEl.textContent, 10) || 1) : 1;
-      revNum = Math.max(1, Math.min(999, revNum));
-      if (extra.intervalRev != null) revNum = Math.max(1, Math.min(999, parseInt(extra.intervalRev, 10) || 1));
+      revNum = clampIntervalRev(revNum);
+      if (extra.intervalRev != null) revNum = clampIntervalRev(extra.intervalRev);
+      revByDate[refIsoPersist] = revNum;
       var weatherCondEl = document.getElementById('ops-weather-condition');
       var revisionReasonEl = document.getElementById('ops-revision-reason');
       var traderEl = document.getElementById('ops-trader-duty');
@@ -776,6 +880,7 @@
         rtdPercent: extra.rtdPercent != null ? extra.rtdPercent : percentVal,
         rtdForecastMode: extra.rtdForecastMode != null ? extra.rtdForecastMode : modeVal,
         intervalRev: extra.intervalRev != null ? extra.intervalRev : revNum,
+        intervalRevByDate: revByDate,
         weatherHourly: extra.weatherHourly != null ? extra.weatherHourly : weatherData.slice(),
         weatherSummary: extra.weatherSummary != null ? extra.weatherSummary : weatherSummaryText,
         weatherDate: extra.weatherDate != null ? extra.weatherDate : weatherDateStr,
@@ -789,6 +894,7 @@
 
     function saveForecastLocally(payload) {
       var full = buildPersistPayload(payload);
+      if (full.intervalRevByDate) setIntervalRevMap(full.intervalRevByDate);
       try { localStorage.setItem(STORAGE_KEY, JSON.stringify(full)); } catch (e) {}
       idbPut(full).catch(function() {});
       try { sessionStorage.setItem(STORAGE_KEY + '_ram', JSON.stringify(full)); } catch (e) {}
@@ -1370,16 +1476,19 @@
       URL.revokeObjectURL(a.href);
     }
 
-    /** After a successful export, bump Rev# (snapshot already recorded the previous value). */
+    /** After a successful export, bump Rev# for the current forecast reference date (snapshot already recorded the previous value). */
     function incrementIntervalRevAfterExport() {
       var revSpan = document.getElementById('interval-rev-number');
       if (!revSpan) return;
-      var revMin = 1;
-      var revMax = 999;
-      var n = parseInt(revSpan.textContent, 10) || revMin;
-      n = Math.max(revMin, Math.min(revMax, n + 1));
+      var refIso = getForecastRefDateString();
+      if (!refIso) return;
+      var map = getIntervalRevMap();
+      var curRev = parseInt(revSpan.textContent, 10);
+      if (isNaN(curRev)) curRev = 1;
+      var n = clampIntervalRev(curRev + 1);
+      map[refIso] = n;
       revSpan.textContent = n;
-      saveForecastLocally({ intervalRev: n });
+      saveForecastLocally({ intervalRev: n, intervalRevByDate: map });
     }
 
     /**
@@ -1444,6 +1553,7 @@
     }
 
     function copyIntervalDataPanelImage() {
+      if (isNominationReadOnly()) return;
       var panel = document.getElementById('interval-data-panel');
       if (!panel) return;
       if (typeof html2canvas === 'undefined') {
@@ -1555,6 +1665,7 @@
     }
 
     document.getElementById('btn-export').addEventListener('click', function() {
+      if (isNominationReadOnly()) return;
       var detail = getExportDetailStrings();
       var filename = 'ARECO_' + detail.mm + '_' + detail.dd + '_' + detail.yyyy + '.xml';
       var xml = buildRawBidSetXml();
@@ -1578,6 +1689,7 @@
     });
 
     document.getElementById('btn-export-vre-csv').addEventListener('click', function() {
+      if (isNominationReadOnly()) return;
       var detail = getExportDetailStrings();
       var dateStr = String(detail.yyyy) + detail.mm + detail.dd;
       var vrePlantEl = document.getElementById('vre-plant-name');
@@ -1604,17 +1716,20 @@
     });
 
     document.getElementById('btn-import').addEventListener('click', function() {
+      if (isNominationReadOnly()) return;
       document.getElementById('forecast-file-input').click();
     });
 
     var forecastRefDateEl = document.getElementById('forecast-ref-date');
     if (forecastRefDateEl) {
-      forecastRefDateEl.addEventListener('blur', function() {
-        saveForecastLocally({ forecastRefDate: getForecastRefDateString() });
-      });
-      forecastRefDateEl.addEventListener('change', function() {
+      function onForecastRefDateUserChange() {
+        syncIntervalRevDisplayToForecastDate();
+        var revElSync = document.getElementById('interval-rev-number');
+        saveForecastLocally({ forecastRefDate: getForecastRefDateString(), intervalRev: revElSync ? clampIntervalRev(revElSync.textContent) : 1 });
         if (typeof window.updateRtdIntervalLocks === 'function') window.updateRtdIntervalLocks();
-      });
+      }
+      forecastRefDateEl.addEventListener('blur', onForecastRefDateUserChange);
+      forecastRefDateEl.addEventListener('change', onForecastRefDateUserChange);
     }
 
     var opsWeatherEl = document.getElementById('ops-weather-condition');
@@ -1631,6 +1746,7 @@
     if (btnCopyIntervalImage) btnCopyIntervalImage.addEventListener('click', copyIntervalDataPanelImage);
 
     attachIntervalRowHandlers();
+    applyNominationReadonlyUi();
 
     document.getElementById('forecast-file-input').addEventListener('change', function() {
       const file = this.files && this.files[0];
@@ -1662,11 +1778,14 @@
           ? (dateFromFilename.getFullYear() + '-' + String(dateFromFilename.getMonth() + 1).padStart(2, '0') + '-' + String(dateFromFilename.getDate()).padStart(2, '0'))
           : (today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0'));
         const result = rowsToHourlyAndIntervals(rows);
+        var mapImp = getIntervalRevMap();
+        var revForImport = mapImp[forecastRefDateIso] != null ? clampIntervalRev(mapImp[forecastRefDateIso]) : 1;
         // Include all intervals (including zero MW) so e.g. 05:05 with 0 displays correctly
         const payload = {
           forecastRefDate: forecastRefDateIso,
           nomination: result.hourly,
           intervals: result.intervals,
+          intervalRev: revForImport,
           plantNameForVreExport: plantNameFromFile || (document.getElementById('vre-plant-name') && document.getElementById('vre-plant-name').value) || undefined
         };
         saveForecastLocally(payload);
@@ -1687,14 +1806,10 @@
 
     function restoreFromRecord(data) {
       if (!data) return;
+      setIntervalRevMap(Object.assign(getIntervalRevMap(), migrateLegacyRevMap(data)));
       applyStoredRecord(data);
-      if (data.intervalRev != null) {
-        var revSpan = document.getElementById('interval-rev-number');
-        if (revSpan) {
-          var r = Math.max(1, Math.min(999, parseInt(data.intervalRev, 10) || 1));
-          revSpan.textContent = r;
-        }
-      }
+      var revSpan = document.getElementById('interval-rev-number');
+      if (revSpan) revSpan.textContent = resolveIntervalRevForRecord(data);
       if (data.weatherHourly && data.weatherHourly.length) {
         weatherData = data.weatherHourly.slice(0, 25);
         while (weatherData.length < 25) weatherData.push(0);
@@ -1870,6 +1985,7 @@
       loadHistory();
       initWeatherLocation();
       if (typeof window.updateRtdIntervalLocks === 'function') window.updateRtdIntervalLocks();
+      applyNominationReadonlyUi();
     });
 
     (function initNavbarTimeAndDateMin() {
@@ -1949,6 +2065,7 @@
         try { localStorage.setItem(LIVE_STREAM_STORAGE_KEY, u); } catch (e3) {}
         if (iframe) iframe.src = u;
       }
+      if (isNominationReadOnly()) return;
       var applyBtn = document.getElementById('live-stream-apply');
       if (applyBtn) applyBtn.addEventListener('click', applyUrl);
       if (input) input.addEventListener('blur', applyUrl);
@@ -1956,6 +2073,7 @@
     })();
 
     document.getElementById('btn-weather').addEventListener('click', function() {
+      if (isNominationReadOnly()) return;
       var btn = this;
       var originalText = btn.textContent;
       btn.disabled = true;
