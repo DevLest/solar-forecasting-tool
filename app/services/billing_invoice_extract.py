@@ -2,12 +2,16 @@
 from __future__ import annotations
 
 import io
+import os
 import re
 from collections import Counter
 from dataclasses import dataclass, field
 from typing import Any
 
 from pypdf import PdfReader
+
+# Lazy singleton for scanned Final MF PDFs (image-only); avoids reloading ONNX models per upload batch.
+_rapid_ocr_engine = None
 
 
 def _norm_whitespace(text: str) -> str:
@@ -30,7 +34,77 @@ def _parse_money_token(raw: str) -> float | None:
     return -v if neg else v
 
 
-def _extract_pdf_text(data: bytes) -> str:
+def _extract_pdf_text_ocr_rapidocr(data: bytes) -> str | None:
+    """RapidOCR + OpenCV (good accuracy; requires Python < 3.13 for many rapidocr builds)."""
+    global _rapid_ocr_engine
+    try:
+        import cv2
+        import numpy as np
+        from rapidocr_onnxruntime import RapidOCR
+        import fitz
+    except ImportError:
+        return None
+    doc = fitz.open(stream=data, filetype="pdf")
+    out_parts: list[str] = []
+    try:
+        if _rapid_ocr_engine is None:
+            _rapid_ocr_engine = RapidOCR()
+        ocr_engine = _rapid_ocr_engine
+        for page in doc:
+            pix = page.get_pixmap(matrix=fitz.Matrix(2.0, 2.0), alpha=False)
+            img_bytes = pix.tobytes("png")
+            img = cv2.imdecode(np.frombuffer(img_bytes, np.uint8), cv2.IMREAD_COLOR)
+            if img is None:
+                continue
+            result, _ = ocr_engine(img)
+            if not result:
+                continue
+            out_parts.append("\n".join(line[1] for line in result))
+        s = "\n".join(out_parts).strip()
+        return s if s else None
+    finally:
+        doc.close()
+
+
+def _extract_pdf_text_ocr_tesseract(data: bytes) -> str | None:
+    """Fallback: PyMuPDF render + Tesseract (install Tesseract and add to PATH, or set TESSDATA_PREFIX)."""
+    try:
+        import fitz
+        import pytesseract
+        from PIL import Image
+    except ImportError:
+        return None
+    doc = fitz.open(stream=data, filetype="pdf")
+    out_parts: list[str] = []
+    try:
+        for page in doc:
+            pix = page.get_pixmap(matrix=fitz.Matrix(2.0, 2.0), alpha=False)
+            img = Image.open(io.BytesIO(pix.tobytes("png")))
+            out_parts.append(pytesseract.image_to_string(img))
+        s = "\n".join(out_parts).strip()
+        return s if s else None
+    except Exception:
+        return None
+    finally:
+        doc.close()
+
+
+def _extract_pdf_text_ocr_fitz(data: bytes) -> str | None:
+    """Render pages and OCR scanned Final TS-WF market fee PDFs (no text layer)."""
+    if os.environ.get("ARECO_DISABLE_PDF_OCR", "").strip().lower() in ("1", "true", "yes"):
+        return None
+    for fn in (_extract_pdf_text_ocr_rapidocr, _extract_pdf_text_ocr_tesseract):
+        try:
+            t = fn(data)
+        except Exception:
+            t = None
+        if t and t.strip():
+            return t.strip()
+    return None
+
+
+def _extract_pdf_text(data: bytes) -> tuple[str, bool]:
+    """Return ``(text, used_ocr)``. Tries OCR when the PDF has no selectable text layer."""
     reader = PdfReader(io.BytesIO(data))
     parts: list[str] = []
     for page in reader.pages:
@@ -39,7 +113,13 @@ def _extract_pdf_text(data: bytes) -> str:
         except Exception:
             t = ""
         parts.append(t)
-    return "\n".join(parts)
+    raw = "\n".join(parts)
+    if (raw or "").strip():
+        return raw, False
+    ocr_text = _extract_pdf_text_ocr_fitz(data)
+    if ocr_text:
+        return ocr_text, True
+    return raw, False
 
 
 def _kind_from_filename(name: str) -> str:
@@ -62,6 +142,26 @@ def _kind_from_filename(name: str) -> str:
     if "WTA" in n:
         return "wta"
     return "unknown"
+
+
+def _refine_emf_kind_from_rate(filename: str, text: str, fk: str) -> str:
+    """``*_MF.pdf`` is ambiguous (regular vs IEMMS vs supplemental); use Market Fee Rate from PDF text."""
+    if fk not in ("emf_regular", "emf_iemms", "emf_supplemental"):
+        return fk
+    n = (filename or "").upper()
+    if "MF1" in n:
+        return "emf_iemms"
+    if not n.endswith("_MF.PDF"):
+        return fk
+    rate = _emf_rate_php_per_kwh_from_text(text)
+    if rate is None:
+        return fk
+    # Typical IEMOP bands (Php/kWh): regular ~0.0071, IEMMS ~0.0039, supplemental ~0.0006
+    if rate >= 0.005:
+        return "emf_regular"
+    if rate >= 0.002:
+        return "emf_iemms"
+    return "emf_supplemental"
 
 
 def parse_emf_market_fee(text: str) -> dict[str, Any]:
@@ -106,9 +206,20 @@ def parse_emf_market_fee(text: str) -> dict[str, Any]:
         m_bp = re.search(r"([A-Za-z]{3}\s+\d{1,2}\s*-\s*[A-Za-z]{3}\s+\d{1,2},\s*\d{4})", t)
     if m_bp:
         out["billing_period_text"] = m_bp.group(1).strip()
-    st = "Final" if re.search(r"\bFinal Statement\b", t, re.IGNORECASE) else None
-    if st:
-        out["statement"] = st
+    if re.search(r"\bFinal\s+Statement\b", t, re.IGNORECASE):
+        out["statement"] = "Final"
+    elif re.search(r"\bPreliminary\s+Statement\b", t, re.IGNORECASE) or re.search(
+        r"\bPrelim\s+Statement\b", t, re.IGNORECASE
+    ):
+        out["statement"] = "Prelim"
+    if out.get("net_settlement_amount") is None:
+        rate = _emf_rate_php_per_kwh_from_text(t)
+        mwh = _emf_mwh_quantity_from_text(t)
+        if rate is not None and mwh is not None:
+            out["market_fee_rate_php_per_kwh"] = rate
+            out["market_fee_quantity_mwh"] = mwh
+            out["net_settlement_amount"] = _emf_amount_from_rate_and_mwh(rate, mwh)
+            out["net_settlement_layout"] = "rate_times_mwh"
     return out
 
 
@@ -156,9 +267,9 @@ def infer_statement_ref(text: str) -> str | None:
     """Return ``Prelim`` or ``Final`` from IEMOP-style PDF text."""
     if re.search(r"\bFinal\s+Statement\b", text, re.IGNORECASE):
         return "Final"
-    if re.search(r"\bPreliminary\s+Statement\b", text, re.IGNORECASE):
-        return "Prelim"
     if re.search(r"\bPrelim\s+Statement\b", text, re.IGNORECASE):
+        return "Prelim"
+    if re.search(r"\bPreliminary\s+Statement\b", text, re.IGNORECASE):
         return "Prelim"
     if re.search(r"COVER\s+SUMMARY\s*-\s*FINAL", text, re.IGNORECASE):
         return "Final"
@@ -167,7 +278,95 @@ def infer_statement_ref(text: str) -> str | None:
     u = (text or "").upper()
     if "<PS>" in u:
         return "Prelim"
+    if re.search(r"\bFS-W\d+", text, re.IGNORECASE):
+        return "Final"
     return None
+
+
+def infer_statement_ref_from_filename(name: str) -> str | None:
+    """TS-WF … MF / MF1 = Final market fee; TS-WP … MF / MF1 = Prelim (text may be missing on scanned PDFs)."""
+    n = (name or "").upper()
+    if "TS-WF" in n and ("MF1" in n or re.search(r"_MF\.PDF$", n) or "_MF_" in n or n.endswith("_MF.PDF")):
+        return "Final"
+    if "TS-WP" in n and ("MF1" in n or re.search(r"_MF\.PDF$", n) or "_MF_" in n or n.endswith("_MF.PDF")):
+        return "Prelim"
+    return None
+
+
+def _parse_float_loose(raw: str) -> float | None:
+    s = (raw or "").strip().replace(",", "")
+    if not s:
+        return None
+    try:
+        return float(s)
+    except ValueError:
+        return None
+
+
+def _emf_mwh_quantity_from_text(t: str) -> float | None:
+    m = re.search(
+        r"NET\s+SETTLEMENT\s+AMOUNT\s+([\d,\.]+)\s*MWh",
+        t,
+        re.IGNORECASE,
+    )
+    if m:
+        return _parse_float_loose(m.group(1))
+    m = re.search(
+        r"([\d,\.]+)\s*\([\d,\.]+\)\s*Net\s+Settlement\s+Amount",
+        t,
+        re.IGNORECASE,
+    )
+    if m:
+        return _parse_float_loose(m.group(1))
+    m = re.search(
+        r"Market\s+Fee\s+Quantity\s*(?:\(MWh\))?\s*:?\s*([\d,\.]+)",
+        t,
+        re.IGNORECASE,
+    )
+    if m:
+        return _parse_float_loose(m.group(1))
+    return None
+
+
+def _emf_rate_php_per_kwh_from_text(t: str) -> float | None:
+    m = re.search(
+        r"Market\s+Fees?\s+Rate\s*(?:\(Php/kWh\))?\s*:?\s*([\d\.]+)\s*$",
+        t,
+        re.IGNORECASE | re.MULTILINE,
+    )
+    if m:
+        return _parse_float_loose(m.group(1))
+    lines = [ln.strip() for ln in t.splitlines()]
+    for i, ln in enumerate(lines):
+        if re.match(r"Market\s+Fees?\s+Rate", ln, re.IGNORECASE):
+            for j in range(i + 1, min(i + 12, len(lines))):
+                cand = lines[j]
+                if re.match(r"^[\d\.]+$", cand):
+                    return _parse_float_loose(cand)
+    return None
+
+
+def _emf_amount_from_rate_and_mwh(rate: float, mwh: float) -> float:
+    """Php/kWh × MWh × 1000 kWh/MWh; statement uses parentheses for payable → negative."""
+    return -round(rate * mwh * 1000.0, 2)
+
+
+def _is_emf_market_fee_text(text: str) -> bool:
+    """True for PS_EMF, TS-WP/TS-WF settlement SVC, and Final layouts that omit the classic net-settlement line."""
+    low = (text or "").lower()
+    if "market fee" not in low:
+        return False
+    if "net settlement" in low or "settlement amount" in low:
+        return True
+    if "market fees for settlement" in low or "market fee for settlement" in low:
+        return True
+    if "vat for market fees" in low:
+        return True
+    if ("market fee rate" in low or "market fees rate" in low) and (
+        "mwh" in low or "market fee quantity" in low
+    ):
+        return True
+    return False
 
 
 def billing_period_meta_from_text(text: str) -> dict[str, Any]:
@@ -184,6 +383,18 @@ def billing_period_meta_from_text(text: str) -> dict[str, Any]:
         if mon:
             out["billing_month"] = mon
             out["year"] = int(m_bill.group(2))
+            return out
+    # Service invoice / OCR: "Billing Period : 26 December 2025 to 25 January 2026"
+    m_svc_bp = re.search(
+        r"Billing\s+Period\s*:?\s*\d+\s+\w+\s+\d{4}\s+to\s+\d+\s+([A-Za-z]+)\s+(\d{4})",
+        text,
+        re.IGNORECASE,
+    )
+    if m_svc_bp:
+        mon = _canonical_month_name(m_svc_bp.group(1))
+        if mon:
+            out["billing_month"] = mon
+            out["year"] = int(m_svc_bp.group(2))
             return out
     m_rng = re.search(
         r"\b([A-Za-z]{3})\s+\d{1,2}\s*-\s*([A-Za-z]{3})\s+\d{1,2},\s*(\d{4})",
@@ -238,8 +449,13 @@ def merge_period_metas(metas: list[dict[str, Any]]) -> tuple[dict[str, Any | Non
     return merged, warnings
 
 
-def _period_meta(text: str) -> dict[str, Any]:
-    return billing_period_meta_from_text(text) if (text or "").strip() else {}
+def _period_meta(text: str, filename: str | None = None) -> dict[str, Any]:
+    out = billing_period_meta_from_text(text) if (text or "").strip() else {}
+    if filename:
+        stf = infer_statement_ref_from_filename(filename)
+        if stf and not out.get("statement_ref"):
+            out["statement_ref"] = stf
+    return out
 
 
 def _lines_after_summary(text: str) -> list[str]:
@@ -350,7 +566,9 @@ class ExtractResult:
     warnings: list[str] = field(default_factory=list)
 
 
-def _wta_result_to_extract(filename: str, branch: str, patch: dict[str, Any], text: str) -> ExtractResult:
+def _wta_result_to_extract(
+    filename: str, branch: str, patch: dict[str, Any], text: str, *, ocr_used: bool = False
+) -> ExtractResult:
     ir: dict[str, Any] = {}
     for k, v in patch.items():
         if k in ("kind", "wta_branch"):
@@ -363,7 +581,8 @@ def _wta_result_to_extract(filename: str, branch: str, patch: dict[str, Any], te
         f"wta_{branch}",
         input_patch=ir,
         raw_meta=meta,
-        period_meta=_period_meta(text),
+        period_meta=_period_meta(text, filename),
+        warnings=_merge_ocr_warning([], ocr_used),
     )
 
 
@@ -371,6 +590,45 @@ _SCANNED_PDF_MSG = (
     "No selectable text in this PDF (often a scanned image). Export or download a text-based PDF from IEMOP, "
     "or type amounts manually in the Input grid."
 )
+
+_OCR_USED_MSG = (
+    "OCR was used to read this scanned PDF; verify market fee amounts if anything looks off."
+)
+
+
+def _merge_ocr_warning(warnings: list[str], ocr_used: bool) -> list[str]:
+    if not ocr_used:
+        return warnings
+    return [*warnings, _OCR_USED_MSG]
+
+
+def _hint_if_ocr_packages_missing() -> str | None:
+    try:
+        import fitz  # noqa: F401
+    except ImportError:
+        return (
+            "Optional OCR is not installed. For scanned Final market fee PDFs: "
+            "pip install pymupdf pillow pytesseract numpy (and install Tesseract OCR for Windows: "
+            "https://github.com/UB-Mannheim/tesseract/wiki), or add opencv-python-headless rapidocr-onnxruntime "
+            "on Python 3.8–3.12. Alternatively use text-based PDFs from IEMOP."
+        )
+    try:
+        import cv2  # noqa: F401
+        from rapidocr_onnxruntime import RapidOCR  # noqa: F401
+    except ImportError:
+        pass
+    else:
+        return None
+    try:
+        import pytesseract  # noqa: F401
+        from PIL import Image  # noqa: F401
+    except ImportError:
+        return (
+            "Optional OCR is not installed. For scanned Final market fee PDFs: "
+            "pip install pymupdf pillow pytesseract numpy and install Tesseract OCR, "
+            "or on Python 3.8–3.12 use pip install opencv-python-headless rapidocr-onnxruntime."
+        )
+    return None
 
 
 def extract_invoice_pdf(
@@ -381,29 +639,43 @@ def extract_invoice_pdf(
 ) -> ExtractResult:
     """Dispatch parser from PDF content; optional ``slot`` fixes invoice type (ignores filename)."""
     if not data:
-        return ExtractResult(filename, "empty", warnings=["Empty file"], period_meta={})
-    text = _extract_pdf_text(data)
+        return ExtractResult(
+            filename, "empty", warnings=["Empty file"], period_meta=_period_meta("", filename)
+        )
+    text, ocr_used = _extract_pdf_text(data)
     low = (filename or "").lower()
     fk = _kind_from_filename(filename)
+    if (text or "").strip():
+        fk = _refine_emf_kind_from_rate(filename, text, fk)
     text_empty = not (text or "").strip()
 
     # Explicit slot (UI: one file per invoice type — filenames may vary)
     if slot in ("wta_areco", "wta_arecoss"):
         fb = "areco" if slot == "wta_areco" else "arecoss"
         branch, patch = parse_wta_cover(text, force_branch=fb)
-        return _wta_result_to_extract(filename, branch, patch, text)
+        return _wta_result_to_extract(filename, branch, patch, text, ocr_used=ocr_used)
 
     if slot in ("emf_regular", "emf_iemms", "emf_supplemental"):
         if text_empty:
-            return ExtractResult(filename, slot, warnings=[_SCANNED_PDF_MSG], period_meta={})
-        if "market fees" not in text.lower() or "net settlement amount" not in text.lower():
+            sw = [_SCANNED_PDF_MSG]
+            h = _hint_if_ocr_packages_missing()
+            if h:
+                sw.append(h)
+            return ExtractResult(
+                filename, slot, warnings=sw, period_meta=_period_meta(text, filename)
+            )
+        if not _is_emf_market_fee_text(text):
             return ExtractResult(
                 filename,
                 slot,
-                warnings=[
-                    "Expected an EMF market fees PDF for this slot (look for Market Fees / Net Settlement Amount).",
-                ],
-                period_meta=_period_meta(text),
+                warnings=_merge_ocr_warning(
+                    [
+                        "Expected an EMF market fees PDF for this slot (Market Fees, Net Settlement Amount, "
+                        "or Market Fee Rate × Quantity in MWh).",
+                    ],
+                    ocr_used,
+                ),
+                period_meta=_period_meta(text, filename),
             )
         emf = parse_emf_market_fee(text)
         amt = emf.get("net_settlement_amount")
@@ -414,22 +686,35 @@ def extract_invoice_pdf(
                 filename,
                 slot,
                 raw_meta=emf,
-                warnings=["Could not read net settlement amount from this EMF PDF."],
-                period_meta=_period_meta(text),
+                warnings=_merge_ocr_warning(
+                    ["Could not read net settlement amount from this EMF PDF."], ocr_used
+                ),
+                period_meta=_period_meta(text, filename),
             )
         col = {"emf_regular": "aa", "emf_iemms": "ab", "emf_supplemental": "ac"}[slot]
         return ExtractResult(
-            filename, slot, input_patch={col: float(amt)}, raw_meta=emf, period_meta=_period_meta(text)
+            filename,
+            slot,
+            input_patch={col: float(amt)},
+            raw_meta=emf,
+            period_meta=_period_meta(text, filename),
+            warnings=_merge_ocr_warning([], ocr_used),
         )
 
     if fk == "wta" or "wesm transaction" in text.lower():
         branch, patch = parse_wta_cover(text)
-        return _wta_result_to_extract(filename, branch, patch, text)
+        return _wta_result_to_extract(filename, branch, patch, text, ocr_used=ocr_used)
 
     if fk in ("emf_regular", "emf_iemms", "emf_supplemental") and text_empty:
-        return ExtractResult(filename, fk, warnings=[_SCANNED_PDF_MSG], period_meta={})
+        sw = [_SCANNED_PDF_MSG]
+        h = _hint_if_ocr_packages_missing()
+        if h:
+            sw.append(h)
+        return ExtractResult(
+            filename, fk, warnings=sw, period_meta=_period_meta(text, filename)
+        )
 
-    if "market fees" in text.lower() and "net settlement amount" in text.lower():
+    if _is_emf_market_fee_text(text):
         emf = parse_emf_market_fee(text)
         ir: dict[str, Any] = {}
         warn: list[str] = []
@@ -459,15 +744,15 @@ def extract_invoice_pdf(
             fk,
             input_patch=ir,
             raw_meta=emf,
-            period_meta=_period_meta(text),
-            warnings=warn,
+            period_meta=_period_meta(text, filename),
+            warnings=_merge_ocr_warning(warn, ocr_used),
         )
 
     return ExtractResult(
         filename,
         fk,
-        warnings=["Could not classify PDF; no amounts extracted."],
-        period_meta=_period_meta(text),
+        warnings=_merge_ocr_warning(["Could not classify PDF; no amounts extracted."], ocr_used),
+        period_meta=_period_meta(text, filename),
     )
 
 

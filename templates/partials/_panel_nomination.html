@@ -14,8 +14,8 @@
         </div>
         <div class="flex items-center gap-2 mb-3 flex-wrap">
           <label for="interval-hour-filter" class="text-[10px] text-brand-muted uppercase whitespace-nowrap">Hour</label>
-          <select id="interval-hour-filter" class="flex-1 min-w-0 bg-brand-dark border border-brand-border rounded px-2 py-1.5 text-xs text-brand-text focus:ring-1 focus:ring-brand-accent" title="Filter 5‑minute intervals (table shows 05:05–19:00 only)">
-            <option value="all">All</option>
+          <select id="interval-hour-filter" class="flex-1 min-w-0 bg-brand-dark border border-brand-border rounded px-2 py-1.5 text-xs text-brand-text focus:ring-1 focus:ring-brand-accent" title="Each hour shows 5‑minute ends from H:05 through (H+1):00 (e.g. 05:05–06:00). Default is the first hour.">
+            <option value="all">All (05:05–19:00)</option>
           </select>
           <button type="button" id="btn-interval-data-copy-image" class="shrink-0 text-[10px] uppercase font-bold tracking-wide px-2.5 py-1.5 rounded-md border border-brand-border text-brand-muted hover:text-brand-text hover:bg-brand-border/20 focus:outline-none focus:ring-1 focus:ring-brand-accent interval-data-capture-exclude" title="Copy visible intervals (current Hour filter) as an image for chat or reports">Copy image</button>
         </div>
@@ -72,8 +72,8 @@
 
       <!-- Right stack: row 1 = quick controls + live stream & actions; row 2 = nomination chart full width -->
       <div class="col-span-12 lg:col-span-9 flex flex-col gap-6 min-w-0 lg:h-[min(90vh,58rem)] lg:max-h-[90vh] lg:min-h-0">
-        <div class="flex flex-col xl:flex-row gap-6 items-stretch shrink-0">
-          <section class="bg-brand-card rounded-xl border border-brand-border p-5 sm:p-6 xl:p-7 shadow-lg flex flex-col xl:flex-1 xl:min-w-0 xl:h-full xl:justify-between gap-5 xl:gap-6">
+        <div class="flex flex-col xl:flex-row gap-4 xl:gap-5 items-stretch xl:items-start shrink-0 xl:max-h-[min(38vh,25rem)] min-h-0">
+          <section class="bg-brand-card rounded-xl border border-brand-border p-4 sm:p-5 xl:p-5 shadow-lg flex flex-col xl:flex-1 xl:min-w-0 xl:max-h-full xl:overflow-y-auto xl:justify-between gap-3 xl:gap-4">
             <div class="flex flex-row flex-wrap lg:flex-nowrap items-stretch gap-2 md:gap-3 w-full min-w-0">
               <div class="bg-brand-dark border border-brand-border rounded-md px-2 py-1 shrink-0 flex flex-row flex-nowrap items-center gap-1.5 min-w-0 self-center" title="RTD vs Day Ahead %">
                 <span class="text-brand-muted text-[10px] sm:text-xs whitespace-nowrap shrink-0 leading-none">RTD %</span>
@@ -105,27 +105,27 @@
                 <input type="date" id="forecast-ref-date" class="text-xs sm:text-sm font-semibold bg-brand-dark border border-brand-border rounded-md px-2 py-1.5 text-right [color-scheme:dark] shrink-0 min-w-0" value="2026-03-15" title="Forecast date for this nomination. Past dates are not selectable."/>
               </div>
             </div>
-            <div class="border-t border-brand-border/50 pt-5 xl:pt-6 flex flex-col gap-4 xl:gap-5">
-              <div class="grid grid-cols-2 gap-3">
+            <div class="border-t border-brand-border/50 pt-4 xl:pt-4 flex flex-col gap-3 xl:gap-3">
+              <div class="grid grid-cols-2 gap-2.5">
                 <input type="file" id="forecast-file-input" accept=".csv,.xls,.xlsx" class="hidden"/>
-                <button type="button" id="btn-import" class="w-full py-4 border border-brand-border rounded-xl bg-brand-dark hover:bg-brand-border/40 text-brand-text font-bold uppercase text-sm tracking-wide transition-all flex items-center justify-center">
+                <button type="button" id="btn-import" class="w-full py-2.5 border border-brand-border rounded-xl bg-brand-dark hover:bg-brand-border/40 text-brand-text font-bold uppercase text-sm tracking-wide transition-all flex items-center justify-center">
                   <svg class="h-5 w-5 mr-1.5 text-brand-muted shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/></svg>
                   IMPORT
                 </button>
-                <button type="button" id="btn-export" class="w-full py-4 rounded-xl font-bold uppercase text-sm tracking-wide transition-all bg-brand-accent hover:bg-brand-accent/80 text-brand-dark">EXPORT</button>
+                <button type="button" id="btn-export" class="w-full py-2.5 rounded-xl font-bold uppercase text-sm tracking-wide transition-all bg-brand-accent hover:bg-brand-accent/80 text-brand-dark">EXPORT</button>
               </div>
               <p id="nomination-export-status" class="text-xs min-h-[1.25rem] text-brand-muted" role="status" aria-live="polite"></p>
               <p id="persist-hint" class="text-[10px] sm:text-xs text-amber-400/90 border border-amber-500/30 rounded-lg px-3 py-2 bg-amber-500/5 hidden"></p>
               <p id="weather-coords-display" class="hidden" aria-hidden="true"></p>
-              <button type="button" id="btn-weather" class="w-full py-4 border-2 border-amber-500/50 rounded-xl bg-brand-dark hover:bg-amber-500/10 text-amber-400 font-bold uppercase text-sm tracking-wide transition-all">Weather forecast (1×/day)</button>
-              <p id="weather-summary" class="text-sm text-brand-muted leading-relaxed min-h-[3rem] xl:min-h-[5rem] max-h-[8rem] overflow-y-auto rounded-lg border border-brand-border/40 bg-brand-dark/40 px-3 py-2.5"></p>
+              <button type="button" id="btn-weather" class="w-full py-2.5 border-2 border-amber-500/50 rounded-xl bg-brand-dark hover:bg-amber-500/10 text-amber-400 font-bold uppercase text-sm tracking-wide transition-all">Weather forecast (1×/day)</button>
+              <p id="weather-summary" class="text-sm text-brand-muted leading-relaxed min-h-[2.5rem] xl:min-h-[3rem] max-h-[5.5rem] overflow-y-auto rounded-lg border border-brand-border/40 bg-brand-dark/40 px-3 py-2"></p>
             </div>
           </section>
 
-          <div class="flex flex-col xl:h-full xl:w-[min(100%,24rem)] xl:flex-shrink-0 xl:max-w-[42%] 2xl:max-w-[38%]">
-            <!-- Live plant output stream (VDO.Ninja) — height sets the row; controls card stretches to match -->
-            <div class="bg-brand-card rounded-xl border border-brand-border overflow-hidden shadow-2xl xl:h-full xl:flex xl:flex-col">
-              <div class="px-4 py-3 border-b border-brand-border flex justify-between items-center">
+          <div class="flex flex-col xl:w-[min(100%,24rem)] xl:flex-shrink-0 xl:max-w-[42%] 2xl:max-w-[38%] xl:max-h-[min(38vh,25rem)] min-h-0">
+            <!-- Live plant output stream (VDO.Ninja) — compact height so the nomination chart can grow -->
+            <div class="bg-brand-card rounded-xl border border-brand-border overflow-hidden shadow-2xl xl:flex xl:flex-col xl:max-h-full">
+              <div class="px-4 py-2 border-b border-brand-border flex justify-between items-center shrink-0">
                 <h3 class="text-xs font-bold uppercase tracking-widest text-brand-muted">Live plant output</h3>
                 <span class="text-[10px] text-brand-muted">Actual generation</span>
               </div>
@@ -137,7 +137,7 @@
                 </div>
                 <p class="text-[9px] text-brand-muted/80">Change when the link expires; saved in this browser until you update it.</p>
               </div>
-              <div class="aspect-video xl:aspect-auto xl:flex-1 xl:min-h-[12rem] bg-brand-dark relative min-h-[10rem]">
+              <div class="aspect-video xl:aspect-auto xl:flex-1 xl:min-h-0 xl:max-h-[min(28vh,15rem)] bg-brand-dark relative min-h-[9rem]">
                 <iframe
                   id="vdo-ninja-stream"
                   src=""
@@ -154,7 +154,7 @@
           </div>
         </div>
 
-        <section class="bg-brand-card rounded-xl border border-brand-border p-4 sm:p-6 shadow-lg flex flex-col flex-1 min-h-[18rem] lg:min-h-0 overflow-hidden">
+        <section class="bg-brand-card rounded-xl border border-brand-border p-4 sm:p-6 shadow-lg flex flex-col flex-1 min-h-[min(50vh,20rem)] lg:min-h-[30rem] overflow-hidden">
           <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-3 sm:mb-4 shrink-0">
             <h3 class="text-sm font-semibold uppercase text-brand-muted">ARECO WORKING NOMINATION</h3>
             <div class="flex flex-wrap gap-2 text-[10px] uppercase font-bold tracking-widest">

@@ -840,9 +840,11 @@ def api_billing_history_upload():
         ):
             import_notes.append(
                 "No market fee amounts (EMF regular, IEMMS, supplemental) were extracted. Final TS-WF "
-                "market fee PDFs are often scanned images with no selectable text—use a text-based export "
-                "from IEMOP if available, or enter those three lines manually in Input. Include the main "
-                "EMF statement for the regular fee (file names often contain PS_EMF or FS_EMF), same as Prelim."
+                "PDFs are often scanned; the server can OCR them if optional packages are installed "
+                "(see requirements.txt: pymupdf, pillow, pytesseract, numpy, and Tesseract OCR, or rapidocr on "
+                "supported Python versions). Otherwise use a text-based export from IEMOP or enter the three "
+                "lines manually in Input. Include the main EMF statement for the regular fee (PS_EMF/FS_EMF), "
+                "same as Prelim."
             )
         row_id, amounts = upsert_input_row(
             year=year,

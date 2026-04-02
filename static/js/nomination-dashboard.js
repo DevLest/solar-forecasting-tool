@@ -2,6 +2,7 @@
     var API_BASE = (typeof window !== 'undefined' && window.location && window.location.origin) ? window.location.origin : '';
 
     const STORAGE_KEY = 'areco_forecast_import';
+    const INTERVAL_HOUR_FILTER_SESSION_KEY = 'areco_interval_hour_filter';
     /** Per forecast-reference-date revision counters (YYYY-MM-DD → 0–999). Lazily loaded from localStorage. */
     var intervalRevByDateMemory = null;
     const LIVE_STREAM_STORAGE_KEY = 'areco_live_stream_url';
@@ -836,11 +837,20 @@
       if (window.updateNavbarTimeAndInterval) window.updateNavbarTimeAndInterval();
     }
 
+    /** Hour H shows interval ends from H:05 through (H+1):00 (e.g. 05 → 05:05…06:00). */
     function intervalMatchesHourFilter(interval, hour) {
       if (!hour || hour === 'all') return true;
       if (hour === '24') return interval === '24:00';
       var nextHour00 = String(parseInt(hour, 10) + 1).padStart(2, '0') + ':00';
       return interval.indexOf(hour + ':') === 0 || interval === nextHour00;
+    }
+
+    function intervalHourFilterOptionLabel(h) {
+      if (h === '24') return '24:00';
+      var hi = parseInt(h, 10);
+      if (isNaN(hi)) return h;
+      var nextH = String(hi + 1).padStart(2, '0');
+      return h + ':05–' + nextH + ':00';
     }
 
     function applyIntervalFilter() {
@@ -852,7 +862,7 @@
       });
     }
 
-    /** Rebuild hour filter from interval rows (00–23 plus 24 when 24:00 exists). */
+    /** Rebuild hour filter from interval rows (each option spans H:05 through (H+1):00, e.g. 05:05–06:00). */
     function populateIntervalHourFilter() {
       try {
         var sel = document.getElementById('interval-hour-filter');
@@ -873,10 +883,23 @@
           var nb = b === '24' ? 24 : parseInt(b, 10);
           return na - nb;
         });
-        var currentVal = sel.value;
-        sel.innerHTML = '<option value="all">All</option>' + hourList.map(function(h) { return '<option value="' + h + '">' + h + '</option>'; }).join('');
-        if (currentVal !== 'all' && hourList.indexOf(currentVal) === -1) sel.value = 'all';
-        else if (hourList.indexOf(currentVal) !== -1) sel.value = currentVal;
+        var previousVal = sel.value;
+        var saved = '';
+        try { saved = sessionStorage.getItem(INTERVAL_HOUR_FILTER_SESSION_KEY) || ''; } catch (e) {}
+        sel.innerHTML = '<option value="all">All (05:05–19:00)</option>' + hourList.map(function(h) {
+          return '<option value="' + h + '">' + intervalHourFilterOptionLabel(h) + '</option>';
+        }).join('');
+        var nextVal = 'all';
+        if (saved === 'all' || (saved && hourList.indexOf(saved) !== -1)) {
+          nextVal = saved;
+        } else if (previousVal && previousVal !== 'all' && hourList.indexOf(previousVal) !== -1) {
+          nextVal = previousVal;
+        } else if (hourList.indexOf('05') !== -1) {
+          nextVal = '05';
+        }
+        if (nextVal !== 'all' && hourList.indexOf(nextVal) === -1) nextVal = hourList.indexOf('05') !== -1 ? '05' : 'all';
+        sel.value = nextVal;
+        try { sessionStorage.setItem(INTERVAL_HOUR_FILTER_SESSION_KEY, sel.value); } catch (e2) {}
         applyIntervalFilter();
       } catch (e) {}
     }
@@ -1879,7 +1902,12 @@
     }
 
     var intervalFilterEl = document.getElementById('interval-hour-filter');
-    if (intervalFilterEl) intervalFilterEl.addEventListener('change', applyIntervalFilter);
+    if (intervalFilterEl) {
+      intervalFilterEl.addEventListener('change', function() {
+        try { sessionStorage.setItem(INTERVAL_HOUR_FILTER_SESSION_KEY, intervalFilterEl.value); } catch (e) {}
+        applyIntervalFilter();
+      });
+    }
 
     var btnCopyIntervalImage = document.getElementById('btn-interval-data-copy-image');
     if (btnCopyIntervalImage) btnCopyIntervalImage.addEventListener('click', copyIntervalDataPanelImage);
