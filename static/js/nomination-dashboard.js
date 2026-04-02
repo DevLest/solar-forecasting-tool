@@ -2,7 +2,7 @@
     var API_BASE = (typeof window !== 'undefined' && window.location && window.location.origin) ? window.location.origin : '';
 
     const STORAGE_KEY = 'areco_forecast_import';
-    /** Per forecast-reference-date revision counters (YYYY-MM-DD → 1–999). Lazily loaded from localStorage. */
+    /** Per forecast-reference-date revision counters (YYYY-MM-DD → 0–999). Lazily loaded from localStorage. */
     var intervalRevByDateMemory = null;
     const LIVE_STREAM_STORAGE_KEY = 'areco_live_stream_url';
     const WEATHER_LOCATION_KEY = 'areco_weather_location';
@@ -263,8 +263,85 @@
 
     function clampIntervalRev(n) {
       var v = parseInt(n, 10);
-      if (isNaN(v)) return 1;
-      return Math.max(1, Math.min(999, v));
+      if (isNaN(v)) return 0;
+      return Math.max(0, Math.min(999, v));
+    }
+
+    function getIntervalRevDomValue() {
+      var el = document.getElementById('interval-rev-number');
+      if (!el) return 0;
+      return clampIntervalRev(el.value);
+    }
+
+    function setIntervalRevDomValue(n) {
+      var el = document.getElementById('interval-rev-number');
+      if (!el) return;
+      el.value = String(clampIntervalRev(n));
+    }
+
+    /** Persist Rev# for the current forecast reference date (manual edits and steppers). */
+    function persistCurrentIntervalRevFromUi() {
+      var refIso = getForecastRefDateString();
+      if (!refIso) return;
+      var n = getIntervalRevDomValue();
+      setIntervalRevDomValue(n);
+      var map = getIntervalRevMap();
+      map[refIso] = n;
+      saveForecastLocally({ intervalRev: n, intervalRevByDate: map });
+    }
+
+    function traderDutyKnownOptionValues() {
+      var sel = document.getElementById('ops-trader-duty');
+      if (!sel) return [];
+      var out = [];
+      for (var i = 0; i < sel.options.length; i++) {
+        var v = sel.options[i].value;
+        if (v) out.push(v);
+      }
+      return out;
+    }
+
+    function getTraderDutyPersistValue() {
+      var wrap = document.getElementById('ops-trader-duty-custom-wrap');
+      var inp = document.getElementById('ops-trader-duty-custom');
+      var sel = document.getElementById('ops-trader-duty');
+      if (wrap && !wrap.classList.contains('hidden') && inp) {
+        return (inp.value || '').trim();
+      }
+      return sel ? (sel.value || '').trim() : '';
+    }
+
+    function setTraderDutyUiFromValue(val) {
+      var sel = document.getElementById('ops-trader-duty');
+      var customWrap = document.getElementById('ops-trader-duty-custom');
+      var wrap = document.getElementById('ops-trader-duty-custom-wrap');
+      if (!sel || !customWrap || !wrap) return;
+      var s = val == null ? '' : String(val);
+      var known = traderDutyKnownOptionValues();
+      if (s && known.indexOf(s) >= 0) {
+        sel.classList.remove('hidden');
+        wrap.classList.add('hidden');
+        sel.value = s;
+        customWrap.value = '';
+      } else {
+        sel.classList.add('hidden');
+        wrap.classList.remove('hidden');
+        customWrap.value = s;
+      }
+    }
+
+    function enterTraderDutySelectMode() {
+      var sel = document.getElementById('ops-trader-duty');
+      var customWrap = document.getElementById('ops-trader-duty-custom');
+      var wrap = document.getElementById('ops-trader-duty-custom-wrap');
+      if (!sel || !customWrap || !wrap) return;
+      wrap.classList.add('hidden');
+      sel.classList.remove('hidden');
+      customWrap.value = '';
+      var known = traderDutyKnownOptionValues();
+      if (known.indexOf('Daniel') >= 0) sel.value = 'Daniel';
+      else if (known.length) sel.value = known[0];
+      else sel.value = '';
     }
 
     /** Build rev map from stored payload (supports legacy single intervalRev). */
@@ -301,7 +378,7 @@
 
     /** Rev# for the forecast ref date in a saved/history record. */
     function resolveIntervalRevForRecord(data) {
-      if (!data) return 1;
+      if (!data) return 0;
       var iso = data.forecastRefDateIso || toIsoDateString(data.forecastRefDate || '') || '';
       if (data.intervalRevByDate && iso && data.intervalRevByDate[iso] != null) {
         return clampIntervalRev(data.intervalRevByDate[iso]);
@@ -309,17 +386,16 @@
       var map = getIntervalRevMap();
       if (iso && map[iso] != null) return clampIntervalRev(map[iso]);
       if (data.intervalRev != null) return clampIntervalRev(data.intervalRev);
-      return 1;
+      return 0;
     }
 
-    /** Update Rev# display when the forecast reference date changes (each day has its own sequence from 1). */
+    /** Update Rev# display when the forecast reference date changes (each day starts at 0 until exports bump it). */
     function syncIntervalRevDisplayToForecastDate() {
       var iso = getForecastRefDateString();
-      var revSpan = document.getElementById('interval-rev-number');
-      if (!revSpan || !iso) return;
+      if (!iso) return;
       var map = getIntervalRevMap();
-      var r = map[iso] != null ? clampIntervalRev(map[iso]) : 1;
-      revSpan.textContent = r;
+      var r = map[iso] != null ? clampIntervalRev(map[iso]) : 0;
+      setIntervalRevDomValue(r);
     }
 
     /** Format date for display as "Month dd, YYYY" (e.g. March 16, 2026). */
@@ -575,10 +651,10 @@
         var radio = document.querySelector('input[name="forecast"][value="' + mode + '"]');
         if (radio) radio.checked = true;
       }
-      var revSpanApply = document.getElementById('interval-rev-number');
-      if (revSpanApply) {
+      var revElApply = document.getElementById('interval-rev-number');
+      if (revElApply) {
         var refIsoApply = getForecastRefDateString();
-        var rApply = 1;
+        var rApply = 0;
         if (payload.intervalRevByDate && refIsoApply && payload.intervalRevByDate[refIsoApply] != null) {
           rApply = clampIntervalRev(payload.intervalRevByDate[refIsoApply]);
         } else {
@@ -586,7 +662,7 @@
           if (refIsoApply && mapApply[refIsoApply] != null) rApply = clampIntervalRev(mapApply[refIsoApply]);
           else if (payload.intervalRev != null) rApply = clampIntervalRev(payload.intervalRev);
         }
-        revSpanApply.textContent = rApply;
+        setIntervalRevDomValue(rApply);
       }
       if (payload.weatherCondition != null && document.getElementById('ops-weather-condition')) {
         document.getElementById('ops-weather-condition').value = String(payload.weatherCondition);
@@ -594,11 +670,8 @@
       if (payload.revisionReason != null && document.getElementById('ops-revision-reason')) {
         document.getElementById('ops-revision-reason').value = String(payload.revisionReason);
       }
-      if (payload.traderDuty != null && document.getElementById('ops-trader-duty')) {
-        var tdEl = document.getElementById('ops-trader-duty');
-        var tdv = String(payload.traderDuty);
-        tdEl.value = tdv;
-        if (tdEl.value !== tdv) tdEl.value = '';
+      if (payload.traderDuty != null) {
+        setTraderDutyUiFromValue(payload.traderDuty);
       }
       var fixedSlots = getNominationIntervalDataSlots();
       var lookup = {};
@@ -866,13 +939,12 @@
         });
       }
       var revEl = document.getElementById('interval-rev-number');
-      var revNum = (revEl && revEl.textContent) ? (parseInt(revEl.textContent, 10) || 1) : 1;
+      var revNum = revEl ? getIntervalRevDomValue() : 0;
       revNum = clampIntervalRev(revNum);
       if (extra.intervalRev != null) revNum = clampIntervalRev(extra.intervalRev);
       revByDate[refIsoPersist] = revNum;
       var weatherCondEl = document.getElementById('ops-weather-condition');
       var revisionReasonEl = document.getElementById('ops-revision-reason');
-      var traderEl = document.getElementById('ops-trader-duty');
       return {
         forecastRefDate: extra.forecastRefDate || getForecastRefDateString(),
         nomination: extra.nomination || nomData.slice(),
@@ -886,7 +958,7 @@
         weatherDate: extra.weatherDate != null ? extra.weatherDate : weatherDateStr,
         weatherCondition: extra.weatherCondition != null ? extra.weatherCondition : (weatherCondEl ? weatherCondEl.value : ''),
         revisionReason: extra.revisionReason != null ? extra.revisionReason : (revisionReasonEl ? revisionReasonEl.value : ''),
-        traderDuty: extra.traderDuty != null ? extra.traderDuty : (traderEl ? traderEl.value : ''),
+        traderDuty: extra.traderDuty != null ? extra.traderDuty : getTraderDutyPersistValue(),
         plantNameForVreExport: extra.plantNameForVreExport != null ? extra.plantNameForVreExport : plantNameForVre,
         savedAt: new Date().toISOString()
       };
@@ -1292,7 +1364,7 @@
         var exportedAt = formatHistoryExportedAt(rec.exportedAt || rec.savedAt);
         var forecastRef = formatDateForDisplay(rec.forecastRefDateIso || rec.forecastRefDate) || '—';
         var intervalCount = (rec.intervals && rec.intervals.length) ? rec.intervals.length : 0;
-        var revNum = rec.intervalRev != null ? (parseInt(rec.intervalRev, 10) || 1) : '—';
+        var revNum = rec.intervalRev != null ? (parseInt(rec.intervalRev, 10) || 0) : '—';
         var rtdPct = rec.rtdPercent != null ? rec.rtdPercent : '—';
         var mode = (rec.rtdForecastMode || '—').toString();
         return '<tr class="history-row cursor-pointer hover:bg-brand-border/20 transition-colors" data-history-index="' + idx + '"><td class="px-4 py-2 text-brand-muted">' + exportedAt + '</td><td class="px-4 py-2 text-brand-accent">' + forecastRef + '</td><td class="px-4 py-2">' + intervalCount + '</td><td class="px-4 py-2">' + revNum + '</td><td class="px-4 py-2">' + rtdPct + '</td><td class="px-4 py-2">' + mode + '</td></tr>';
@@ -1478,16 +1550,16 @@
 
     /** After a successful export, bump Rev# for the current forecast reference date (snapshot already recorded the previous value). */
     function incrementIntervalRevAfterExport() {
-      var revSpan = document.getElementById('interval-rev-number');
-      if (!revSpan) return;
+      var revIn = document.getElementById('interval-rev-number');
+      if (!revIn) return;
       var refIso = getForecastRefDateString();
       if (!refIso) return;
       var map = getIntervalRevMap();
-      var curRev = parseInt(revSpan.textContent, 10);
-      if (isNaN(curRev)) curRev = 1;
+      var curRev = parseInt(revIn.value, 10);
+      if (isNaN(curRev)) curRev = 0;
       var n = clampIntervalRev(curRev + 1);
       map[refIso] = n;
-      revSpan.textContent = n;
+      revIn.value = String(n);
       saveForecastLocally({ intervalRev: n, intervalRevByDate: map });
     }
 
@@ -1550,6 +1622,25 @@
         }
         sel.parentNode.replaceChild(d, sel);
       });
+      var liveRevEl = document.getElementById('interval-rev-number');
+      var cloneRevIn = doc.getElementById('interval-rev-number');
+      if (cloneRevIn && cloneRevIn.parentNode) {
+        var rd = doc.createElement('div');
+        rd.textContent = liveRevEl ? String(liveRevEl.value) : '0';
+        rd.setAttribute('class', cloneRevIn.getAttribute('class') || '');
+        rd.style.cssText = 'min-width:3rem;text-align:center;font-size:1.5rem;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.25;padding:0.125rem 0.25rem;border:1px solid #334155;border-radius:0.25rem;background:#0f172a;color:#f8fafc';
+        cloneRevIn.parentNode.replaceChild(rd, cloneRevIn);
+      }
+      doc.querySelectorAll('#interval-data-panel .interval-rev-step').forEach(function(b) { if (b.parentNode) b.parentNode.removeChild(b); });
+      var liveDuty = typeof getTraderDutyPersistValue === 'function' ? getTraderDutyPersistValue() : '';
+      var dutyWrapClone = doc.querySelector('.ops-trader-duty-wrap');
+      if (dutyWrapClone) {
+        dutyWrapClone.innerHTML = '';
+        var dutyDiv = doc.createElement('div');
+        dutyDiv.textContent = liveDuty || '—';
+        dutyDiv.style.cssText = 'box-sizing:border-box;width:100%;background:#0f172a;border:1px solid #334155;border-radius:0.25rem;padding:0.45rem 0.5rem;color:#f8fafc;font-size:0.8125rem;line-height:1.4;min-height:2rem;display:flex;align-items:center';
+        dutyWrapClone.appendChild(dutyDiv);
+      }
     }
 
     function copyIntervalDataPanelImage() {
@@ -1725,7 +1816,7 @@
       function onForecastRefDateUserChange() {
         syncIntervalRevDisplayToForecastDate();
         var revElSync = document.getElementById('interval-rev-number');
-        saveForecastLocally({ forecastRefDate: getForecastRefDateString(), intervalRev: revElSync ? clampIntervalRev(revElSync.textContent) : 1 });
+        saveForecastLocally({ forecastRefDate: getForecastRefDateString(), intervalRev: revElSync ? getIntervalRevDomValue() : 0 });
         if (typeof window.updateRtdIntervalLocks === 'function') window.updateRtdIntervalLocks();
       }
       forecastRefDateEl.addEventListener('blur', onForecastRefDateUserChange);
@@ -1735,9 +1826,57 @@
     var opsWeatherEl = document.getElementById('ops-weather-condition');
     var opsRevisionEl = document.getElementById('ops-revision-reason');
     var opsTraderEl = document.getElementById('ops-trader-duty');
+    var opsTraderCustomEl = document.getElementById('ops-trader-duty-custom');
+    var btnTraderDutyList = document.getElementById('btn-ops-trader-duty-list');
     if (opsWeatherEl) opsWeatherEl.addEventListener('change', function() { saveForecastLocally({}); });
     if (opsRevisionEl) opsRevisionEl.addEventListener('change', function() { saveForecastLocally({}); });
-    if (opsTraderEl) opsTraderEl.addEventListener('change', function() { saveForecastLocally({}); });
+    if (opsTraderEl) {
+      opsTraderEl.addEventListener('change', function() {
+        if (opsTraderEl.value === '') {
+          setTraderDutyUiFromValue('');
+          if (opsTraderCustomEl) opsTraderCustomEl.focus();
+        }
+        saveForecastLocally({});
+      });
+    }
+    if (opsTraderCustomEl) {
+      opsTraderCustomEl.addEventListener('change', function() { saveForecastLocally({}); });
+      opsTraderCustomEl.addEventListener('blur', function() { saveForecastLocally({}); });
+    }
+    if (btnTraderDutyList) {
+      btnTraderDutyList.addEventListener('click', function() {
+        enterTraderDutySelectMode();
+        saveForecastLocally({});
+      });
+    }
+
+    var revInEl = document.getElementById('interval-rev-number');
+    var revDown = document.getElementById('interval-rev-down');
+    var revUp = document.getElementById('interval-rev-up');
+    if (revDown) {
+      revDown.addEventListener('click', function() {
+        if (isNominationReadOnly()) return;
+        setIntervalRevDomValue(getIntervalRevDomValue() - 1);
+        persistCurrentIntervalRevFromUi();
+      });
+    }
+    if (revUp) {
+      revUp.addEventListener('click', function() {
+        if (isNominationReadOnly()) return;
+        setIntervalRevDomValue(getIntervalRevDomValue() + 1);
+        persistCurrentIntervalRevFromUi();
+      });
+    }
+    if (revInEl) {
+      revInEl.addEventListener('change', function() {
+        if (isNominationReadOnly()) return;
+        persistCurrentIntervalRevFromUi();
+      });
+      revInEl.addEventListener('blur', function() {
+        if (isNominationReadOnly()) return;
+        persistCurrentIntervalRevFromUi();
+      });
+    }
 
     var intervalFilterEl = document.getElementById('interval-hour-filter');
     if (intervalFilterEl) intervalFilterEl.addEventListener('change', applyIntervalFilter);
@@ -1779,7 +1918,7 @@
           : (today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0'));
         const result = rowsToHourlyAndIntervals(rows);
         var mapImp = getIntervalRevMap();
-        var revForImport = mapImp[forecastRefDateIso] != null ? clampIntervalRev(mapImp[forecastRefDateIso]) : 1;
+        var revForImport = mapImp[forecastRefDateIso] != null ? clampIntervalRev(mapImp[forecastRefDateIso]) : 0;
         // Include all intervals (including zero MW) so e.g. 05:05 with 0 displays correctly
         const payload = {
           forecastRefDate: forecastRefDateIso,
@@ -1808,8 +1947,8 @@
       if (!data) return;
       setIntervalRevMap(Object.assign(getIntervalRevMap(), migrateLegacyRevMap(data)));
       applyStoredRecord(data);
-      var revSpan = document.getElementById('interval-rev-number');
-      if (revSpan) revSpan.textContent = resolveIntervalRevForRecord(data);
+      var revElRestore = document.getElementById('interval-rev-number');
+      if (revElRestore) setIntervalRevDomValue(resolveIntervalRevForRecord(data));
       if (data.weatherHourly && data.weatherHourly.length) {
         weatherData = data.weatherHourly.slice(0, 25);
         while (weatherData.length < 25) weatherData.push(0);

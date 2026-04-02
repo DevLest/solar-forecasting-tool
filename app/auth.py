@@ -235,10 +235,12 @@ def nomination_trader_options_for_role(user_role: str) -> list[str]:
             for r in rows
             if r.get("role") in (ROLE_ADMIN, ROLE_NOMINATOR)
         ]
+        if "Daniel" not in names:
+            names.append("Daniel")
         return sorted(names, key=lambda s: s.lower())
     except Exception:
         logger.exception("Could not load nomination trader options from users file.")
-        return []
+        return ["Daniel"]
 
 
 def auth_context_dict(user: Any) -> dict[str, Any]:
