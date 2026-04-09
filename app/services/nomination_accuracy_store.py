@@ -118,6 +118,21 @@ def _migrate(conn: sqlite3.Connection) -> None:
         "CREATE INDEX IF NOT EXISTS idx_nmrc_uploaded ON nomination_market_result_csv(uploaded_at)"
     )
 
+    # MIRF Daily MQ workbooks uploaded via Nomination Accuracy backfill (xlsx/xlsm).
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS nomination_mirf_mq_xlsx (
+          compliance_day TEXT PRIMARY KEY,
+          xlsx_blob BLOB NOT NULL,
+          source_filename TEXT,
+          uploaded_at TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_nmmq_uploaded ON nomination_mirf_mq_xlsx(uploaded_at)"
+    )
+
 
 def init_nomination_accuracy_db() -> None:
     path = db_path()
@@ -311,6 +326,64 @@ def save_market_result_csv_blob(
         )
         conn.commit()
         return True, overwritten
+
+
+def save_mirf_mq_xlsx_blob(
+    compliance_day_iso: str,
+    xlsx_bytes: bytes,
+    source_filename: str,
+) -> tuple[bool, bool]:
+    """
+    Upsert raw MIRF Daily MQ workbook bytes (xlsx/xlsm) for a trade day.
+    Used as a day-ahead schedule source when Market Result CSV is not available.
+    Returns ``(success, overwritten)``.
+    """
+    init_nomination_accuracy_db()
+    trade_iso = str(compliance_day_iso).strip()
+    created = datetime.now(timezone.utc).isoformat()
+    with sqlite3.connect(db_path()) as conn:
+        prev = conn.execute(
+            "SELECT 1 FROM nomination_mirf_mq_xlsx WHERE compliance_day = ?",
+            (trade_iso,),
+        ).fetchone()
+        overwritten = prev is not None
+        conn.execute(
+            """
+            INSERT INTO nomination_mirf_mq_xlsx (compliance_day, xlsx_blob, source_filename, uploaded_at)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(compliance_day) DO UPDATE SET
+              xlsx_blob = excluded.xlsx_blob,
+              source_filename = excluded.source_filename,
+              uploaded_at = excluded.uploaded_at
+            """,
+            (trade_iso, xlsx_bytes, source_filename or None, created),
+        )
+        conn.commit()
+        return True, overwritten
+
+
+def get_mirf_mq_xlsx_blob(compliance_day_iso: str) -> tuple[bytes | None, str | None]:
+    """Return ``(xlsx_bytes, source_filename)`` for a trade day, or ``(None, None)`` if missing."""
+    init_nomination_accuracy_db()
+    iso = str(compliance_day_iso).strip()
+    with sqlite3.connect(db_path()) as conn:
+        r = conn.execute(
+            "SELECT xlsx_blob, source_filename FROM nomination_mirf_mq_xlsx WHERE compliance_day = ?",
+            (iso,),
+        ).fetchone()
+        if not r or r[0] is None:
+            return None, None
+        return bytes(r[0]), (str(r[1]) if r[1] else None)
+
+
+def list_stored_mirf_mq_days() -> list[str]:
+    """ISO trade dates with a stored MIRF MQ workbook, ascending."""
+    init_nomination_accuracy_db()
+    with sqlite3.connect(db_path()) as conn:
+        cur = conn.execute(
+            "SELECT compliance_day FROM nomination_mirf_mq_xlsx ORDER BY compliance_day ASC"
+        )
+        return [str(r[0]) for r in cur.fetchall() if r[0]]
 
 
 def get_market_result_csv_blob(compliance_day_iso: str) -> tuple[bytes | None, str | None]:

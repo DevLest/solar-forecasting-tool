@@ -9,7 +9,10 @@ from datetime import date, datetime, time, timedelta
 from statistics import mean
 from typing import Any
 
-from app.services.nomination_accuracy import parse_compliance_csv
+from app.services.nomination_accuracy import (
+    load_mq_del_mw_from_xlsx,
+    parse_compliance_csv,
+)
 
 # Compliance window aligned with nomination accuracy paste (MPI rows 05:05–19:00)
 T_START = time(5, 5)
@@ -245,6 +248,7 @@ def build_marketplace_chart_payload(
     compliance_bytes: bytes,
     trade_day: date,
     market_bytes: bytes | None = None,
+    mirf_mq_xlsx_bytes: bytes | None = None,
 ) -> dict[str, Any]:
     """
     Build JSON-serializable chart data from stored MPI compliance.
@@ -256,7 +260,8 @@ def build_marketplace_chart_payload(
     Day-ahead MW on the dispatch chart is **linearly interpolated** between hourly schedule values.
 
     If ``market_bytes`` is omitted, returns the same shape with market fields ``null`` and
-    ``partial: True`` (MPI-only charts).
+    ``partial: True`` (MPI-only charts). If ``mirf_mq_xlsx_bytes`` is set, day-ahead MW is
+    filled from MIRF MQ (288×5-min) even while remaining partial (no LMP).
     """
     parsed = parse_compliance_csv(compliance_bytes)
     # Hourly combo chart: hour-ending HE 6..18 (6AM–6PM) to match Excel “hour ending” columns.
@@ -264,6 +269,7 @@ def build_marketplace_chart_payload(
 
     mw_map: dict[int, float] = {}
     lmp_map: dict[int, float] = {}
+    mq_5min: list[float] | None = None
     lmp_avg_e7_e19: float | None = None
     lmp_disp: float | None = None
     partial = market_bytes is None
@@ -279,13 +285,51 @@ def build_marketplace_chart_payload(
         if hourly_lmps:
             lmp_avg_hourly_6am_6pm = float(mean(hourly_lmps))
             average_price_php = round(lmp_avg_hourly_6am_6pm / 1000.0, 3)
+    elif mirf_mq_xlsx_bytes:
+        # MIRF MQ is a 5-minute schedule (DEL) that can be used as day-ahead MW in charts
+        # even when LMP is missing.
+        mq_5min, _sheet = load_mq_del_mw_from_xlsx(mirf_mq_xlsx_bytes)
 
     win_rows = _compliance_rows_for_day(parsed, trade_day)
     dispatch: list[dict[str, Any]] = []
+
+    def _idx_from_interval_end(dt: datetime) -> int | None:
+        m = dt.hour * 60 + dt.minute + dt.second / 60.0
+        if m % 5.0 > 1e-6:
+            return None
+        idx = int(round((m - 5) / 5))
+        return idx if 0 <= idx < 288 else None
+
+    def _mq_at(dt: datetime) -> float | None:
+        if not mq_5min:
+            return None
+        idx = _idx_from_interval_end(dt)
+        if idx is None:
+            return None
+        try:
+            return float(mq_5min[idx])
+        except (TypeError, ValueError):
+            return None
+
+    def _mq_hour_ending_avg(he: int) -> float | None:
+        # HE N = interval-end times in ((N-1):00, N:00], which maps to 12×5-min slots.
+        if not mq_5min:
+            return None
+        if he < 1 or he > 24:
+            return None
+        start_idx = (he - 1) * 12
+        end_idx = start_idx + 12  # exclusive
+        if start_idx < 0 or end_idx > 288:
+            return None
+        vals = mq_5min[start_idx:end_idx]
+        return float(mean(vals)) if vals else None
+
     for i, (dt, rtd, act) in enumerate(win_rows, start=1):
         da = None
         if mw_map:
             da = _day_ahead_mw_linear(dt, mw_map)
+        elif mq_5min:
+            da = _mq_at(dt)
         dispatch.append(
             {
                 "i": i,
@@ -309,7 +353,7 @@ def build_marketplace_chart_payload(
                 "label": _hour_label_ampm(he),
                 "rtd_mw_avg": rtd_m,
                 "actual_mw_avg": act_m,
-                "day_ahead_mw": mw_map.get(he) if mw_map else None,
+                "day_ahead_mw": mw_map.get(he) if mw_map else (_mq_hour_ending_avg(he) if mq_5min else None),
                 "lmp": lmp_map.get(he) if lmp_map else None,
             }
         )
@@ -323,6 +367,7 @@ def build_marketplace_chart_payload(
     out: dict[str, Any] = {
         "trade_day": trade_day.isoformat(),
         "partial": partial,
+        "has_day_ahead": bool(mw_map) or bool(mq_5min),
         "lmp_average_e7_e19": lmp_avg_e7_e19,
         "lmp_average_e7_e19_display": lmp_disp,
         "lmp_average_hourly_6am_6pm": lmp_avg_hourly_6am_6pm,
@@ -334,10 +379,17 @@ def build_marketplace_chart_payload(
         "hourly_6am_6pm": hourly_chart,
     }
     if partial:
-        out["partial_message"] = (
-            "MPI compliance is loaded from the database. Upload Market Result — Energy Schedules "
-            "for this trade day to add LMP, day-ahead MW, and hourly average price."
-        )
+        if mq_5min:
+            out["partial_message"] = (
+                "MPI compliance is loaded from the database. Day-ahead MW is loaded from MIRF MQ "
+                "(stored from Nomination Accuracy backfill). Upload Market Result — Energy Schedules "
+                "for this trade day to add LMP and hourly average price."
+            )
+        else:
+            out["partial_message"] = (
+                "MPI compliance is loaded from the database. Upload Market Result — Energy Schedules "
+                "for this trade day to add LMP, day-ahead MW, and hourly average price."
+            )
     return out
 
 

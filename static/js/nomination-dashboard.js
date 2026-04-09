@@ -14,6 +14,175 @@
     var syncCfg = null;
     var syncTimer = null;
     var syncInFlight = false;
+    var syncProgressPollTimer = null;
+    var syncProgressLastFingerprint = null;
+    var syncProgressLog = [];
+
+    function escapeHtml(s) {
+      if (s == null) return '';
+      return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function getSyncProgressEls() {
+      return {
+        modal: document.getElementById('sync-progress-modal'),
+        backdrop: document.getElementById('sync-progress-backdrop'),
+        closeX: document.getElementById('sync-progress-close-x'),
+        hideBtn: document.getElementById('sync-progress-hide'),
+        doneBtn: document.getElementById('sync-progress-done'),
+        clearLogBtn: document.getElementById('sync-progress-clear-log'),
+        bar: document.getElementById('sync-progress-bar'),
+        percent: document.getElementById('sync-progress-percent'),
+        stage: document.getElementById('sync-progress-stage'),
+        current: document.getElementById('sync-progress-current'),
+        log: document.getElementById('sync-progress-log'),
+        error: document.getElementById('sync-progress-error')
+      };
+    }
+
+    function openSyncProgressModal() {
+      var els = getSyncProgressEls();
+      if (!els.modal) return;
+      els.modal.classList.remove('hidden');
+    }
+
+    function closeSyncProgressModal() {
+      var els = getSyncProgressEls();
+      if (!els.modal) return;
+      els.modal.classList.add('hidden');
+    }
+
+    function resetSyncProgressUi() {
+      syncProgressLastFingerprint = null;
+      syncProgressLog = [];
+      var els = getSyncProgressEls();
+      if (els.bar) els.bar.style.width = '0%';
+      if (els.percent) els.percent.textContent = '0%';
+      if (els.stage) els.stage.textContent = '—';
+      if (els.current) els.current.textContent = '—';
+      if (els.log) els.log.innerHTML = '';
+      if (els.error) { els.error.classList.add('hidden'); els.error.textContent = ''; }
+    }
+
+    function appendSyncProgressLogLine(line) {
+      if (!line) return;
+      syncProgressLog.push(line);
+      if (syncProgressLog.length > 250) syncProgressLog = syncProgressLog.slice(syncProgressLog.length - 250);
+      var els = getSyncProgressEls();
+      if (!els.log) return;
+      els.log.innerHTML = syncProgressLog.map(function(s) {
+        return '<div class="whitespace-pre-wrap break-words">' + escapeHtml(s) + '</div>';
+      }).join('');
+      els.log.scrollTop = els.log.scrollHeight;
+    }
+
+    function computeSyncPercentFromState(state) {
+      if (!state) return 0;
+      // Basic heuristic:
+      // - building_payload progresses by files_done/files_total up to 70%
+      // - uploading = 85%
+      // - finishing = 95%
+      // - done = 100%
+      var stage = (state.last_push_stage || '').toString();
+      if (stage === 'done') return 100;
+      if (stage === 'finishing') return 95;
+      if (stage === 'uploading') return 85;
+      if (stage === 'building_payload') {
+        var total = Number(state.last_push_files_total || 0);
+        var done = Number(state.last_push_files_done || 0);
+        if (!total || isNaN(total) || total <= 0) return 10;
+        if (isNaN(done) || done < 0) done = 0;
+        var frac = Math.max(0, Math.min(1, done / total));
+        return Math.round(5 + frac * 65);
+      }
+      if (stage === 'starting') return 2;
+      if (stage === 'error') return 100;
+      return 0;
+    }
+
+    function updateSyncProgressUiFromState(state) {
+      var els = getSyncProgressEls();
+      if (!els.modal) return;
+      var stage = (state && state.last_push_stage_detail) ? String(state.last_push_stage_detail) : '—';
+      var cur = (state && state.last_push_current_file) ? String(state.last_push_current_file) : '—';
+      var pct = computeSyncPercentFromState(state);
+
+      if (els.stage) els.stage.textContent = stage;
+      if (els.current) els.current.textContent = cur;
+      if (els.bar) els.bar.style.width = pct + '%';
+      if (els.percent) els.percent.textContent = pct + '%';
+
+      var ok = state ? state.last_push_ok : null;
+      var finishedAt = state ? state.last_push_finished_at : null;
+      var err = state ? state.last_push_error : null;
+      if (finishedAt && ok === false && err) {
+        if (els.error) { els.error.classList.remove('hidden'); els.error.textContent = err; }
+      }
+      if (finishedAt && ok === true) {
+        if (els.error) { els.error.classList.add('hidden'); els.error.textContent = ''; }
+      }
+    }
+
+    function fingerprintSyncState(state) {
+      if (!state) return '';
+      return [
+        state.last_push_started_at || '',
+        state.last_push_finished_at || '',
+        state.last_push_stage || '',
+        state.last_push_stage_detail || '',
+        state.last_push_current_file || '',
+        state.last_push_files_done || '',
+        state.last_push_files_total || '',
+        state.last_push_ok || '',
+        state.last_push_error || ''
+      ].join('|');
+    }
+
+    function pollSyncProgressOnce() {
+      return fetch(API_BASE + '/api/sync/config', { method: 'GET' })
+        .then(function(r) { return r.json(); })
+        .then(function(j) {
+          var state = (j && j.state) ? j.state : {};
+          updateSyncProgressUiFromState(state);
+
+          var fp = fingerprintSyncState(state);
+          if (fp && fp !== syncProgressLastFingerprint) {
+            syncProgressLastFingerprint = fp;
+            var ts = new Date().toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            var msg = (state.last_push_stage_detail || state.last_push_stage || 'updated').toString();
+            var cur = state.last_push_current_file ? (' [' + state.last_push_current_file + ']') : '';
+            appendSyncProgressLogLine(ts + '  ' + msg + cur);
+          }
+
+          return state;
+        })
+        .catch(function() {
+          appendSyncProgressLogLine('—  Could not fetch sync status (network error).');
+          return null;
+        });
+    }
+
+    function startSyncProgressPolling() {
+      stopSyncProgressPolling();
+      pollSyncProgressOnce();
+      syncProgressPollTimer = setInterval(function() {
+        pollSyncProgressOnce().then(function(state) {
+          if (!state) return;
+          // Stop polling once we have a finished_at timestamp.
+          if (state.last_push_finished_at) stopSyncProgressPolling();
+        });
+      }, 1000);
+    }
+
+    function stopSyncProgressPolling() {
+      if (syncProgressPollTimer) clearInterval(syncProgressPollTimer);
+      syncProgressPollTimer = null;
+    }
 
     function setSyncStatus(msg, isErr) {
       var el = document.getElementById('sync-status');
@@ -52,6 +221,10 @@
       if (!syncControlsEnabled()) { if (typeof onDone === 'function') onDone(false, 'Sync is not configured.'); return; }
       syncInFlight = true;
       setSyncStatus('Syncing to online viewer…', false);
+      resetSyncProgressUi();
+      openSyncProgressModal();
+      appendSyncProgressLogLine('Starting sync…');
+      startSyncProgressPolling();
       fetch(API_BASE + '/api/sync/push-remote', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -64,10 +237,12 @@
       }).then(function(j) {
         // Async push: show whatever state we currently have.
         setSyncStatus('Sync started. Last push: ' + (j && j.state && (j.state.last_push_finished_at || j.state.last_push_started_at) ? (j.state.last_push_finished_at || j.state.last_push_started_at) : '—'), false);
+        appendSyncProgressLogLine('Sync job started.');
         if (typeof onDone === 'function') onDone(true, null, j);
       }).catch(function(err) {
         var msg = (err && err.message) ? err.message : 'Sync failed.';
         setSyncStatus('Sync failed: ' + msg, true);
+        appendSyncProgressLogLine('Sync failed to start: ' + msg);
         if (typeof onDone === 'function') onDone(false, msg);
       }).finally(function() {
         syncInFlight = false;
@@ -1462,6 +1637,22 @@
           stopAutoSyncTimer();
         }
       });
+
+      // Modal wiring (safe no-ops if modal is not present)
+      (function() {
+        var els = getSyncProgressEls();
+        if (!els.modal) return;
+        function onClose() { closeSyncProgressModal(); }
+        if (els.backdrop) els.backdrop.addEventListener('click', onClose);
+        if (els.closeX) els.closeX.addEventListener('click', onClose);
+        if (els.hideBtn) els.hideBtn.addEventListener('click', onClose);
+        if (els.doneBtn) els.doneBtn.addEventListener('click', onClose);
+        if (els.clearLogBtn) els.clearLogBtn.addEventListener('click', function() {
+          syncProgressLog = [];
+          syncProgressLastFingerprint = null;
+          if (els.log) els.log.innerHTML = '';
+        });
+      })();
     }
 
     function formatHistoryExportedAt(iso) {

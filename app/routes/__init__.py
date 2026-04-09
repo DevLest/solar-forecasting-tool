@@ -64,12 +64,15 @@ from app.services.nomination_accuracy_store import (
     compliance_day_exists,
     delete_run,
     get_compliance_csv_blob,
+    get_mirf_mq_xlsx_blob,
     get_market_result_csv_blob,
     list_runs_with_billing_meta,
     list_stored_compliance_csv_days,
+    list_stored_mirf_mq_days,
     list_stored_market_result_days,
     list_uploaded_compliance_days,
     save_compliance_csv_blob,
+    save_mirf_mq_xlsx_blob,
     save_market_result_csv_blob,
     save_run,
 )
@@ -489,6 +492,7 @@ def api_nomination_reporting_marketplace_chart():
         return jsonify({"ok": False, "error": "day must be YYYY-MM-DD."}), 400
     comp_b, _ = get_compliance_csv_blob(trade_day.isoformat())
     mkt_b, _ = get_market_result_csv_blob(trade_day.isoformat())
+    mq_b, _ = get_mirf_mq_xlsx_blob(trade_day.isoformat())
     if not comp_b:
         return (
             jsonify(
@@ -500,10 +504,12 @@ def api_nomination_reporting_marketplace_chart():
             400,
         )
     try:
-        if mkt_b:
-            payload = build_marketplace_chart_payload(comp_b, trade_day, mkt_b)
-        else:
-            payload = build_marketplace_chart_payload(comp_b, trade_day, None)
+        payload = build_marketplace_chart_payload(
+            comp_b,
+            trade_day,
+            market_bytes=mkt_b,
+            mirf_mq_xlsx_bytes=mq_b,
+        )
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 400
     return jsonify({"ok": True, **payload})
@@ -654,6 +660,16 @@ def api_nomination_accuracy_rtd_dispatch_backfill():
             storage_day,
             mq_xlsx_bytes=raw_mq,
         )
+        # Store the MIRF MQ workbook so marketplace charts can show day-ahead MW even when
+        # Market Result — Energy Schedules CSV is not available for that day.
+        try:
+            save_mirf_mq_xlsx_blob(
+                storage_day.isoformat(),
+                raw_mq,
+                os.path.basename(mq_f.filename or "") or "mirf_mq.xlsx",
+            )
+        except Exception:
+            pass
         row = {
             **result["summary"],
             "mape_ok": result["policy"]["mape_ok"],

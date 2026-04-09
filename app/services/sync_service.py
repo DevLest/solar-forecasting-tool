@@ -113,11 +113,59 @@ def build_sync_payload(*, source_label: str) -> dict[str, Any]:
     ]
 
     out_files: dict[str, Any] = {}
+    total = len(mapping)
+    done = 0
+    write_sync_state(
+        {
+            "last_push_stage": "building_payload",
+            "last_push_stage_detail": "Preparing files…",
+            "last_push_files_total": total,
+            "last_push_files_done": 0,
+            "last_push_current_file": None,
+        }
+    )
     for name, path in mapping:
         if not os.path.isfile(path):
+            done += 1
+            write_sync_state(
+                {
+                    "last_push_stage": "building_payload",
+                    "last_push_stage_detail": f"Skipping missing file: {name}",
+                    "last_push_files_total": total,
+                    "last_push_files_done": done,
+                    "last_push_current_file": name,
+                }
+            )
             continue
+        write_sync_state(
+            {
+                "last_push_stage": "building_payload",
+                "last_push_stage_detail": f"Reading {name}…",
+                "last_push_files_total": total,
+                "last_push_files_done": done,
+                "last_push_current_file": name,
+            }
+        )
         raw = _read_bytes(path)
+        write_sync_state(
+            {
+                "last_push_stage": "building_payload",
+                "last_push_stage_detail": f"Compressing {name}…",
+                "last_push_files_total": total,
+                "last_push_files_done": done,
+                "last_push_current_file": name,
+            }
+        )
         gz = gzip.compress(raw, compresslevel=6)
+        write_sync_state(
+            {
+                "last_push_stage": "building_payload",
+                "last_push_stage_detail": f"Encoding {name}…",
+                "last_push_files_total": total,
+                "last_push_files_done": done,
+                "last_push_current_file": name,
+            }
+        )
         out_files[name] = {
             "encoding": "gzip+base64",
             "sha256": _sha256_bytes(raw),
@@ -125,6 +173,16 @@ def build_sync_payload(*, source_label: str) -> dict[str, Any]:
             "gzBytes": len(gz),
             "data": base64.b64encode(gz).decode("ascii"),
         }
+        done += 1
+        write_sync_state(
+            {
+                "last_push_stage": "building_payload",
+                "last_push_stage_detail": f"Prepared {name}.",
+                "last_push_files_total": total,
+                "last_push_files_done": done,
+                "last_push_current_file": name,
+            }
+        )
 
     return {
         "version": 1,
@@ -209,6 +267,14 @@ def push_sync_payload_to_remote(*, reason: str, timeout_s: float = 25.0) -> dict
 
     payload = build_sync_payload(source_label=reason or "local")
     body = json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    write_sync_state(
+        {
+            "last_push_stage": "uploading",
+            "last_push_stage_detail": f"Uploading payload ({len(body)} bytes)…",
+            "last_push_current_file": None,
+            "last_push_payload_bytes": len(body),
+        }
+    )
     req = urllib.request.Request(
         url,
         data=body,
@@ -223,13 +289,38 @@ def push_sync_payload_to_remote(*, reason: str, timeout_s: float = 25.0) -> dict
         with urllib.request.urlopen(req, timeout=float(timeout_s)) as resp:
             resp_body = resp.read() or b""
             try:
-                return json.loads(resp_body.decode("utf-8"))
+                res = json.loads(resp_body.decode("utf-8"))
+                write_sync_state(
+                    {
+                        "last_push_stage": "finishing",
+                        "last_push_stage_detail": "Remote responded.",
+                    }
+                )
+                return res
             except Exception:
+                write_sync_state(
+                    {
+                        "last_push_stage": "finishing",
+                        "last_push_stage_detail": "Remote responded (non-JSON).",
+                    }
+                )
                 return {"ok": resp.status >= 200 and resp.status < 300, "raw": resp_body[:500].decode("utf-8", "ignore")}
     except urllib.error.HTTPError as e:
         raw = e.read() if hasattr(e, "read") else b""
+        write_sync_state(
+            {
+                "last_push_stage": "error",
+                "last_push_stage_detail": f"Remote error: HTTP {e.code} {e.reason}",
+            }
+        )
         raise RuntimeError(f"Remote sync failed: HTTP {e.code} {e.reason} {raw[:300]!r}") from e
     except urllib.error.URLError as e:
+        write_sync_state(
+            {
+                "last_push_stage": "error",
+                "last_push_stage_detail": f"Network error: {e}",
+            }
+        )
         raise RuntimeError(f"Remote sync failed: {e}") from e
 
 
@@ -238,7 +329,18 @@ def push_sync_payload_to_remote_async(*, reason: str) -> None:
 
     def run() -> None:
         started = time.time()
-        write_sync_state({"last_push_started_at": _utc_now_iso(), "last_push_reason": reason})
+        write_sync_state(
+            {
+                "last_push_started_at": _utc_now_iso(),
+                "last_push_reason": reason,
+                "last_push_finished_at": None,
+                "last_push_ok": None,
+                "last_push_error": None,
+                "last_push_stage": "starting",
+                "last_push_stage_detail": "Starting…",
+                "last_push_current_file": None,
+            }
+        )
         try:
             res = push_sync_payload_to_remote(reason=reason)
             elapsed_ms = int((time.time() - started) * 1000)
@@ -249,6 +351,8 @@ def push_sync_payload_to_remote_async(*, reason: str) -> None:
                     "last_push_elapsed_ms": elapsed_ms,
                     "last_push_response": res if isinstance(res, dict) else {"raw": str(res)},
                     "last_push_error": None,
+                    "last_push_stage": "done",
+                    "last_push_stage_detail": "Completed.",
                 }
             )
         except Exception as e:  # noqa: BLE001
@@ -259,6 +363,8 @@ def push_sync_payload_to_remote_async(*, reason: str) -> None:
                     "last_push_finished_at": _utc_now_iso(),
                     "last_push_elapsed_ms": elapsed_ms,
                     "last_push_error": str(e),
+                    "last_push_stage": "done",
+                    "last_push_stage_detail": "Failed.",
                 }
             )
 

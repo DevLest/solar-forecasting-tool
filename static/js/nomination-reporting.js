@@ -392,6 +392,7 @@
           return;
         }
         var isPartial = !!j.partial;
+        var hasDayAhead = !!j.has_day_ahead;
         if (chartPartialBanner) {
           if (isPartial && j.partial_message) {
             chartPartialBanner.textContent = j.partial_message;
@@ -432,9 +433,9 @@
             borderWidth: 1.5
           }
         ];
-        if (!isPartial) {
+        if (!isPartial || hasDayAhead) {
           dispatchDatasets.push({
-            label: 'Day-ahead MW (schedule)',
+            label: isPartial ? 'Day-ahead MW (MIRF MQ)' : 'Day-ahead MW (schedule)',
             data: da,
             borderColor: 'rgb(34, 197, 94)',
             backgroundColor: 'transparent',
@@ -524,7 +525,9 @@
                   legend: { labels: { color: '#94a3b8' } },
                   title: {
                     display: true,
-                    text: 'LMP bars appear after Energy Schedules upload',
+                    text: hasDayAhead
+                      ? 'LMP bars appear after Energy Schedules upload'
+                      : 'Upload Energy Schedules (or backfill MQ) to add day-ahead / LMP',
                     color: '#64748b',
                     font: { size: 11 }
                   }
