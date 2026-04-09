@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html class="h-full" lang="en">
+<head>
+  {% include 'components/head_base.html' %}
+  <title>{% block title %}ARECO 65 SOLAR - Viewer{% endblock %}</title>
+  {% block head_extra %}{% endblock %}
+</head>
+<body class="bg-brand-dark text-brand-text font-sans antialiased h-full min-h-screen max-h-screen flex flex-col overflow-hidden">
+  {% include 'components/app_header.html' %}
+  <main id="app-main" class="flex-1 min-h-0 w-full overflow-y-auto overflow-x-hidden">
+    {% block main_inner %}{% endblock %}
+  </main>
+  {% include 'components/app_footer.html' %}
+  {% if current_user.is_authenticated %}
+  <script type="application/json" id="areco-auth-json">{{ areco_auth | tojson }}</script>
+  <script>
+    try {
+      var __n = document.getElementById('areco-auth-json');
+      window.__ARECO_AUTH__ = __n ? JSON.parse(__n.textContent || '{}') : {};
+    } catch (__e) {
+      window.__ARECO_AUTH__ = {};
+    }
+  </script>
+  {% endif %}
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+  {% block page_scripts %}{% endblock %}
+</body>
+</html>
+

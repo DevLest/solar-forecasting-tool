@@ -16,6 +16,8 @@ ALLOWED_ENV_KEYS: frozenset[str] = frozenset(
         "ARECO_NOMINATION_EXPORT_DIR",
         "ARECO_SETTLEMENT_ZIP_PASSWORD1",
         "ARECO_SETTLEMENT_ZIP_PASSWORD2",
+        "ARECO_SYNC_REMOTE_URL",
+        "ARECO_SYNC_TOKEN",
         "OPENAI_API_KEY",
         "ACCUWEATHER_API_KEY",
     }

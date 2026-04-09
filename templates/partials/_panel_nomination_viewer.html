@@ -1,0 +1,116 @@
+{# Viewer-only: graphs + live stream (no editing controls, no interval table). #}
+<div id="panel-nomination" class="flex-grow space-y-3 w-full" data-nomination-readonly="true">
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:items-stretch">
+    <div class="lg:col-span-12 flex flex-col gap-6 min-w-0">
+      <div class="grid gap-4 xl:grid-cols-5 items-stretch min-h-0">
+        <div class="xl:col-span-2 bg-brand-card rounded-xl border border-brand-border overflow-hidden shadow-2xl flex flex-col min-h-[14rem]">
+          <div class="px-4 py-2 border-b border-brand-border flex justify-between items-center shrink-0">
+            <h3 class="text-xs font-bold uppercase tracking-widest text-brand-muted">Live plant output</h3>
+            <span class="text-[10px] text-brand-muted">Live</span>
+          </div>
+          <div class="px-4 py-2 border-b border-brand-border/50 flex flex-col gap-1.5">
+            <div class="flex flex-row flex-nowrap items-center gap-2 min-w-0">
+              <label for="live-stream-url" class="text-[10px] text-brand-muted uppercase whitespace-nowrap shrink-0">URL</label>
+              <input type="url" id="live-stream-url" placeholder="https://vdo.ninja/?view=..." class="flex-1 min-w-0 bg-brand-dark border border-brand-border rounded px-2 py-1.5 text-xs text-brand-text placeholder:text-brand-muted/60 focus:ring-1 focus:ring-brand-accent focus:border-brand-accent" />
+              <button type="button" id="live-stream-apply" class="shrink-0 px-3 py-1.5 bg-brand-accent text-brand-dark rounded text-xs font-bold uppercase hover:bg-brand-accent/90 transition-colors">Apply</button>
+            </div>
+            <p id="live-stream-status" class="text-[9px] text-brand-muted/80 min-h-[1.15rem]"></p>
+          </div>
+          <div class="aspect-video xl:flex-1 bg-brand-dark relative min-h-[10rem]">
+            <iframe
+              id="vdo-ninja-stream"
+              src=""
+              title="VDO.Ninja – Live plant output"
+              class="absolute inset-0 w-full h-full border-0"
+              allow="camera; microphone; autoplay; fullscreen; picture-in-picture; display-capture"
+              allowfullscreen
+              loading="eager"
+            ></iframe>
+          </div>
+          <span id="stream-mw" hidden></span>
+        </div>
+
+        <section class="xl:col-span-3 bg-brand-card rounded-xl border border-brand-border p-4 sm:p-6 shadow-lg flex flex-col min-h-[18rem] overflow-hidden">
+          <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-3 sm:mb-4 shrink-0">
+            <h3 class="text-sm font-semibold uppercase text-brand-muted">Nomination graph</h3>
+          </div>
+          <div class="flex-1 min-h-0 relative w-full">
+            <canvas id="nominationChart"></canvas>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-3 lg:items-stretch">
+    <div class="lg:col-span-5 flex flex-col gap-3 min-h-0">
+      <section class="bg-brand-card rounded-xl border border-brand-border overflow-hidden shadow-xl flex-none">
+        <div class="px-6 py-4 border-b border-brand-border flex justify-between items-center">
+          <h3 class="text-sm font-bold uppercase tracking-widest text-brand-muted">Resource Nomination History</h3>
+          <button type="button" id="btn-refresh-history" class="text-[10px] uppercase font-semibold text-brand-accent hover:text-brand-accent/80 transition-colors">Refresh</button>
+        </div>
+        <div class="overflow-x-auto max-h-72 overflow-y-auto">
+          <table class="w-full text-xs text-left">
+            <thead class="bg-brand-dark/50 text-brand-muted border-b border-brand-border sticky top-0">
+              <tr>
+                <th class="px-4 py-2 font-semibold uppercase">Exported</th>
+                <th class="px-4 py-2 font-semibold uppercase">Forecast date</th>
+                <th class="px-4 py-2 font-semibold uppercase">Intervals</th>
+                <th class="px-4 py-2 font-semibold uppercase">Rev#</th>
+                <th class="px-4 py-2 font-semibold uppercase">RTD %</th>
+                <th class="px-4 py-2 font-semibold uppercase">Mode</th>
+              </tr>
+            </thead>
+            <tbody id="history-tbody" class="divide-y divide-brand-border/30">
+              <tr><td colspan="6" class="px-4 py-4 text-brand-muted text-center">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="bg-brand-card rounded-xl border border-brand-border overflow-hidden shadow-xl flex-1 min-h-0 flex flex-col" id="analytics-section">
+        <div class="px-6 py-4 border-b border-brand-border flex-none">
+          <h3 class="text-sm font-bold uppercase tracking-widest text-brand-muted">Analytics from history</h3>
+        </div>
+        <div id="analytics-cards" class="p-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-2 gap-4 overflow-auto min-h-0 flex-1 content-start"></div>
+      </section>
+    </div>
+
+    <section class="lg:col-span-7 bg-brand-card rounded-xl border border-brand-border p-6 shadow-xl">
+      <div class="flex justify-between items-center mb-4 flex-wrap gap-4">
+        <h3 class="text-xl font-bold uppercase tracking-wider text-brand-accent">VRE Table</h3>
+      </div>
+      <div class="overflow-x-auto">
+        <div class="vre-paste-matrix-wrapper max-w-full inline-block min-w-full">
+          <table class="vre-paste-matrix" id="vre-table" aria-label="Day ahead MW matrix by delivery hour">
+            <colgroup>
+              <col class="vre-col-hour" />
+              <col class="vre-col-vre" />
+              <col span="12" class="vre-col-mw" />
+            </colgroup>
+            <thead>
+              <tr>
+                <th scope="col" class="vre-col-hour">Hour</th>
+                <th scope="col" class="vre-col-vre">VRE</th>
+                <th scope="col" class="vre-col-mw">5</th>
+                <th scope="col" class="vre-col-mw">10</th>
+                <th scope="col" class="vre-col-mw">15</th>
+                <th scope="col" class="vre-col-mw">20</th>
+                <th scope="col" class="vre-col-mw">25</th>
+                <th scope="col" class="vre-col-mw">30</th>
+                <th scope="col" class="vre-col-mw">35</th>
+                <th scope="col" class="vre-col-mw">40</th>
+                <th scope="col" class="vre-col-mw">45</th>
+                <th scope="col" class="vre-col-mw">50</th>
+                <th scope="col" class="vre-col-mw">55</th>
+                <th scope="col" class="vre-col-mw">60</th>
+              </tr>
+            </thead>
+            <tbody id="vre-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+

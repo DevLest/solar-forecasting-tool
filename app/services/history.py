@@ -57,6 +57,44 @@ def filter_historical_exports_nomination_window(records: list) -> list:
     return out
 
 
+def filter_historical_exports_forecast_date_range(
+    records: list,
+    start_iso: str | None,
+    end_iso: str | None,
+) -> list:
+    """Filter exports by forecast reference date (YYYY-MM-DD), inclusive.
+
+    If start/end are missing or invalid, the corresponding bound is ignored.
+    """
+    if not records:
+        return []
+    start_d: date | None = None
+    end_d: date | None = None
+    if start_iso:
+        try:
+            start_d = date.fromisoformat(str(start_iso).strip()[:10])
+        except ValueError:
+            start_d = None
+    if end_iso:
+        try:
+            end_d = date.fromisoformat(str(end_iso).strip()[:10])
+        except ValueError:
+            end_d = None
+    if start_d is None and end_d is None:
+        return list(records)
+    out: list = []
+    for r in records:
+        d = _parse_forecast_date(r if isinstance(r, dict) else {})
+        if d is None:
+            continue
+        if start_d is not None and d < start_d:
+            continue
+        if end_d is not None and d > end_d:
+            continue
+        out.append(r)
+    return out
+
+
 def _forecast_date_key(record: dict):
     """Return YYYY-MM-DD for this record, or None. One export per forecast date."""
     iso = record.get("forecastRefDateIso") or record.get("forecastRefDateIso")

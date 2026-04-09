@@ -1,0 +1,75 @@
+{% extends 'layouts/viewer.html' %}
+
+{% block main_inner %}
+  <div class="p-4 sm:p-6 max-w-[1700px] mx-auto w-full space-y-6">
+    <section class="rounded-xl border border-brand-border bg-brand-card/70 p-4 sm:p-5 shadow-lg">
+      <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
+        <div class="min-w-0">
+          <h2 class="text-lg sm:text-xl font-semibold text-brand-text">Viewer</h2>
+        </div>
+        <div class="flex flex-wrap items-end gap-3">
+          <div class="flex flex-col gap-0.5">
+            <label for="viewer-date-start" class="text-[10px] uppercase tracking-wider text-brand-muted">Start</label>
+            <input type="date" id="viewer-date-start" class="w-[11.5rem] bg-brand-dark border border-brand-border rounded-lg px-2 py-1.5 text-sm text-brand-text font-mono [color-scheme:dark] focus:outline-none focus:ring-2 focus:ring-brand-accent/40" />
+          </div>
+          <div class="flex flex-col gap-0.5">
+            <label for="viewer-date-end" class="text-[10px] uppercase tracking-wider text-brand-muted">End</label>
+            <input type="date" id="viewer-date-end" class="w-[11.5rem] bg-brand-dark border border-brand-border rounded-lg px-2 py-1.5 text-sm text-brand-text font-mono [color-scheme:dark] focus:outline-none focus:ring-2 focus:ring-brand-accent/40" />
+          </div>
+          <button type="button" id="viewer-date-apply" class="py-2 px-4 rounded-xl bg-brand-accent text-brand-dark font-semibold text-xs uppercase tracking-wide hover:bg-brand-accent/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent/50">
+            Apply
+          </button>
+          <a href="{{ url_for('main.logout') }}" class="py-2 px-4 rounded-xl border border-brand-border bg-brand-dark hover:bg-brand-border/35 text-brand-text font-semibold text-xs uppercase tracking-wide">
+            Log out
+          </a>
+          <p id="viewer-date-status" class="hidden" role="status" aria-live="polite"></p>
+        </div>
+      </div>
+    </section>
+
+    <section class="rounded-xl border border-brand-border bg-brand-card/60 p-2.5 sm:p-3 shadow-lg">
+      <div class="flex flex-wrap gap-2" role="tablist" aria-label="Viewer panels">
+        <button type="button" class="viewer-tab-btn px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wide border border-transparent bg-brand-accent/20 text-brand-accent border-brand-accent/40 shadow-sm" data-viewer-tab="nomination" role="tab" aria-selected="true">
+          Nomination
+        </button>
+        <button type="button" class="viewer-tab-btn px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wide border border-transparent text-brand-muted hover:text-brand-text hover:bg-brand-border/25" data-viewer-tab="reporting" role="tab" aria-selected="false">
+          Reporting
+        </button>
+        <button type="button" class="viewer-tab-btn px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wide border border-transparent text-brand-muted hover:text-brand-text hover:bg-brand-border/25" data-viewer-tab="accuracy" role="tab" aria-selected="false">
+          Forecast % Error
+        </button>
+        <button type="button" class="viewer-tab-btn px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wide border border-transparent text-brand-muted hover:text-brand-text hover:bg-brand-border/25" data-viewer-tab="billing-history" role="tab" aria-selected="false">
+          Billing History
+        </button>
+      </div>
+    </section>
+
+    <div id="viewer-tab-nomination" data-viewer-tabpanel="nomination" role="tabpanel" aria-label="Nomination tab">
+      {# Viewer-only nomination: live stream + graphs (no Interval Data / controls). #}
+      {% include 'partials/_panel_nomination_viewer.html' %}
+    </div>
+
+    <div id="viewer-tab-reporting" class="hidden" data-viewer-tabpanel="reporting" role="tabpanel" aria-label="Reporting tab">
+      {% include 'partials/_panel_nomination_reporting.html' %}
+    </div>
+
+    <div id="viewer-tab-accuracy" class="hidden" data-viewer-tabpanel="accuracy" role="tabpanel" aria-label="Forecast percentage error tab">
+      {% include 'partials/_panel_nomination_accuracy.html' %}
+    </div>
+
+    <div id="viewer-tab-billing-history" class="hidden" data-viewer-tabpanel="billing-history" role="tabpanel" aria-label="Billing history tab">
+      {% include 'partials/_panel_billing_history.html' %}
+    </div>
+  </div>
+{% endblock %}
+
+{% block page_scripts %}
+  <script src="{{ url_for('static', filename='js/viewer-dashboard.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/viewer-tabs.js') }}" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" defer></script>
+  <script src="{{ url_for('static', filename='js/nomination-dashboard.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/nomination-reporting.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/nomination-accuracy.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/billing-history.js') }}" defer></script>
+{% endblock %}
+

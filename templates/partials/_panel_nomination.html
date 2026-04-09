@@ -3,12 +3,15 @@
       <section id="interval-data-panel" class="col-span-12 lg:col-span-3 bg-brand-card rounded-xl border border-brand-border p-4 shadow-xl overflow-hidden flex flex-col min-h-0 h-[min(90vh,58rem)] max-h-[90vh]">
         <div class="flex items-center justify-between gap-2 mb-2">
           <h3 class="text-sm font-semibold text-brand-muted uppercase tracking-wider">Interval Data</h3>
-          <div class="flex items-center gap-1.5 shrink-0" title="Revision starts at 0 for each date; use arrows or type a value. It still advances when you export XML or VRE CSV.">
-            <span class="text-xs text-brand-muted uppercase tracking-wide">Rev#</span>
-            <div class="flex items-center gap-0.5">
-              <button type="button" id="interval-rev-down" class="interval-rev-step w-7 h-8 shrink-0 rounded border border-brand-border bg-brand-dark text-brand-text text-lg font-bold leading-none hover:bg-brand-border/30 focus:outline-none focus:ring-1 focus:ring-brand-accent" aria-label="Decrease revision">−</button>
-              <input type="number" id="interval-rev-number" min="0" max="999" step="1" value="0" class="w-12 text-center text-2xl font-bold text-brand-text tabular-nums leading-none bg-brand-dark border border-brand-border rounded px-1 py-0.5 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none focus:ring-1 focus:ring-brand-accent focus:outline-none"/>
-              <button type="button" id="interval-rev-up" class="interval-rev-step w-7 h-8 shrink-0 rounded border border-brand-border bg-brand-dark text-brand-text text-lg font-bold leading-none hover:bg-brand-border/30 focus:outline-none focus:ring-1 focus:ring-brand-accent" aria-label="Increase revision">+</button>
+          <div class="flex items-center gap-2 shrink-0">
+            <button type="button" id="btn-rtd-range-modal" class="shrink-0 text-[10px] uppercase font-bold tracking-wide px-2.5 py-1.5 rounded-md border border-brand-border text-brand-muted hover:text-brand-text hover:bg-brand-border/20 focus:outline-none focus:ring-1 focus:ring-brand-accent interval-data-capture-exclude" title="Bulk edit RTD values across a time range">Bulk edit</button>
+            <div class="flex items-center gap-1.5 shrink-0" title="Revision starts at 0 for each date; use arrows or type a value. It still advances when you export XML or VRE CSV.">
+              <span class="text-xs text-brand-muted uppercase tracking-wide">Rev#</span>
+              <div class="flex items-center gap-0.5">
+                <button type="button" id="interval-rev-down" class="interval-rev-step w-7 h-8 shrink-0 rounded border border-brand-border bg-brand-dark text-brand-text text-lg font-bold leading-none hover:bg-brand-border/30 focus:outline-none focus:ring-1 focus:ring-brand-accent" aria-label="Decrease revision">−</button>
+                <input type="number" id="interval-rev-number" min="0" max="999" step="1" value="0" class="w-12 text-center text-2xl font-bold text-brand-text tabular-nums leading-none bg-brand-dark border border-brand-border rounded px-1 py-0.5 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none focus:ring-1 focus:ring-brand-accent focus:outline-none"/>
+                <button type="button" id="interval-rev-up" class="interval-rev-step w-7 h-8 shrink-0 rounded border border-brand-border bg-brand-dark text-brand-text text-lg font-bold leading-none hover:bg-brand-border/30 focus:outline-none focus:ring-1 focus:ring-brand-accent" aria-label="Increase revision">+</button>
+              </div>
             </div>
           </div>
         </div>
@@ -17,7 +20,6 @@
           <select id="interval-hour-filter" class="flex-1 min-w-0 bg-brand-dark border border-brand-border rounded px-2 py-1.5 text-xs text-brand-text focus:ring-1 focus:ring-brand-accent" title="Delivery hour (1–24). Uses 5-minute interval END TIMES; e.g. Hour 6 contains 05:05…06:00.">
             <option value="all">All (05:05–19:00)</option>
           </select>
-          <button type="button" id="btn-rtd-range-modal" class="shrink-0 text-[10px] uppercase font-bold tracking-wide px-2.5 py-1.5 rounded-md border border-brand-border text-brand-muted hover:text-brand-text hover:bg-brand-border/20 focus:outline-none focus:ring-1 focus:ring-brand-accent interval-data-capture-exclude" title="Bulk edit RTD values across a time range">Bulk edit</button>
           <button type="button" id="btn-interval-data-copy-image" class="shrink-0 text-[10px] uppercase font-bold tracking-wide px-2.5 py-1.5 rounded-md border border-brand-border text-brand-muted hover:text-brand-text hover:bg-brand-border/20 focus:outline-none focus:ring-1 focus:ring-brand-accent interval-data-capture-exclude" title="Copy visible intervals (current Hour filter) as an image for chat or reports">Copy image</button>
         </div>
         <div id="interval-data-table-scroll" class="overflow-y-auto flex-1 min-h-0 relative isolate">
@@ -116,6 +118,12 @@
                 <button type="button" id="btn-export" class="w-full py-2.5 rounded-xl font-bold uppercase text-sm tracking-wide transition-all bg-brand-accent hover:bg-brand-accent/80 text-brand-dark">EXPORT</button>
               </div>
               <p id="nomination-export-status" class="text-xs min-h-[1.25rem] text-brand-muted" role="status" aria-live="polite"></p>
+              <div id="sync-controls" class="hidden">
+                <button type="button" id="btn-sync-remote" class="w-full py-2.5 border border-brand-border rounded-xl bg-brand-dark hover:bg-brand-border/40 text-brand-text font-bold uppercase text-sm tracking-wide transition-all">
+                  Sync to online viewer
+                </button>
+                <p id="sync-status" class="text-[10px] sm:text-xs min-h-[1.25rem] text-brand-muted" role="status" aria-live="polite"></p>
+              </div>
               <p id="persist-hint" class="text-[10px] sm:text-xs text-amber-400/90 border border-amber-500/30 rounded-lg px-3 py-2 bg-amber-500/5 hidden"></p>
               <p id="weather-coords-display" class="hidden" aria-hidden="true"></p>
               <button type="button" id="btn-weather" class="w-full py-2.5 border-2 border-amber-500/50 rounded-xl bg-brand-dark hover:bg-amber-500/10 text-amber-400 font-bold uppercase text-sm tracking-wide transition-all">Weather forecast (1×/day)</button>

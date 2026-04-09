@@ -13,7 +13,14 @@ from flask import Blueprint, Response, abort, jsonify, redirect, render_template
 from flask_login import current_user, login_required, login_user, logout_user
 from werkzeug.utils import secure_filename
 
-from app.auth import ROLE_ADMIN, api_forbidden, authenticate, request_allowed_for_role, unauthorized_callback
+from app.auth import (
+    ROLE_ADMIN,
+    ROLE_SPECTATOR,
+    api_forbidden,
+    authenticate,
+    request_allowed_for_role,
+    unauthorized_callback,
+)
 from app.config import DATA_DIR, ROOT, nomination_export_dir, settlement_zip_passwords_from_env
 from app.services.env_config import ALLOWED_ENV_KEYS, merge_env_updates, read_env_file_dict
 from app.services.billing_invoice_extract import extract_invoice_pdf, merge_input_patches, merge_period_metas
@@ -30,6 +37,7 @@ from app.services.billing_history_store import (
 )
 from app.services.billing_settlement_extract import extract_settlement_master
 from app.services.history import (
+    filter_historical_exports_forecast_date_range,
     filter_historical_exports_nomination_window,
     load_historical_exports,
     save_historical_export,
@@ -67,6 +75,13 @@ from app.services.nomination_accuracy_store import (
 )
 from app.services.users_store import ROLES, create_user, delete_user, list_users_public, update_user
 from app.services.weather import get_weather_forecast
+from app.services.sync_service import (
+    apply_sync_payload,
+    push_sync_payload_to_remote_async,
+    read_sync_state,
+    sync_config,
+    write_sync_state,
+)
 
 bp = Blueprint("main", __name__)
 
@@ -74,6 +89,9 @@ bp = Blueprint("main", __name__)
 @bp.before_request
 def enforce_access():
     if request.endpoint == "main.login":
+        return None
+    # Token-auth sync endpoints (for hosted read-only instance).
+    if request.endpoint in ("main.api_sync_push", "main.api_sync_status", "main.api_sync_config"):
         return None
     if not current_user.is_authenticated:
         return unauthorized_callback()
@@ -148,6 +166,78 @@ def _no_cache(resp: Response) -> Response:
     return resp
 
 
+def _sync_token_ok() -> bool:
+    expected = (os.environ.get("ARECO_SYNC_TOKEN") or "").strip()
+    if not expected:
+        return False
+    got = (request.headers.get("X-ARECO-SYNC-TOKEN") or "").strip()
+    return bool(got) and got == expected
+
+
+@bp.route("/api/sync/config", methods=["GET"])
+def api_sync_config():
+    """Expose whether remote push is configured (local app UI)."""
+    try:
+        return jsonify({"ok": True, **sync_config(), "state": read_sync_state()})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@bp.route("/api/sync/status", methods=["GET"])
+def api_sync_status():
+    """Token-protected status endpoint (useful on hosted instance)."""
+    if not _sync_token_ok():
+        return jsonify({"ok": False, "error": "Invalid sync token."}), 403
+    return jsonify({"ok": True, "state": read_sync_state()})
+
+
+@bp.route("/api/sync/push", methods=["POST", "OPTIONS"])
+def api_sync_push():
+    """Receive a pushed payload from a local instance (hosted read-only instance)."""
+    if request.method == "OPTIONS":
+        return "", 204
+    if not _sync_token_ok():
+        return jsonify({"ok": False, "error": "Invalid sync token."}), 403
+    data = request.get_json(silent=True) or {}
+    try:
+        applied = apply_sync_payload(data)
+        write_sync_state(
+            {
+                "last_received_at": datetime.now(timezone.utc).isoformat(),
+                "last_received_source": data.get("source"),
+                "last_received_sent_at": data.get("sentAt"),
+                "last_received_applied": applied,
+                "last_received_error": None,
+            }
+        )
+        return jsonify({"ok": True, "applied": applied})
+    except Exception as e:
+        write_sync_state(
+            {
+                "last_received_at": datetime.now(timezone.utc).isoformat(),
+                "last_received_error": str(e),
+            }
+        )
+        return jsonify({"ok": False, "error": str(e)}), 400
+
+
+@bp.route("/api/sync/push-remote", methods=["POST", "OPTIONS"])
+def api_sync_push_remote():
+    """
+    Local convenience endpoint: push this instance's data to a configured remote host.
+    Runs async so the browser isn't blocked.
+    """
+    if request.method == "OPTIONS":
+        return "", 204
+    # Requires login via enforce_access; roles already governed by request_allowed_for_role.
+    reason = (request.get_json(silent=True) or {}).get("reason") or "manual"
+    try:
+        push_sync_payload_to_remote_async(reason=str(reason))
+        return jsonify({"ok": True, "started": True, "state": read_sync_state()})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
+
+
 @bp.route("/assets/<path:filename>")
 def assets(filename: str):
     return send_from_directory(os.path.join(ROOT, "assets"), filename)
@@ -182,6 +272,8 @@ def logout():
 
 @bp.route("/")
 def index():
+    if getattr(current_user, "is_authenticated", False) and getattr(current_user, "role", None) == ROLE_SPECTATOR:
+        return render_template("pages/viewer.html")
     return render_template("pages/home.html")
 
 
@@ -194,7 +286,13 @@ def legacy_dashboard():
 @bp.route("/api/historical-exports", methods=["GET"])
 def api_historical_exports():
     try:
-        records = filter_historical_exports_nomination_window(load_historical_exports())
+        start = (request.args.get("start") or "").strip() or None
+        end = (request.args.get("end") or "").strip() or None
+        records_all = load_historical_exports()
+        if start or end:
+            records = filter_historical_exports_forecast_date_range(records_all, start, end)
+        else:
+            records = filter_historical_exports_nomination_window(records_all)
         return Response(
             json.dumps(records, indent=2, ensure_ascii=False),
             mimetype="application/json",

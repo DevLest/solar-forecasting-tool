@@ -10,6 +10,82 @@
     var weatherLocation = { lat: 10.638755644610793, lon: 123.00417639451439 };
     const DEFAULT_LIVE_STREAM_URL = 'https://vdo.ninja/?view=2vNAR9X';
     const PLANT_MAX_MW = 50;
+    const SYNC_AUTO_INTERVAL_MS = 5 * 60 * 1000; // 5 min (only when configured)
+    var syncCfg = null;
+    var syncTimer = null;
+    var syncInFlight = false;
+
+    function setSyncStatus(msg, isErr) {
+      var el = document.getElementById('sync-status');
+      if (!el) return;
+      el.textContent = msg || '';
+      el.className = 'text-[10px] sm:text-xs min-h-[1.25rem] ' + (isErr ? 'text-red-400' : 'text-brand-muted');
+    }
+
+    function fetchSyncConfig() {
+      return fetch(API_BASE + '/api/sync/config', { method: 'GET' })
+        .then(function(r) { return r.json(); })
+        .then(function(j) { syncCfg = j; return j; })
+        .catch(function() { syncCfg = { ok: false, enabled: false }; return syncCfg; });
+    }
+
+    function syncControlsEnabled() {
+      return !!(syncCfg && syncCfg.ok && syncCfg.enabled && syncCfg.remote_url && syncCfg.has_token);
+    }
+
+    function applySyncControlsVisibility() {
+      var box = document.getElementById('sync-controls');
+      if (!box) return;
+      if (isNominationReadOnly()) {
+        box.classList.add('hidden');
+        return;
+      }
+      if (syncControlsEnabled()) {
+        box.classList.remove('hidden');
+      } else {
+        box.classList.add('hidden');
+      }
+    }
+
+    function triggerRemoteSync(reason, onDone) {
+      if (syncInFlight) { if (typeof onDone === 'function') onDone(false, 'Sync already running.'); return; }
+      if (!syncControlsEnabled()) { if (typeof onDone === 'function') onDone(false, 'Sync is not configured.'); return; }
+      syncInFlight = true;
+      setSyncStatus('Syncing to online viewer…', false);
+      fetch(API_BASE + '/api/sync/push-remote', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: reason || 'manual' })
+      }).then(function(r) {
+        return r.json().then(function(j) {
+          if (!r.ok) throw new Error((j && j.error) ? j.error : (r.statusText || 'Request failed'));
+          return j;
+        });
+      }).then(function(j) {
+        // Async push: show whatever state we currently have.
+        setSyncStatus('Sync started. Last push: ' + (j && j.state && (j.state.last_push_finished_at || j.state.last_push_started_at) ? (j.state.last_push_finished_at || j.state.last_push_started_at) : '—'), false);
+        if (typeof onDone === 'function') onDone(true, null, j);
+      }).catch(function(err) {
+        var msg = (err && err.message) ? err.message : 'Sync failed.';
+        setSyncStatus('Sync failed: ' + msg, true);
+        if (typeof onDone === 'function') onDone(false, msg);
+      }).finally(function() {
+        syncInFlight = false;
+      });
+    }
+
+    function startAutoSyncTimer() {
+      if (syncTimer) return;
+      if (!syncControlsEnabled()) return;
+      syncTimer = setInterval(function() {
+        triggerRemoteSync('auto_interval');
+      }, SYNC_AUTO_INTERVAL_MS);
+    }
+
+    function stopAutoSyncTimer() {
+      if (syncTimer) clearInterval(syncTimer);
+      syncTimer = null;
+    }
 
     function isNominationReadOnly() {
       var p = document.getElementById('panel-nomination');
@@ -1356,12 +1432,35 @@
           renderAnalytics();
           loadHistory();
         }
+        // If remote sync is configured, push after a successful history save.
+        if (res && res.ok && syncControlsEnabled()) {
+          triggerRemoteSync('after_export', function() { if (typeof onDone === 'function') onDone(); });
+          return;
+        }
         if (typeof onDone === 'function') onDone();
       }).catch(function(err) {
         var msg = (err && err.message) ? err.message : 'Could not save to history.';
         console.warn('saveExportToHistory failed:', msg);
         setNominationExportStatus('Export file saved but history sync failed: ' + msg + ' — start the app and use Refresh history.', true);
         if (typeof onDone === 'function') onDone();
+      });
+    }
+
+    function initSyncUi() {
+      fetchSyncConfig().then(function() {
+        applySyncControlsVisibility();
+        if (syncControlsEnabled()) {
+          var btn = document.getElementById('btn-sync-remote');
+          if (btn) {
+            btn.addEventListener('click', function() {
+              triggerRemoteSync('manual_click');
+            });
+          }
+          setSyncStatus('Online viewer sync is configured (' + (syncCfg.remote_url || '') + ').', false);
+          startAutoSyncTimer();
+        } else {
+          stopAutoSyncTimer();
+        }
       });
     }
 
@@ -2157,6 +2256,7 @@
       initWeatherLocation();
       if (typeof window.updateRtdIntervalLocks === 'function') window.updateRtdIntervalLocks();
       applyNominationReadonlyUi();
+      initSyncUi();
     });
 
     (function initNavbarTimeAndDateMin() {

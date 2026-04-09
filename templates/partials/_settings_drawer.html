@@ -40,6 +40,21 @@
           <label for="cfg-ACCUWEATHER_API_KEY" class="block text-[10px] uppercase tracking-wider text-brand-muted mb-1">AccuWeather API key</label>
           <input type="password" id="cfg-ACCUWEATHER_API_KEY" name="ACCUWEATHER_API_KEY" autocomplete="new-password" class="w-full bg-brand-dark border border-brand-border rounded-lg px-3 py-2 text-brand-text focus:ring-1 focus:ring-brand-accent" />
         </div>
+        <div class="border-t border-brand-border/60 pt-4">
+          <h3 class="text-[10px] font-bold uppercase tracking-wider text-brand-muted mb-2">Online viewer sync</h3>
+          <div class="space-y-3">
+            <div>
+              <label for="cfg-ARECO_SYNC_REMOTE_URL" class="block text-[10px] uppercase tracking-wider text-brand-muted mb-1">Remote base URL</label>
+              <input type="text" id="cfg-ARECO_SYNC_REMOTE_URL" name="ARECO_SYNC_REMOTE_URL" autocomplete="off" class="w-full bg-brand-dark border border-brand-border rounded-lg px-3 py-2 text-brand-text focus:ring-1 focus:ring-brand-accent font-mono text-xs" placeholder="https://your-app.onrender.com" />
+              <p class="text-[10px] text-brand-muted mt-1">This app will POST to <code class="text-brand-accent/90 font-mono">/api/sync/push</code> on that host.</p>
+            </div>
+            <div>
+              <label for="cfg-ARECO_SYNC_TOKEN" class="block text-[10px] uppercase tracking-wider text-brand-muted mb-1">Sync token (shared secret)</label>
+              <input type="password" id="cfg-ARECO_SYNC_TOKEN" name="ARECO_SYNC_TOKEN" autocomplete="new-password" class="w-full bg-brand-dark border border-brand-border rounded-lg px-3 py-2 text-brand-text focus:ring-1 focus:ring-brand-accent" />
+              <p class="text-[10px] text-brand-muted mt-1">Must match the hosted app’s <code class="text-brand-accent/90 font-mono">ARECO_SYNC_TOKEN</code>.</p>
+            </div>
+          </div>
+        </div>
         <div id="settings-save-status" class="text-xs min-h-[1.25rem]" role="status"></div>
         <div class="flex gap-2 pt-2">
           <button type="submit" id="settings-save-btn" class="flex-1 py-2.5 rounded-lg bg-brand-accent text-brand-dark font-bold uppercase text-xs tracking-wide hover:bg-brand-accent/90">Save to .env</button>

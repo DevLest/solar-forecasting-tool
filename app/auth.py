@@ -56,6 +56,8 @@ _NOMINATOR_ALLOWED: dict[str, frozenset[str]] = {
     "main.api_save_export": frozenset({"POST", "OPTIONS"}),
     "main.api_nomination_save_file": frozenset({"POST", "OPTIONS"}),
     "main.api_weather_forecast": frozenset({"POST", "OPTIONS"}),
+    "main.api_sync_config": frozenset({"GET", "HEAD"}),
+    "main.api_sync_push_remote": frozenset({"POST", "OPTIONS"}),
 }
 
 # Spectator: read-only; excludes env/API keys (e.g. app-config).
@@ -65,6 +67,7 @@ _SPECTATOR_ALLOWED_GET: frozenset[str] = frozenset(
         "main.legacy_dashboard",
         "main.assets",
         "main.api_historical_exports",
+        "main.api_sync_config",
         "main.api_nomination_accuracy_uploaded_dates",
         "main.api_nomination_reporting_compliance_csv_days",
         "main.api_nomination_reporting_marketplace_ready_days",
