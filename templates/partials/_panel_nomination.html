@@ -14,9 +14,10 @@
         </div>
         <div class="flex items-center gap-2 mb-3 flex-wrap">
           <label for="interval-hour-filter" class="text-[10px] text-brand-muted uppercase whitespace-nowrap">Hour</label>
-          <select id="interval-hour-filter" class="flex-1 min-w-0 bg-brand-dark border border-brand-border rounded px-2 py-1.5 text-xs text-brand-text focus:ring-1 focus:ring-brand-accent" title="Each hour shows 5‑minute ends from H:05 through (H+1):00 (e.g. 05:05–06:00). Default is the first hour.">
+          <select id="interval-hour-filter" class="flex-1 min-w-0 bg-brand-dark border border-brand-border rounded px-2 py-1.5 text-xs text-brand-text focus:ring-1 focus:ring-brand-accent" title="Delivery hour (1–24). Uses 5-minute interval END TIMES; e.g. Hour 6 contains 05:05…06:00.">
             <option value="all">All (05:05–19:00)</option>
           </select>
+          <button type="button" id="btn-rtd-range-modal" class="shrink-0 text-[10px] uppercase font-bold tracking-wide px-2.5 py-1.5 rounded-md border border-brand-border text-brand-muted hover:text-brand-text hover:bg-brand-border/20 focus:outline-none focus:ring-1 focus:ring-brand-accent interval-data-capture-exclude" title="Bulk edit RTD values across a time range">Bulk edit</button>
           <button type="button" id="btn-interval-data-copy-image" class="shrink-0 text-[10px] uppercase font-bold tracking-wide px-2.5 py-1.5 rounded-md border border-brand-border text-brand-muted hover:text-brand-text hover:bg-brand-border/20 focus:outline-none focus:ring-1 focus:ring-brand-accent interval-data-capture-exclude" title="Copy visible intervals (current Hour filter) as an image for chat or reports">Copy image</button>
         </div>
         <div id="interval-data-table-scroll" class="overflow-y-auto flex-1 min-h-0 relative isolate">
@@ -136,16 +137,17 @@
                   <button type="button" id="live-stream-apply" class="shrink-0 px-3 py-1.5 bg-brand-accent text-brand-dark rounded text-xs font-bold uppercase hover:bg-brand-accent/90 transition-colors">Apply</button>
                 </div>
                 <p class="text-[9px] text-brand-muted/80">Change when the link expires; saved in this browser until you update it.</p>
+                <p id="live-stream-status" class="text-[9px] text-brand-muted/80 min-h-[1.15rem]"></p>
               </div>
-              <div class="aspect-video xl:aspect-auto xl:flex-1 xl:min-h-0 xl:max-h-[min(28vh,15rem)] bg-brand-dark relative min-h-[9rem]">
+              <div class="aspect-video xl:aspect-auto xl:flex-1 xl:min-h-[12rem] xl:max-h-[min(28vh,15rem)] bg-brand-dark relative min-h-[9rem]">
                 <iframe
                   id="vdo-ninja-stream"
                   src=""
                   title="VDO.Ninja – Live plant output"
                   class="absolute inset-0 w-full h-full border-0"
-                  allow="autoplay; fullscreen; picture-in-picture; display-capture"
+                allow="camera; microphone; autoplay; fullscreen; picture-in-picture; display-capture"
                   allowfullscreen
-                  loading="lazy"
+                  loading="eager"
                 ></iframe>
               </div>
               <!-- stream-mw kept for updateStreamMw() / console integrations (not shown) -->

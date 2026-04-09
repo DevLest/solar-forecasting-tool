@@ -837,20 +837,38 @@
       if (window.updateNavbarTimeAndInterval) window.updateNavbarTimeAndInterval();
     }
 
-    /** Hour H shows interval ends from H:05 through (H+1):00 (e.g. 05 → 05:05…06:00). */
-    function intervalMatchesHourFilter(interval, hour) {
-      if (!hour || hour === 'all') return true;
-      if (hour === '24') return interval === '24:00';
-      var nextHour00 = String(parseInt(hour, 10) + 1).padStart(2, '0') + ':00';
-      return interval.indexOf(hour + ':') === 0 || interval === nextHour00;
+    /**
+     * Delivery hour filter (1–24).
+     *
+     * Intervals are 5-minute END TIMES. Delivery hour N corresponds to the hour
+     * that ends at N:00.
+     *
+     * Examples:
+     * - 05:05…05:55 and 06:00 are delivery hour 6 (05:00–06:00)
+     * - 23:05…23:55 and 24:00 are delivery hour 24 (23:00–24:00)
+     */
+    function intervalToDeliveryHour(intervalStr) {
+      var s = (intervalStr || '').trim();
+      if (s === '24:00') return 24;
+      var parts = s.split(':');
+      if (!parts.length) return NaN;
+      var hh = parseInt(parts[0], 10);
+      var mm = parts.length > 1 ? parseInt(parts[1], 10) : 0;
+      if (isNaN(hh) || isNaN(mm)) return NaN;
+      if (hh < 0 || hh > 23) return NaN;
+      if (mm === 0) return hh; // e.g. 06:00 belongs to delivery hour 6
+      return hh + 1;
+    }
+
+    function intervalMatchesHourFilter(interval, deliveryHour) {
+      if (!deliveryHour || deliveryHour === 'all') return true;
+      var want = parseInt(deliveryHour, 10);
+      if (isNaN(want) || want < 1 || want > 24) return true;
+      return intervalToDeliveryHour(interval) === want;
     }
 
     function intervalHourFilterOptionLabel(h) {
-      if (h === '24') return '24:00';
-      var hi = parseInt(h, 10);
-      if (isNaN(hi)) return h;
-      var nextH = String(hi + 1).padStart(2, '0');
-      return h + ':05–' + nextH + ':00';
+      return String(h);
     }
 
     function applyIntervalFilter() {
@@ -867,22 +885,8 @@
       try {
         var sel = document.getElementById('interval-hour-filter');
         if (!sel) return;
-        var rows = document.querySelectorAll('.interval-data-tbody tr.interval-row');
-        var hours = {};
-        for (var i = 0; i < rows.length; i++) {
-          var interval = (rows[i].getAttribute && rows[i].getAttribute('data-interval')) || '';
-          if (interval === '24:00') {
-            hours['24'] = true;
-            continue;
-          }
-          var part = (interval.split(':')[0] || '').trim();
-          if (part && /^\d{1,2}$/.test(part)) hours[('0' + part).slice(-2)] = true;
-        }
-        var hourList = Object.keys(hours).sort(function(a, b) {
-          var na = a === '24' ? 24 : parseInt(a, 10);
-          var nb = b === '24' ? 24 : parseInt(b, 10);
-          return na - nb;
-        });
+        var hourList = [];
+        for (var dh = 1; dh <= 24; dh++) hourList.push(String(dh));
         var previousVal = sel.value;
         var saved = '';
         try { saved = sessionStorage.getItem(INTERVAL_HOUR_FILTER_SESSION_KEY) || ''; } catch (e) {}
@@ -894,10 +898,10 @@
           nextVal = saved;
         } else if (previousVal && previousVal !== 'all' && hourList.indexOf(previousVal) !== -1) {
           nextVal = previousVal;
-        } else if (hourList.indexOf('05') !== -1) {
-          nextVal = '05';
+        } else {
+          nextVal = '6';
         }
-        if (nextVal !== 'all' && hourList.indexOf(nextVal) === -1) nextVal = hourList.indexOf('05') !== -1 ? '05' : 'all';
+        if (nextVal !== 'all' && hourList.indexOf(nextVal) === -1) nextVal = '6';
         sel.value = nextVal;
         try { sessionStorage.setItem(INTERVAL_HOUR_FILTER_SESSION_KEY, sel.value); } catch (e2) {}
         applyIntervalFilter();
@@ -2216,21 +2220,85 @@
     })();
 
     (function initLiveStreamUrl() {
-      var saved = '';
-      try { saved = localStorage.getItem(LIVE_STREAM_STORAGE_KEY) || ''; } catch (e) {}
-      var url = (saved && saved.trim()) ? saved.trim() : DEFAULT_LIVE_STREAM_URL;
-      var iframe = document.getElementById('vdo-ninja-stream');
-      var input = document.getElementById('live-stream-url');
-      if (iframe) iframe.src = url;
-      if (input) input.value = url;
-      if (!saved || !saved.trim()) {
-        try { localStorage.setItem(LIVE_STREAM_STORAGE_KEY, url); } catch (e2) {}
+      var statusEl = document.getElementById('live-stream-status');
+      function setStatus(text) {
+        if (!statusEl) return;
+        statusEl.textContent = text || '';
       }
+
+      function readStoredUrl() {
+        try { return localStorage.getItem(LIVE_STREAM_STORAGE_KEY) || ''; } catch (e) { return ''; }
+      }
+
+      function persistUrl(u) {
+        try { localStorage.setItem(LIVE_STREAM_STORAGE_KEY, u); return true; } catch (e) { return false; }
+      }
+
+      function setIframeSrc(u) {
+        var iframe = document.getElementById('vdo-ninja-stream');
+        if (!iframe) return;
+        var parent = iframe.parentNode;
+        if (!parent) return;
+
+        // Replace the iframe element entirely to avoid stale internal embed state.
+        // Some third-party iframes can break when their src changes rapidly.
+        var newIframe = iframe.cloneNode(false);
+        newIframe.id = 'vdo-ninja-stream';
+        newIframe.setAttribute('loading', 'eager');
+        parent.replaceChild(newIframe, iframe);
+
+        // Diagnostics (cross-origin prevents inspecting iframe contents, but we can observe events)
+        setStatus('Reloading iframe: ' + (u || ''));
+        var finished = false;
+        var timeoutMs = 30000;
+        var timeoutId = window.setTimeout(function() {
+          if (finished) return;
+          finished = true;
+          setStatus('Iframe did not finish loading after ' + timeoutMs + 'ms. If it stays blank, check DevTools Console for CSP/X-Frame-Options errors or vdo.ninja script errors.');
+        }, timeoutMs);
+        function onLoad() {
+          if (finished) return;
+          finished = true;
+          window.clearTimeout(timeoutId);
+          // newIframe.src becomes the fully-resolved URL by the browser.
+          setStatus('Iframe loaded (events fired). src=' + (newIframe.src || ''));
+          newIframe.removeEventListener('load', onLoad);
+        }
+        newIframe.addEventListener('load', onLoad);
+        try { newIframe.setAttribute('src', u); } catch (e0) {}
+      }
+
+      var input = document.getElementById('live-stream-url');
+      var saved = readStoredUrl();
+      var url = (saved && saved.trim()) ? saved.trim() : DEFAULT_LIVE_STREAM_URL;
+      if (input) input.value = url;
+      setIframeSrc(url);
+
+      // Ensure we always have something persisted so later page loads are consistent.
+      if (!saved || !saved.trim()) persistUrl(url);
+      setStatus('Loaded saved stream URL.');
+      var applyLockUntilMs = 0;
       function applyUrl() {
+        // Clicking the Apply button usually causes the input to blur immediately,
+        // which can re-trigger this handler and cancel the in-flight iframe navigation.
+        var nowMs = Date.now();
+        if (nowMs < applyLockUntilMs) return;
+        applyLockUntilMs = nowMs + 800;
+
         var u = (input && input.value) ? input.value.trim() : '';
-        if (!u) return;
-        try { localStorage.setItem(LIVE_STREAM_STORAGE_KEY, u); } catch (e3) {}
-        if (iframe) iframe.src = u;
+        if (!u) { setStatus('Enter a stream URL.'); return; }
+        var persistOk = persistUrl(u);
+        setIframeSrc(u);
+        var storedAfter = readStoredUrl();
+        if (!persistOk) {
+          setStatus('Loaded, but could not save stream URL to localStorage.');
+          return;
+        }
+        if (storedAfter && storedAfter.trim() === u) {
+          setStatus('Saved stream URL in this browser and reloaded iframe.');
+        } else {
+          setStatus('Saved stream URL, but localStorage does not match immediately (check browser storage settings).');
+        }
       }
       if (isNominationReadOnly()) return;
       var applyBtn = document.getElementById('live-stream-apply');
