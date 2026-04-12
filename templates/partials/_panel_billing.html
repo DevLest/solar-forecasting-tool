@@ -1,12 +1,11 @@
 {% from 'components/ui_macros.html' import page_hero %}
-    <div id="panel-billing" class="hidden flex-grow p-6 max-w-[1600px] mx-auto w-full space-y-6">
+    <div id="panel-billing" class="hidden flex-grow p-6 w-full space-y-6">
       {{ page_hero('Billing & Settlement', 'Unpack the downloaded ARECO settlement master zip into ARECO (generator) and ARECOSS (load) folders with daily ARECO_ENERGY_* / ARECO_ENERGY_SEIN_* subfolders (billing window 26th–25th).') }}
 
-      <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]">
-        <section class="bg-brand-card rounded-xl border border-brand-border p-5 sm:p-6 shadow-lg flex flex-col gap-4 group transition-shadow hover:shadow-xl hover:border-brand-border/80" aria-labelledby="billing-master-zip-heading">
+      <div class="grid gap-6 grid-cols-1 min-w-0">
+        <section class="bg-brand-card rounded-xl border border-brand-border p-5 sm:p-6 shadow-lg flex flex-col gap-4 min-w-0 w-full group transition-shadow hover:shadow-xl hover:border-brand-border/80" aria-labelledby="billing-master-zip-heading">
           <div>
             <h3 id="billing-master-zip-heading" class="text-sm font-semibold text-brand-muted uppercase tracking-wider">Master settlement zip</h3>
-            <p class="text-sm text-brand-muted mt-1 leading-relaxed">Upload the file from the other app. It should contain two inner archives: one name ending in <span class="font-mono text-[11px] text-brand-text">_ARECO</span> (generator) and one ending in <span class="font-mono text-[11px] text-brand-text">_ARECOSS</span> (load). Daily zips inside are usually password-protected.</p>
           </div>
           <input type="file" id="billing-file-master" accept=".zip,application/zip" class="sr-only" />
           <div
@@ -17,11 +16,11 @@
             aria-label="Choose or drop master settlement zip"
           >
             <p class="text-xs text-brand-muted mb-3"><span class="text-brand-text font-semibold">Drop zip here</span> or browse — <kbd class="px-1.5 py-0.5 rounded border border-brand-border/80 bg-brand-dark font-mono text-[10px] text-brand-muted">Enter</kbd> opens the picker when focused</p>
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-center gap-3 relative z-[1]">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-start gap-3 relative z-[1] w-full">
               <button type="button" id="billing-btn-master" class="shrink-0 py-3 px-4 rounded-xl border border-brand-border bg-brand-dark hover:bg-brand-border/40 active:scale-[0.98] text-brand-text font-bold uppercase text-xs tracking-wide transition-all text-center focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent/50">
                 Choose zip
               </button>
-              <p id="billing-name-master" class="text-xs text-brand-muted font-mono truncate min-w-0 max-w-full sm:max-w-[18rem] text-left sm:text-center" title="">No file selected</p>
+              <p id="billing-name-master" class="text-xs text-brand-muted font-mono truncate min-w-0 flex-1 max-w-full text-left" title="">No file selected</p>
             </div>
             <p id="billing-ready-master" class="mt-3 text-[11px] font-semibold uppercase tracking-wider text-brand-muted" aria-live="polite">○ Waiting for zip</p>
           </div>
@@ -31,7 +30,6 @@
               <span class="text-[10px] font-bold uppercase tracking-wider text-brand-muted">Daily zip passwords</span>
               <span id="billing-env-pwd-status" class="text-[10px] font-mono text-brand-muted" aria-live="polite"></span>
             </div>
-            <p class="text-[11px] text-brand-muted leading-relaxed">Set <span class="font-mono text-[10px] text-brand-text">ARECO_SETTLEMENT_ZIP_PASSWORD1</span> and <span class="font-mono text-[10px] text-brand-text">ARECO_SETTLEMENT_ZIP_PASSWORD2</span> in <span class="font-mono text-[10px]">.env</span> (see <span class="font-mono text-[10px]">.env.example</span>). Master zip: no password. Then <span class="font-semibold text-brand-text">_ARECO / _ARECOSS</span> bundles and each <span class="font-semibold text-brand-text">daily</span> <span class="font-mono text-[10px]">Energy_*</span> zip: passwords (B2, B3, then unencrypted). Output: <span class="font-mono text-[10px]">ARECO/ARECO_ENERGY</span>, <span class="font-mono text-[10px]">ARECO/ARECO_SEIN</span>, <span class="font-mono text-[10px]">ARECOSS/ARECOSS_ENERGY</span>, <span class="font-mono text-[10px]">ARECOSS/ARECOSS_SEIN</span> per daily zip name pattern.</p>
             <div class="grid gap-2 sm:grid-cols-2">
               <div>
                 <label for="billing-zip-password1" class="block text-[10px] font-bold uppercase tracking-wider text-brand-muted mb-1">Override password 1 (optional)</label>
@@ -42,16 +40,14 @@
                 <input type="password" id="billing-zip-password2" autocomplete="off" placeholder="Uses .env if empty" class="w-full rounded-lg border border-brand-border bg-brand-dark px-3 py-2 text-sm text-brand-text placeholder:text-brand-muted/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent/40" />
               </div>
             </div>
-            <p class="text-[11px] text-brand-muted leading-relaxed">If extraction still fails, the archive may use AES encryption (WinRAR can open it while Python’s <span class="font-mono text-[10px]">zipfile</span> may not).</p>
           </div>
 
           <div class="flex flex-wrap items-center gap-3 pt-1">
             <button type="button" id="billing-btn-export-settings" class="py-3 px-4 rounded-xl border border-brand-border bg-brand-dark hover:bg-brand-border/40 text-brand-text font-semibold uppercase text-xs tracking-wide transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent/40 active:scale-[0.98]">
               Change export folder…
             </button>
-            <p id="billing-export-path-preview" class="text-xs text-brand-muted font-mono truncate min-w-0 max-w-full lg:max-w-[14rem]" title="">No folder configured</p>
+            <p id="billing-export-path-preview" class="text-xs text-brand-muted font-mono truncate min-w-0 flex-1 max-w-full" title="">No folder configured</p>
           </div>
-          <p class="text-[11px] text-brand-muted -mt-2 leading-relaxed">You do not need this first: <span class="font-semibold text-brand-text">Extract &amp; organize</span> opens the destination dialog automatically. Use <span class="font-semibold text-brand-text">Change export folder…</span> only to edit the saved path without running an extraction.</p>
 
           <div class="flex flex-wrap items-center gap-3">
             <button type="button" id="billing-btn-extract" class="inline-flex items-center justify-center gap-2 py-3 px-6 rounded-xl border border-brand-accent/60 bg-brand-accent/20 hover:bg-brand-accent/30 text-brand-accent font-bold uppercase text-xs tracking-wide transition-all disabled:opacity-40 disabled:pointer-events-none focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent/50 active:scale-[0.98]">
@@ -63,27 +59,7 @@
             </button>
             <p id="billing-extract-status" class="text-xs text-brand-muted min-h-[1.25rem] flex-1 min-w-0" role="status"></p>
           </div>
-          <p class="text-[11px] text-brand-muted -mt-1 leading-relaxed">The export dialog prefills your last path; if empty, it loads the app’s default <span class="font-mono text-[10px]">data/billing_settlement_export</span> path — use <span class="font-semibold text-brand-text">Use app data folder</span> if you prefer that. Extraction always creates a <span class="font-semibold text-brand-text">subfolder named from the master zip</span> (filename without <span class="font-mono text-[10px]">.zip</span>) inside that path, then writes <span class="font-mono text-[10px]">ARECO</span> / <span class="font-mono text-[10px]">ARECOSS</span> there.</p>
         </section>
-
-        <aside class="space-y-4" aria-label="Layout reference">
-          <div class="rounded-xl border border-brand-border bg-brand-card/90 p-5 shadow-lg">
-            <h3 class="text-xs font-bold uppercase tracking-wider text-brand-muted mb-3">Output layout</h3>
-            <pre class="text-[11px] font-mono text-brand-text/95 leading-relaxed whitespace-pre-wrap break-all bg-brand-dark/50 rounded-lg border border-brand-border/50 p-3 overflow-x-auto" aria-label="Folder tree">Main folder (you choose, e.g. Downloads)
-└── &lt;master zip name without .zip&gt;
-    ├── ARECO
-    │   ├── ARECO_ENERGY      ← from …Energy_YYYYMMDD… daily zips
-    │   ├── ARECO_SEIN        ← from …Energy-SEIN_YYYYMMDD… (or Energy_SEIN_)
-    │   └── (.xlsx / .xlsm / .xls / .csv flat in each)
-    └── ARECOSS
-        ├── ARECOSS_ENERGY
-        └── ARECOSS_SEIN</pre>
-            <p class="text-[11px] text-brand-muted mt-3 leading-relaxed">Folder is chosen from the <span class="font-semibold text-brand-text">daily zip name</span>, not the inner file name. Excel or CSV only, original basename, flat inside each folder (nested zips inside the daily zip are unwrapped). Master zip has no password; branch and daily zips use <span class="font-mono text-[10px]">.env</span> passwords.</p>
-          </div>
-          <div class="rounded-xl border border-dashed border-brand-border/80 bg-brand-dark/20 p-4 space-y-2">
-            <p class="text-[11px] text-brand-muted leading-relaxed"><span class="font-semibold text-brand-text">Excel parity</span> — Extraction is implemented <span class="font-semibold text-brand-text">in this app</span> (Python), not by running a local workbook or generated <span class="font-mono text-[10px]">.bat</span>. Behavior follows the usual pattern: WinRAR-style batch, try password 1, then 2, then unencrypted for each daily zip; passwords come from <span class="font-mono text-[10px]">.env</span>. An optional <span class="font-mono text-[10px] break-all">reference/settlement_workbook_vba_reference.txt</span> file is only for comparing VBA text; the server never reads it.</p>
-          </div>
-        </aside>
       </div>
 
       <div id="billing-result-wrap" class="hidden space-y-4" aria-live="polite">

@@ -11,9 +11,6 @@
       <button type="button" id="settings-drawer-close" class="rounded-lg px-3 py-1.5 text-xs font-semibold text-brand-muted hover:text-brand-text hover:bg-brand-border/30" aria-label="Close settings">Close</button>
     </div>
     <div class="flex-1 min-h-0 overflow-y-auto px-5 py-4 space-y-4 text-sm">
-      <p class="text-xs text-brand-muted leading-relaxed">
-        Values are saved to the project <code class="text-brand-accent/90">.env</code> file. Leave a field blank to keep its current value. Restart the app after changing the port.
-      </p>
       <form id="settings-form" class="space-y-4">
         <div>
           <label for="cfg-ARECO_PORT" class="block text-[10px] uppercase tracking-wider text-brand-muted mb-1">Server port</label>
@@ -64,8 +61,6 @@
       <div class="border-t border-brand-border pt-5 mt-2 space-y-3">
         <h3 class="text-xs font-bold uppercase tracking-wider text-brand-muted">User accounts</h3>
         <p class="text-[11px] text-brand-muted leading-relaxed">
-          Stored in <code class="text-brand-accent/90 font-mono">data/users.json</code>. Passwords must be at least 6 characters. You cannot delete your own account or remove the last administrator.
-        </p>
         <div id="admin-users-status" class="text-xs min-h-[1.25rem] text-brand-muted" role="status"></div>
         <div class="rounded-lg border border-brand-border/70 overflow-hidden">
           <table class="w-full text-left text-[11px] border-collapse">

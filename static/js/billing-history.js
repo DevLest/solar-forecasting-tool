@@ -100,15 +100,6 @@
       displayContext.classList.remove('hidden');
       if (displayClearSel) displayClearSel.classList.remove('hidden');
     } else {
-      var n = rows.length;
-      displayContext.textContent =
-        n === 0
-          ? 'No rows match filters.'
-          : n === 1
-            ? 'Aggregated total for 1 row matching filters.'
-            : 'Aggregated total for ' + n + ' rows matching filters.';
-      displayContext.classList.remove('hidden');
-      if (displayClearSel) displayClearSel.classList.add('hidden');
     }
   }
 

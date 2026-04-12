@@ -145,6 +145,11 @@ def save_run(row: dict[str, Any]) -> tuple[int, bool]:
     """
     Upsert by ``compliance_day`` (trade/storage date, ISO).
     Returns ``(row_id, overwritten)``.
+
+    Precision: ``mape``, ``perc95``, and ``max_mq_mw`` are written as Python ``float`` into SQLite
+    ``REAL`` columns (64-bit IEEE 754 doubles). This function does not round them. The
+    ``analytics`` is serialized with ``json.dumps``; numeric values keep IEEE double precision (no
+    extra decimal quantization in this layer).
     """
     init_nomination_accuracy_db()
     trade_iso = str(row["compliance_day"])

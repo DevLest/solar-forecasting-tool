@@ -1190,18 +1190,41 @@
           (yt.non_compliant_days != null ? yt.non_compliant_days : '0')
       )
     );
-    yearTotalsStrip.appendChild(mini('Year avg MAPE', fmtPctFromFraction(yt.mape_avg)));
-    yearTotalsStrip.appendChild(mini('Year avg PERC95', fmtPctFromFraction(yt.perc95_avg)));
     yearTotalsStrip.appendChild(
       mini(
-        'BP max MQ (MW)',
+        'Period max MQ (MW)',
         yt.billing_period_max_mq_mw != null && isFinite(Number(yt.billing_period_max_mq_mw))
           ? Number(yt.billing_period_max_mq_mw).toFixed(3)
           : '—'
       )
     );
-    yearTotalsStrip.appendChild(mini('Year BP MAPE', fmtPctFromFraction(yt.mape_bp_pooled)));
-    yearTotalsStrip.appendChild(mini('Year BP P95', fmtPctFromFraction(yt.perc95_bp_pooled)));
+    function miniEmph(label, val, extraClass) {
+      var d = document.createElement('div');
+      d.className =
+        'rounded-lg border px-3 py-2 ' +
+        (extraClass || 'border-brand-border/60 bg-brand-dark/40');
+      d.innerHTML =
+        '<p class="text-[9px] font-bold uppercase tracking-wider text-brand-muted">' +
+        label +
+        '</p><p class="mt-0.5 font-mono font-extrabold text-sm sm:text-base tabular-nums text-brand-text">' +
+        val +
+        '</p>';
+      return d;
+    }
+    yearTotalsStrip.appendChild(
+      miniEmph(
+        'Year AVE MAPE',
+        fmtPctFromFraction(yt.mape_bp_pooled),
+        'border-emerald-500/40 bg-emerald-500/15 ring-1 ring-emerald-500/20'
+      )
+    );
+    yearTotalsStrip.appendChild(
+      miniEmph(
+        'Year AVE P95',
+        fmtPctFromFraction(yt.perc95_bp_pooled),
+        'border-sky-500/40 bg-sky-500/15 ring-1 ring-sky-500/20'
+      )
+    );
   }
 
   function hideMonthDetail() {
@@ -1347,9 +1370,9 @@
           var bpLine = '';
           if (bps) {
             bpLine =
-              ' · BP-pooled MAPE ' +
+              ' · AVE MAPE ' +
               fmtPctFromFraction(bps.mape_bp_pooled) +
-              ' · BP-pooled P95 ' +
+              ' · AVE P95 ' +
               fmtPctFromFraction(bps.perc95_bp_pooled);
             if (bps.billing_period_max_mq_mw != null && isFinite(Number(bps.billing_period_max_mq_mw))) {
               bpLine += ' · max MQ in period ' + Number(bps.billing_period_max_mq_mw).toFixed(3) + ' MW';
@@ -1359,7 +1382,7 @@
               (j.days_with_saved || 0) > 0 &&
               (bps.perc95_bp_runs_with_series == null || bps.perc95_bp_runs_with_series < 1)
             ) {
-              bpLine += ' (re-save days to populate BP P95)';
+              bpLine += ' (re-save days to populate AVE P95)';
             }
           }
           monthDetailSummary.textContent =
@@ -1439,20 +1462,14 @@
         '<td class="py-2 px-3 text-right">' +
         (st.non_compliant_days != null ? String(st.non_compliant_days) : '0') +
         '</td>' +
-        '<td class="py-2 px-3 text-right">' +
-        fmtPctFromFraction(st.mape_avg) +
+        '<td class="py-2 px-3 text-right text-brand-muted">' +
+        fmtCompliancePct(cp) +
         '</td>' +
-        '<td class="py-2 px-3 text-right">' +
-        fmtPctFromFraction(st.perc95_avg) +
-        '</td>' +
-        '<td class="py-2 px-3 text-right text-emerald-200/90" title="Billing-period max MQ denominator">' +
+        '<td class="py-2 px-3 text-right font-semibold text-sm sm:text-base text-emerald-200/95 bg-emerald-500/10 border-l border-emerald-500/30" title="Period rollup MAPE (max MQ denominator)">' +
         fmtPctFromFraction(st.mape_bp_pooled) +
         '</td>' +
-        '<td class="py-2 px-3 text-right text-sky-200/90" title="Pooled intervals; needs FPE on save">' +
+        '<td class="py-2 px-3 text-right font-semibold text-sm sm:text-base text-sky-200/95 bg-sky-500/10 border-l border-sky-500/30" title="Pooled PERC95; needs FPE on save">' +
         fmtPctFromFraction(st.perc95_bp_pooled) +
-        '</td>' +
-        '<td class="py-2 px-3 text-right">' +
-        fmtCompliancePct(cp) +
         '</td>';
       monthlyTbody.appendChild(tr);
     });
@@ -1464,7 +1481,7 @@
     if (!years || !years.length) {
       var empty = document.createElement('tr');
       empty.innerHTML =
-        '<td colspan="9" class="py-6 px-3 text-center text-brand-muted text-sm">No saved runs in the database yet.</td>';
+        '<td colspan="7" class="py-6 px-3 text-center text-brand-muted text-sm">No saved runs in the database yet.</td>';
       annualTbody.appendChild(empty);
       return;
     }
@@ -1487,20 +1504,14 @@
         '<td class="py-2 px-3 text-right">' +
         (st.non_compliant_days != null ? String(st.non_compliant_days) : '0') +
         '</td>' +
-        '<td class="py-2 px-3 text-right">' +
-        fmtPctFromFraction(st.mape_avg) +
+        '<td class="py-2 px-3 text-right text-brand-muted">' +
+        fmtCompliancePct(cp) +
         '</td>' +
-        '<td class="py-2 px-3 text-right">' +
-        fmtPctFromFraction(st.perc95_avg) +
-        '</td>' +
-        '<td class="py-2 px-3 text-right text-emerald-200/90">' +
+        '<td class="py-2 px-3 text-right font-semibold text-sm sm:text-base text-emerald-200/95 bg-emerald-500/10 border-l border-emerald-500/30">' +
         fmtPctFromFraction(st.mape_bp_pooled) +
         '</td>' +
-        '<td class="py-2 px-3 text-right text-sky-200/90">' +
+        '<td class="py-2 px-3 text-right font-semibold text-sm sm:text-base text-sky-200/95 bg-sky-500/10 border-l border-sky-500/30">' +
         fmtPctFromFraction(st.perc95_bp_pooled) +
-        '</td>' +
-        '<td class="py-2 px-3 text-right">' +
-        fmtCompliancePct(cp) +
         '</td>';
       annualTbody.appendChild(tr);
     });
@@ -1541,14 +1552,6 @@
     var labels = (months || []).map(function(m) {
       return m.label.slice(0, 3);
     });
-    var mapePct = (months || []).map(function(m) {
-      var v = m.stats && m.stats.mape_avg;
-      return v != null && isFinite(v) ? v * 100 : null;
-    });
-    var p95Pct = (months || []).map(function(m) {
-      var v = m.stats && m.stats.perc95_avg;
-      return v != null && isFinite(v) ? v * 100 : null;
-    });
     var mapeBpPct = (months || []).map(function(m) {
       var v = m.stats && m.stats.mape_bp_pooled;
       return v != null && isFinite(v) ? v * 100 : null;
@@ -1571,40 +1574,20 @@
           labels: labels,
           datasets: [
             {
-              label: 'Avg MAPE %',
-              data: mapePct,
+              label: 'AVE MAPE %',
+              data: mapeBpPct,
               borderColor: CHART.accent,
               backgroundColor: CHART.accentSoft,
-              tension: 0.25,
-              fill: false,
-              spanGaps: false
-            },
-            {
-              label: 'Avg PERC95 %',
-              data: p95Pct,
-              borderColor: CHART.sky,
-              backgroundColor: CHART.skySoft,
-              tension: 0.25,
-              fill: false,
-              spanGaps: false
-            },
-            {
-              label: 'BP pooled MAPE %',
-              data: mapeBpPct,
-              borderColor: 'rgba(16, 185, 129, 0.45)',
-              backgroundColor: 'transparent',
-              borderDash: [6, 4],
               tension: 0.25,
               fill: false,
               spanGaps: true,
               pointRadius: 2
             },
             {
-              label: 'BP pooled P95 %',
+              label: 'AVE P95 %',
               data: p95BpPct,
-              borderColor: 'rgba(56, 189, 248, 0.45)',
-              backgroundColor: 'transparent',
-              borderDash: [6, 4],
+              borderColor: CHART.sky,
+              backgroundColor: CHART.skySoft,
               tension: 0.25,
               fill: false,
               spanGaps: true,
@@ -1616,6 +1599,10 @@
           var o = baseChartOptions();
           o.scales.y.title = { display: true, text: '%', color: CHART.muted };
           o.plugins.legend.position = 'top';
+          if (o.plugins.legend.labels) {
+            o.plugins.legend.labels.font = { size: 12, weight: '600' };
+            o.plugins.legend.labels.padding = 14;
+          }
           return o;
         })()
       });
@@ -1671,10 +1658,6 @@
       var st = y.stats || {};
       return st.days_in_selection != null ? st.days_in_selection : 0;
     });
-    var mapePct = (years || []).map(function(y) {
-      var v = y.stats && y.stats.mape_avg;
-      return v != null && isFinite(v) ? v * 100 : null;
-    });
     var mapeBpPct = (years || []).map(function(y) {
       var v = y.stats && y.stats.mape_bp_pooled;
       return v != null && isFinite(v) ? v * 100 : null;
@@ -1695,21 +1678,10 @@
           },
           {
             type: 'line',
-            label: 'Avg MAPE %',
-            data: mapePct,
+            label: 'AVE MAPE %',
+            data: mapeBpPct,
             borderColor: CHART.accent,
             backgroundColor: CHART.accentSoft,
-            tension: 0.2,
-            yAxisID: 'y1',
-            spanGaps: true
-          },
-          {
-            type: 'line',
-            label: 'BP pooled MAPE %',
-            data: mapeBpPct,
-            borderColor: 'rgba(16, 185, 129, 0.5)',
-            backgroundColor: 'transparent',
-            borderDash: [6, 4],
             tension: 0.2,
             yAxisID: 'y1',
             spanGaps: true,
@@ -1746,7 +1718,7 @@
           },
           y1: {
             position: 'right',
-            title: { display: true, text: 'MAPE % (daily vs BP)', color: CHART.muted },
+            title: { display: true, text: 'AVE MAPE %', color: CHART.muted },
             ticks: { color: CHART.muted },
             grid: { drawOnChartArea: false }
           }

@@ -283,10 +283,14 @@ def aggregate_run_stats_for_billing_window(
     ``non_compliant_days`` is the rest (missing uploads or saved non-compliance). MAPE/PERC95
     averages are over saved rows only.
 
-    **Billing-period (WESM-style) rollups** (``mape_bp_pooled``, ``perc95_bp_pooled``): FPE
-    denominator is ``max(MQ)`` over all saved days in the window; pooled MAPE is the mean of
-    interval FPEs re-scaled from the daily template. PERC95 uses the same linear rule on all
-    pooled intervals when ``analytics.fpe_by_interval`` is present (new uploads); otherwise null.
+    **Billing-period (WESM-style) rollups** (``mape_bp_pooled``, ``perc95_bp_pooled``): common
+    denominator ``bp_max_mq`` is ``max(max_mq_mw)`` over **runs present in this rollup** (saved
+    trade days only), not necessarily the ISO filing maximum if some period days have no save.
+    Pooled MAPE equals the mean over those days of ``mape * day_max_mq / bp_max_mq`` (same as
+    mean of per-interval FPE re-scaled from each day’s template). PERC95 applies the same linear
+    percentile rule to all pooled scaled FPEs when ``analytics.fpe_by_interval`` exists (stored
+    as full-precision floats in JSON; tiny drift vs Excel can still come from binary floats / file
+    sources).
     """
     period_days = (period_end - period_start).days + 1
     if period_days < 1:

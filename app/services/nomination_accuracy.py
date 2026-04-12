@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import csv
 import io
+import math
 import re
 from datetime import date, datetime, time
 from typing import Any
@@ -390,10 +391,20 @@ def linear_perc95_from_values(fpe_values: list[float]) -> float | None:
 
 
 def attach_fpe_series_for_storage(analytics: dict[str, Any], fpe_list: list[float | None]) -> None:
-    """Persist 288×FPE (daily-template denominator) for billing-period pooled rollups."""
-    analytics["fpe_by_interval"] = [
-        None if x is None else round(float(x), 10) for x in fpe_list
-    ]
+    """Persist 288×FPE (daily-template denominator) for billing-period pooled rollups.
+
+    Values are stored as IEEE doubles (JSON + SQLite) with no extra rounding: ``mape`` /
+    ``perc95`` / ``max_mq_mw`` on the run row are already computed from the in-memory series;
+    quantizing FPE here would only skew later BP rollups that re-read ``fpe_by_interval``.
+    """
+    out: list[float | None] = []
+    for x in fpe_list:
+        if x is None:
+            out.append(None)
+            continue
+        fv = float(x)
+        out.append(fv if math.isfinite(fv) else None)
+    analytics["fpe_by_interval"] = out
 
 
 def _cell_mw(val: Any) -> float:

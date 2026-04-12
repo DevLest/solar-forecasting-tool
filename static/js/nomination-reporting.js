@@ -175,7 +175,6 @@
   var marketSpinner = document.getElementById('reporting-market-spinner');
   var marketSaveStatus = document.getElementById('reporting-save-market-status');
   var marketUploading = false;
-  var marketStoredInline = document.getElementById('reporting-market-stored-inline');
   var chartDaySelect = document.getElementById('reporting-chart-day');
   var chartRefreshBtn = document.getElementById('reporting-btn-refresh-charts');
   var chartSummary = document.getElementById('reporting-chart-summary');
@@ -260,9 +259,6 @@
         return r.json();
       })
       .then(function(j) {
-        if (j && j.ok && Array.isArray(j.dates) && marketStoredInline) {
-          marketStoredInline.textContent = j.dates.length ? j.dates.join(', ') : '—';
-        }
       })
       .catch(function() {});
   }

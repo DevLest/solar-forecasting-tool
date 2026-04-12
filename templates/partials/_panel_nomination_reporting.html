@@ -2,10 +2,6 @@
     <div id="panel-nomination-reporting" class="hidden flex-grow p-6 max-w-[1200px] mx-auto w-full space-y-5">
       {{ page_hero('Reporting', 'MPI compliance for Forecast Percentage; marketplace charts from stored data') }}
 
-      <p class="text-sm text-brand-muted max-w-4xl leading-relaxed">
-        <span class="font-semibold text-brand-text">MPI compliance</span> is stored per trade day and <span class="font-semibold text-brand-text">read from the database</span> for Forecast Percentage and charts. <span class="font-semibold text-brand-text">Choosing a CSV saves it automatically.</span> Add <span class="font-semibold text-brand-text">Market Result — Energy Schedules</span> when available; charts gain LMP &amp; day-ahead for that same day.
-      </p>
-
       {% if areco_role != 'spectator' %}
       <div class="grid gap-4 lg:grid-cols-2 lg:items-stretch">
         <section class="bg-brand-card rounded-xl border border-brand-border p-4 sm:p-5 shadow-lg flex flex-col gap-3 min-h-0" aria-labelledby="reporting-upload-compliance-heading">
@@ -59,7 +55,6 @@
               <p id="reporting-save-market-status" class="text-xs text-brand-muted flex-1 min-w-0 leading-relaxed" role="status"></p>
             </div>
           </div>
-          <p class="text-[11px] text-brand-muted">Market days in DB: <span id="reporting-market-stored-inline" class="font-mono text-brand-text">—</span></p>
         </section>
       </div>
       {% else %}
@@ -68,18 +63,10 @@
       </p>
       {% endif %}
 
-      <section class="rounded-xl border border-brand-border bg-brand-card/80 p-4 sm:p-5 shadow-lg" aria-labelledby="reporting-stored-heading">
-        <h3 id="reporting-stored-heading" class="text-sm font-semibold text-brand-muted uppercase tracking-wider mb-2">Stored MPI compliance days</h3>
-        <p class="text-xs text-brand-muted mb-2">Used for Forecast Percentage (from DB). Marketplace charts can use these days even before the market CSV is added.</p>
-        <ul id="reporting-stored-days" class="flex flex-wrap gap-2 text-xs font-mono text-brand-text" aria-live="polite"></ul>
-        <p id="reporting-stored-empty" class="text-xs text-brand-muted mt-2 hidden">No compliance CSVs stored yet.</p>
-      </section>
-
       <section class="rounded-xl border border-brand-border bg-brand-card/80 p-4 sm:p-5 shadow-lg space-y-3" aria-labelledby="reporting-charts-heading">
         <div class="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h3 id="reporting-charts-heading" class="text-sm font-semibold text-brand-muted uppercase tracking-wider">Marketplace charts</h3>
-            <p class="text-xs text-brand-muted mt-1 max-w-3xl">Data is <span class="font-semibold text-brand-text">loaded from the database</span> for the trade day you select. With MPI only: RTD &amp; Actual. After Energy Schedules is stored for that day: LMP &amp; day-ahead MW.</p>
           </div>
           <div class="flex flex-wrap items-center gap-2">
             <label for="reporting-chart-day" class="text-[10px] font-bold uppercase tracking-wider text-brand-muted">Trade day</label>

@@ -190,7 +190,6 @@
             <h3 class="text-sm font-bold uppercase tracking-widest text-brand-muted">Resource Nomination History</h3>
             <button type="button" id="btn-refresh-history" class="text-[10px] uppercase font-semibold text-brand-accent hover:text-brand-accent/80 transition-colors">Refresh</button>
           </div>
-          <p class="text-[9px] text-brand-muted px-6 py-1">Forecast dates shown: 3 days through today and 8 days ahead (11 days total, matching advance uploads). Click a row to load that export into the dashboard (intervals, %, forecast date, etc.).</p>
           <div class="overflow-x-auto max-h-72 overflow-y-auto">
             <table class="w-full text-xs text-left">
               <thead class="bg-brand-dark/50 text-brand-muted border-b border-brand-border sticky top-0">
@@ -213,7 +212,6 @@
         <section class="bg-brand-card rounded-xl border border-brand-border overflow-hidden shadow-xl flex-1 min-h-0 flex flex-col" id="analytics-section">
           <div class="px-6 py-4 border-b border-brand-border flex-none">
             <h3 class="text-sm font-bold uppercase tracking-widest text-brand-muted">Analytics from history</h3>
-            <p class="text-[9px] text-brand-muted mt-1">Derived from saved exports (server). Refresh history to update.</p>
           </div>
           <div id="analytics-cards" class="p-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-2 gap-4 overflow-auto min-h-0 flex-1 content-start">
             <!-- filled by JS -->
@@ -230,7 +228,6 @@
             <button type="button" id="btn-export-vre-csv" class="bg-brand-accent hover:bg-brand-accent/80 text-brand-dark px-4 py-2 rounded font-bold text-sm uppercase tracking-tighter">Export CSV</button>
           </div>
         </div>
-        <p class="text-[10px] text-brand-muted mb-3">Preview: Day Ahead MW by 5‑minute slots (hours 1–24). <span class="text-brand-text/90">CSV export</span> stays the original layout: PLT_CODE, DELIVERY_DATE, DELIVERY_HOUR, UNIT_NO, VRE_NOM, DEPENDABLE_CAPACITY (hourly VRE_NOM average).</p>
         <div class="overflow-x-auto">
           <div class="vre-paste-matrix-wrapper max-w-full inline-block min-w-full">
             <table class="vre-paste-matrix" id="vre-table" aria-label="Day ahead MW matrix by delivery hour">

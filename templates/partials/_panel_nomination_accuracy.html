@@ -2,10 +2,6 @@
     <div id="panel-nomination-accuracy" class="hidden flex-grow p-6 max-w-[1600px] mx-auto w-full space-y-6">
       {{ page_hero('Forecast Percentage Error', 'MPI compliance vs MIRF MQ analysis, saved runs, and billing-period rollups.') }}
 
-      <p class="text-sm text-brand-muted max-w-3xl leading-relaxed">
-        <span class="font-semibold text-brand-text">MPI compliance CSV</span> is uploaded under <span class="font-semibold text-brand-text">Reporting</span> and stored by trade day. Use <span class="font-semibold text-brand-text">Upload MQ workbook</span> to open the MIRF Daily MQ upload — after you choose a file, analysis runs automatically and results appear below. RTD/Actual come from the saved MPI export. <span class="font-semibold text-brand-text">Historical backfill:</span> use <span class="font-mono text-[11px]">Backfill (RTD + MIRF)</span> for one day at a time with RTD + MQ workbooks (calendar blocks days that already have a saved run).
-      </p>
-
       {% if areco_role != 'spectator' %}
       <dialog id="accuracy-backfill-dialog" aria-labelledby="accuracy-backfill-title">
         <div class="modal-panel p-6 sm:p-7 max-w-xl w-[min(100vw-2rem,40rem)]">
@@ -231,8 +227,6 @@
         <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
           <div>
             <h3 class="text-sm font-semibold text-brand-muted uppercase tracking-wider">Saved runs (database)</h3>
-            <p class="text-xs text-brand-muted mt-1 max-w-3xl leading-relaxed">File: <span class="font-mono">data/nomination_accuracy.sqlite3</span>. <span class="text-brand-text font-semibold">One row per trade day</span>: the date is taken from the MIRF MQ filename (<span class="font-mono">ARECO_YYYYMMDD_…</span>) when possible; uploading again for that trade day <span class="text-brand-text font-semibold">overwrites</span> the row. Use <span class="text-brand-text font-semibold">Delete</span> in the table to remove a bad upload without replacing it.</p>
-            <p class="text-xs text-brand-muted mt-2"><span class="font-semibold text-brand-text">Billing period</span> for filters: <span class="font-semibold">26</span> of the previous month through <span class="font-semibold">25</span> of the named month (e.g. March <span class="font-mono">2026</span> → <span class="font-mono">2026-02-26</span> … <span class="font-mono">2026-03-25</span>). Click a <span class="font-semibold text-brand-text">trade day</span> in the table to open policy details.</p>
           </div>
         </div>
 
@@ -285,7 +279,6 @@
         <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
           <div>
             <h3 class="text-sm font-semibold text-brand-muted uppercase tracking-wider">Monthly &amp; annual analysis</h3>
-            <p class="text-xs text-brand-muted mt-1 max-w-3xl leading-relaxed">Monthly rollups, the day-detail view, and the annual table use the same <span class="font-semibold text-brand-text">billing period</span> as saved runs: <span class="font-semibold text-brand-text">26th–25th</span>, labeled by the calendar month in which the period <span class="font-semibold text-brand-text">ends</span> (e.g. January = Dec&nbsp;26–Jan&nbsp;25). The year selector applies to those end months. <span class="font-semibold text-brand-text">Compliance %</span> and <span class="font-semibold text-brand-text">Days</span> count every trade day in that window (missing days count as not compliant). <span class="font-semibold text-brand-text">Avg MAPE / Avg P95</span> are simple averages of each saved day&rsquo;s Compliance-template metrics (daily max MQ in the FPE denominator; daily P95). <span class="font-semibold text-brand-text">BP MAPE / BP P95</span> use the WESM-style billing-period maximum MQ as the FPE denominator and pool intervals across saved days in the period (matches filing-style rollups; BP P95 needs per-interval series stored on save — re-run analysis for older days if BP P95 shows &ldquo;—&rdquo;). Charts use Chart.js on the same theme as the rest of the app.</p>
           </div>
           <button type="button" id="accuracy-btn-rollup-refresh" class="shrink-0 py-2 px-3 rounded-lg border border-brand-border bg-brand-dark hover:bg-brand-border/40 text-brand-text text-xs font-bold uppercase tracking-wide transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent/40">
             Refresh data
@@ -306,18 +299,16 @@
 
           <h4 class="text-xs font-bold uppercase tracking-wider text-brand-accent">Monthly — <span id="accuracy-rollup-year-label" class="font-mono text-brand-text">—</span></h4>
           <div class="overflow-x-auto rounded-lg border border-brand-border/60">
-            <table class="w-full text-left text-xs sm:text-sm border-collapse min-w-[56rem]">
+            <table class="w-full text-left text-xs sm:text-sm border-collapse min-w-[44rem]">
               <thead class="bg-brand-dark/90 border-b border-brand-border">
                 <tr class="text-brand-muted">
                   <th class="py-2.5 px-3 font-bold uppercase tracking-wider text-[10px] sm:text-xs">Month</th>
                   <th class="py-2.5 px-3 font-bold uppercase tracking-wider text-[10px] sm:text-xs text-right" title="Trade days in the billing period (26th–25th)">Days</th>
                   <th class="py-2.5 px-3 font-bold uppercase tracking-wider text-[10px] sm:text-xs text-right">Compliant</th>
                   <th class="py-2.5 px-3 font-bold uppercase tracking-wider text-[10px] sm:text-xs text-right">Non-comp.</th>
-                  <th class="py-2.5 px-3 font-bold uppercase tracking-wider text-[10px] sm:text-xs text-right" title="Mean of daily MAPE (daily max MQ denominator)">Avg MAPE</th>
-                  <th class="py-2.5 px-3 font-bold uppercase tracking-wider text-[10px] sm:text-xs text-right" title="Mean of daily PERC95">Avg P95</th>
-                  <th class="py-2.5 px-3 font-bold uppercase tracking-wider text-[10px] sm:text-xs text-right" title="Pooled MAPE: billing-period max MQ denominator (WESM-style)">BP MAPE</th>
-                  <th class="py-2.5 px-3 font-bold uppercase tracking-wider text-[10px] sm:text-xs text-right" title="Pooled PERC95 over intervals; needs saved FPE series">BP P95</th>
-                  <th class="py-2.5 px-3 font-bold uppercase tracking-wider text-[10px] sm:text-xs text-right">Compliance %</th>
+                  <th class="py-2.5 px-3 font-bold uppercase tracking-wider text-[10px] sm:text-xs text-right" title="Compliant days ÷ trade days in period">Compliance %</th>
+                  <th class="py-2.5 px-3 font-extrabold uppercase tracking-wide text-[11px] sm:text-sm text-right text-emerald-300/95 bg-emerald-500/10 border-l border-emerald-500/35" title="Billing-period MAPE (WESM-style max MQ scaling)">AVE MAPE</th>
+                  <th class="py-2.5 px-3 font-extrabold uppercase tracking-wide text-[11px] sm:text-sm text-right text-sky-300/95 bg-sky-500/10 border-l border-sky-500/35" title="Pooled PERC95 over intervals; needs saved FPE series">AVE P95</th>
                 </tr>
               </thead>
               <tbody id="accuracy-monthly-rollup-tbody" class="font-mono tabular-nums text-brand-text"></tbody>
@@ -356,9 +347,9 @@
           </div>
           <div class="grid gap-4 lg:grid-cols-2">
             <div class="rounded-lg border border-brand-border/60 bg-brand-card/50 p-3">
-              <p class="text-[10px] font-bold uppercase tracking-wider text-brand-muted mb-2">MAPE &amp; P95 by month (%): solid = daily-template averages; dashed = BP pooled (WESM-style denominator)</p>
+              <p class="text-xs sm:text-sm font-extrabold uppercase tracking-wide text-brand-text mb-2 px-1 py-1.5 rounded-md border border-emerald-500/25 bg-gradient-to-r from-emerald-500/10 via-brand-dark/40 to-sky-500/10">AVE MAPE &amp; AVE P95 by month (%)</p>
               <div class="h-56 min-h-[14rem] relative">
-                <canvas id="accuracy-chart-monthly-errors" aria-label="Line chart of average MAPE and PERC95 percent by month"></canvas>
+                <canvas id="accuracy-chart-monthly-errors" aria-label="Line chart of AVE MAPE and AVE P95 percent by month"></canvas>
               </div>
             </div>
             <div class="rounded-lg border border-brand-border/60 bg-brand-card/50 p-3">
@@ -373,36 +364,32 @@
 
         <div class="rounded-xl border border-brand-border/80 bg-brand-dark/25 p-4 sm:p-5 space-y-4">
           <h4 class="text-xs font-bold uppercase tracking-wider text-brand-accent">Annual — billing years in database</h4>
-          <p class="text-[11px] text-brand-muted -mt-1 mb-2">Each row is the year of the period end (25th), e.g. <span class="font-mono text-brand-text/90">2026</span> = <span class="font-mono">Dec&nbsp;26,&nbsp;2025</span>–<span class="font-mono">Dec&nbsp;25,&nbsp;2026</span> trade days (same as summing the 12 monthly rows for that end year).</p>
           <div class="overflow-x-auto rounded-lg border border-brand-border/60">
-            <table class="w-full text-left text-xs sm:text-sm border-collapse min-w-[52rem]">
+            <table class="w-full text-left text-xs sm:text-sm border-collapse min-w-[40rem]">
               <thead class="bg-brand-dark/90 border-b border-brand-border">
                 <tr class="text-brand-muted">
                   <th class="py-2.5 px-3 font-bold uppercase tracking-wider text-[10px] sm:text-xs">Year</th>
                   <th class="py-2.5 px-3 font-bold uppercase tracking-wider text-[10px] sm:text-xs text-right">Days</th>
                   <th class="py-2.5 px-3 font-bold uppercase tracking-wider text-[10px] sm:text-xs text-right">Compliant</th>
                   <th class="py-2.5 px-3 font-bold uppercase tracking-wider text-[10px] sm:text-xs text-right">Non-comp.</th>
-                  <th class="py-2.5 px-3 font-bold uppercase tracking-wider text-[10px] sm:text-xs text-right">Avg MAPE</th>
-                  <th class="py-2.5 px-3 font-bold uppercase tracking-wider text-[10px] sm:text-xs text-right">Avg P95</th>
-                  <th class="py-2.5 px-3 font-bold uppercase tracking-wider text-[10px] sm:text-xs text-right">BP MAPE</th>
-                  <th class="py-2.5 px-3 font-bold uppercase tracking-wider text-[10px] sm:text-xs text-right">BP P95</th>
-                  <th class="py-2.5 px-3 font-bold uppercase tracking-wider text-[10px] sm:text-xs text-right">Compliance %</th>
+                  <th class="py-2.5 px-3 font-bold uppercase tracking-wider text-[10px] sm:text-xs text-right" title="Compliant days ÷ trade days in year">Compliance %</th>
+                  <th class="py-2.5 px-3 font-extrabold uppercase tracking-wide text-[11px] sm:text-sm text-right text-emerald-300/95 bg-emerald-500/10 border-l border-emerald-500/35">AVE MAPE</th>
+                  <th class="py-2.5 px-3 font-extrabold uppercase tracking-wide text-[11px] sm:text-sm text-right text-sky-300/95 bg-sky-500/10 border-l border-sky-500/35">AVE P95</th>
                 </tr>
               </thead>
               <tbody id="accuracy-annual-rollup-tbody" class="font-mono tabular-nums text-brand-text"></tbody>
             </table>
           </div>
           <div class="rounded-lg border border-brand-border/60 bg-brand-card/50 p-3">
-            <p class="text-[10px] font-bold uppercase tracking-wider text-brand-muted mb-2">Trade days per billing year &amp; MAPE (%): solid = daily avg; dashed = BP pooled</p>
+            <p class="text-xs sm:text-sm font-extrabold uppercase tracking-wide text-brand-text mb-2 px-1 py-1.5 rounded-md border border-emerald-500/25 bg-emerald-500/10">Trade days per billing year &amp; <span class="text-emerald-300/95">AVE MAPE</span> (%)</p>
             <div class="h-64 min-h-[16rem] relative">
-              <canvas id="accuracy-chart-annual-overview" aria-label="Bar and line chart of billing-year trade days and MAPE"></canvas>
+              <canvas id="accuracy-chart-annual-overview" aria-label="Bar and line chart of billing-year trade days and AVE MAPE"></canvas>
             </div>
           </div>
         </div>
       </section>
 
       <section id="accuracy-analysis-placeholder" class="rounded-xl border border-dashed border-brand-border bg-brand-card/40 px-6 py-8 text-center transition-colors hover:border-brand-accent/25">
-        <p class="text-sm text-brand-muted max-w-lg mx-auto leading-relaxed">Open <span class="text-brand-text font-semibold">Upload MQ workbook</span> (MPI CSV must already be saved under Reporting). Analysis starts when you pick a file. Results are stored once per trade day and can be rolled up by billing period (26th–25th).</p>
         <ul class="mt-4 flex flex-wrap justify-center gap-4 text-xs text-brand-muted" aria-label="Upload readiness">
           <li id="accuracy-placeholder-li-m" class="flex items-center gap-2"><span class="accuracy-ph-dot inline-block h-2 w-2 rounded-full bg-brand-border" aria-hidden="true"></span> MIRF Daily MQ workbook</li>
         </ul>

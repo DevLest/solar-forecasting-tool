@@ -35,7 +35,6 @@
       {% if areco_role != 'spectator' %}
       <section class="bg-brand-card rounded-xl border border-brand-border p-5 sm:p-6 shadow-lg space-y-4">
         <h3 class="text-sm font-semibold text-brand-muted uppercase tracking-wider">Import invoices (max 5 PDFs)</h3>
-        <p class="text-sm text-brand-muted leading-relaxed max-w-3xl">Choose all PDFs in one go. Market fees: <span class="font-mono text-brand-text/90">*EMF*</span> → AA, <span class="font-mono text-brand-text/90">*MF1*</span> → AB, <span class="font-mono text-brand-text/90">*_MF.pdf</span> → AC (Prelim <span class="font-mono">TS-WP</span> / Final <span class="font-mono">TS-WF</span>). WTA covers: <span class="font-mono">*_WTA.pdf</span>. Leave year / month / statement on <span class="text-brand-text/90">Auto from PDFs</span> to fill them from invoice text when possible. Scanned PDFs with no text cannot be parsed.</p>
         <div class="rounded-lg border-2 border-dashed border-brand-accent/35 bg-brand-accent/5 px-4 py-3 space-y-3">
           <div class="flex flex-wrap items-center gap-3">
             <input type="file" name="invoices" id="bh-invoices-bulk" class="text-xs text-brand-text file:mr-2 file:rounded-lg file:border-0 file:bg-brand-dark file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-brand-accent hover:file:bg-brand-border/30" accept=".pdf,application/pdf" multiple />

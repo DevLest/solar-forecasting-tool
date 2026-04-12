@@ -378,18 +378,12 @@ def build_marketplace_chart_payload(
         "dispatch_series": dispatch,
         "hourly_6am_6pm": hourly_chart,
     }
-    if partial:
-        if mq_5min:
-            out["partial_message"] = (
-                "MPI compliance is loaded from the database. Day-ahead MW is loaded from MIRF MQ "
-                "(stored from Nomination Accuracy backfill). Upload Market Result — Energy Schedules "
-                "for this trade day to add LMP and hourly average price."
-            )
-        else:
-            out["partial_message"] = (
-                "MPI compliance is loaded from the database. Upload Market Result — Energy Schedules "
-                "for this trade day to add LMP, day-ahead MW, and hourly average price."
-            )
+    if partial and mq_5min:
+        out["partial_message"] = (
+            "MPI compliance is loaded from the database. Day-ahead MW is loaded from MIRF MQ "
+            "(stored from Nomination Accuracy backfill). Upload Market Result — Energy Schedules "
+            "for this trade day to add LMP and hourly average price."
+        )
     return out
 
 
