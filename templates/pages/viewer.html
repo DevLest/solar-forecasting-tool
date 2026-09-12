@@ -3,26 +3,19 @@
 {% block main_inner %}
   <div class="p-4 sm:p-6 max-w-[1700px] mx-auto w-full space-y-6">
     <section class="rounded-xl border border-brand-border bg-brand-card/70 p-4 sm:p-5 shadow-lg">
-      <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div class="min-w-0">
           <h2 class="text-lg sm:text-xl font-semibold text-brand-text">Viewer</h2>
+          <p id="viewer-today-label" class="text-sm text-brand-muted mt-1">Showing today&apos;s nomination</p>
+          <p id="viewer-load-status" class="text-xs min-h-[1.25rem] text-brand-muted mt-1" role="status" aria-live="polite"></p>
         </div>
-        <div class="flex flex-wrap items-end gap-3">
-          <div class="flex flex-col gap-0.5">
-            <label for="viewer-date-start" class="text-[10px] uppercase tracking-wider text-brand-muted">Start</label>
-            <input type="date" id="viewer-date-start" class="w-[11.5rem] bg-brand-dark border border-brand-border rounded-lg px-2 py-1.5 text-sm text-brand-text font-mono [color-scheme:dark] focus:outline-none focus:ring-2 focus:ring-brand-accent/40" />
-          </div>
-          <div class="flex flex-col gap-0.5">
-            <label for="viewer-date-end" class="text-[10px] uppercase tracking-wider text-brand-muted">End</label>
-            <input type="date" id="viewer-date-end" class="w-[11.5rem] bg-brand-dark border border-brand-border rounded-lg px-2 py-1.5 text-sm text-brand-text font-mono [color-scheme:dark] focus:outline-none focus:ring-2 focus:ring-brand-accent/40" />
-          </div>
-          <button type="button" id="viewer-date-apply" class="py-2 px-4 rounded-xl bg-brand-accent text-brand-dark font-semibold text-xs uppercase tracking-wide hover:bg-brand-accent/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent/50">
-            Apply
+        <div class="flex flex-wrap items-center gap-3 shrink-0">
+          <button type="button" id="viewer-refresh-today" class="py-2 px-4 rounded-xl bg-brand-accent text-brand-dark font-semibold text-xs uppercase tracking-wide hover:bg-brand-accent/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent/50">
+            Refresh today
           </button>
           <a href="{{ url_for('main.logout') }}" class="py-2 px-4 rounded-xl border border-brand-border bg-brand-dark hover:bg-brand-border/35 text-brand-text font-semibold text-xs uppercase tracking-wide">
             Log out
           </a>
-          <p id="viewer-date-status" class="hidden" role="status" aria-live="polite"></p>
         </div>
       </div>
     </section>
@@ -66,10 +59,9 @@
 {% block page_scripts %}
   <script src="{{ url_for('static', filename='js/viewer-dashboard.js') }}" defer></script>
   <script src="{{ url_for('static', filename='js/viewer-tabs.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/viewer-nomination.js') }}" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" defer></script>
-  <script src="{{ url_for('static', filename='js/nomination-dashboard.js') }}" defer></script>
   <script src="{{ url_for('static', filename='js/nomination-reporting.js') }}" defer></script>
   <script src="{{ url_for('static', filename='js/nomination-accuracy.js') }}" defer></script>
   <script src="{{ url_for('static', filename='js/billing-history.js') }}" defer></script>
 {% endblock %}
-

@@ -8,13 +8,8 @@
             <h3 class="text-xs font-bold uppercase tracking-widest text-brand-muted">Live plant output</h3>
             <span class="text-[10px] text-brand-muted">Live</span>
           </div>
-          <div class="px-4 py-2 border-b border-brand-border/50 flex flex-col gap-1.5">
-            <div class="flex flex-row flex-nowrap items-center gap-2 min-w-0">
-              <label for="live-stream-url" class="text-[10px] text-brand-muted uppercase whitespace-nowrap shrink-0">URL</label>
-              <input type="url" id="live-stream-url" placeholder="https://vdo.ninja/?view=..." class="flex-1 min-w-0 bg-brand-dark border border-brand-border rounded px-2 py-1.5 text-xs text-brand-text placeholder:text-brand-muted/60 focus:ring-1 focus:ring-brand-accent focus:border-brand-accent" />
-              <button type="button" id="live-stream-apply" class="shrink-0 px-3 py-1.5 bg-brand-accent text-brand-dark rounded text-xs font-bold uppercase hover:bg-brand-accent/90 transition-colors">Apply</button>
-            </div>
-            <p id="live-stream-status" class="text-[9px] text-brand-muted/80 min-h-[1.15rem]"></p>
+          <div class="px-4 py-2 border-b border-brand-border/50">
+            <p id="live-stream-status" class="text-[10px] text-brand-muted/90 min-h-[1.15rem]">Loading live plant output…</p>
           </div>
           <div class="aspect-video xl:flex-1 bg-brand-dark relative min-h-[10rem]">
             <iframe

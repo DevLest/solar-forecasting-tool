@@ -1,74 +1,32 @@
 (function () {
-  var RANGE_KEY = 'areco_viewer_date_range_v1';
   var originalFetch = (typeof window !== 'undefined' && window.fetch) ? window.fetch.bind(window) : null;
 
-  function iso(d) {
+  function isoToday() {
+    var d = new Date();
     var y = d.getFullYear();
     var m = String(d.getMonth() + 1).padStart(2, '0');
     var day = String(d.getDate()).padStart(2, '0');
     return y + '-' + m + '-' + day;
   }
 
-  function defaultRange() {
-    var now = new Date();
-    var start = new Date(now);
-    start.setDate(start.getDate() - 30);
-    var end = new Date(now);
-    end.setDate(end.getDate() + 1);
-    return { start: iso(start), end: iso(end) };
-  }
-
-  function loadRange() {
+  function formatTodayLabel() {
     try {
-      var raw = localStorage.getItem(RANGE_KEY);
-      if (raw) {
-        var parsed = JSON.parse(raw);
-        if (parsed && parsed.start && parsed.end) return parsed;
-      }
-    } catch (e) {}
-    return defaultRange();
+      return new Date().toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    } catch (e) {
+      return isoToday();
+    }
   }
 
-  function saveRange(r) {
-    try { localStorage.setItem(RANGE_KEY, JSON.stringify(r)); } catch (e) {}
-  }
-
-  function setStatus(msg, isErr) {
-    var el = document.getElementById('viewer-date-status');
+  function setViewerHeaderStatus(msg, isErr) {
+    var el = document.getElementById('viewer-load-status');
     if (!el) return;
     el.textContent = msg || '';
-    el.className = 'text-[11px] min-h-[1.25rem] self-center ' + (isErr ? 'text-rose-300/95' : 'text-brand-muted');
+    el.className = 'text-xs min-h-[1.25rem] mt-1 ' + (isErr ? 'text-rose-300/95' : 'text-brand-muted');
   }
 
-  function currentRangeFromInputs() {
-    var s = document.getElementById('viewer-date-start');
-    var e = document.getElementById('viewer-date-end');
-    return { start: (s && s.value) ? s.value : '', end: (e && e.value) ? e.value : '' };
-  }
-
-  function applyRangeToInputs(r) {
-    var s = document.getElementById('viewer-date-start');
-    var e = document.getElementById('viewer-date-end');
-    if (s) s.value = r.start || '';
-    if (e) e.value = r.end || '';
-  }
-
-  function isIsoDate(x) {
-    return typeof x === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(x);
-  }
-
-  function bumpRefreshes() {
-    // Nomination history refresh
-    var btnHist = document.getElementById('btn-refresh-history');
-    if (btnHist) btnHist.click();
-
-    // Reporting charts: if a day is selected, refresh it; otherwise just leave it.
-    var btnRep = document.getElementById('reporting-btn-refresh-charts');
-    if (btnRep) btnRep.click();
-
-    // Accuracy: nudge the user workflows by opening saved runs + calendar (no assumptions about their chosen views).
-    var btnRuns = document.getElementById('accuracy-btn-load-runs');
-    if (btnRuns) btnRuns.click();
+  function updateTodayLabel() {
+    var el = document.getElementById('viewer-today-label');
+    if (el) el.textContent = "Showing today's nomination — " + formatTodayLabel();
   }
 
   function installFetchFilter() {
@@ -80,48 +38,49 @@
       try {
         var url = (typeof input === 'string') ? input : (input && input.url ? input.url : '');
         if (url && url.indexOf('/api/historical-exports') >= 0) {
+          var today = isoToday();
           var hasQuery = url.indexOf('?') >= 0;
-          var range = loadRange();
-          if (range && isIsoDate(range.start) && isIsoDate(range.end)) {
-            var joiner = hasQuery ? '&' : '?';
-            if (url.indexOf('start=') < 0) url += joiner + 'start=' + encodeURIComponent(range.start);
-            joiner = (url.indexOf('?') >= 0) ? '&' : '?';
-            if (url.indexOf('end=') < 0) url += joiner + 'end=' + encodeURIComponent(range.end);
-            input = url;
-          }
+          var joiner = hasQuery ? '&' : '?';
+          if (url.indexOf('start=') < 0) url += joiner + 'start=' + encodeURIComponent(today);
+          joiner = (url.indexOf('?') >= 0) ? '&' : '?';
+          if (url.indexOf('end=') < 0) url += joiner + 'end=' + encodeURIComponent(today);
+          input = url;
         }
       } catch (e) {}
       return originalFetch(input, init);
     };
   }
 
-  // Patch fetch ASAP (before other deferred scripts run).
+  function bumpRefreshes() {
+    var btnHist = document.getElementById('btn-refresh-history');
+    if (btnHist) btnHist.click();
+    var btnRep = document.getElementById('reporting-btn-refresh-charts');
+    if (btnRep) btnRep.click();
+    var btnRuns = document.getElementById('accuracy-btn-load-runs');
+    if (btnRuns) btnRuns.click();
+    if (typeof window.refreshViewerNominationToday === 'function') {
+      window.refreshViewerNominationToday();
+    }
+  }
+
   installFetchFilter();
 
   function init() {
-    var r = loadRange();
-    applyRangeToInputs(r);
-    setStatus('', false);
+    updateTodayLabel();
+    setViewerHeaderStatus('Loading today\'s nomination…', false);
 
-    var btn = document.getElementById('viewer-date-apply');
+    var btn = document.getElementById('viewer-refresh-today');
     if (btn) {
       btn.addEventListener('click', function () {
-        var cur = currentRangeFromInputs();
-        if (!isIsoDate(cur.start) || !isIsoDate(cur.end)) {
-          setStatus('Choose valid Start/End dates (YYYY-MM-DD).', true);
-          return;
-        }
-        if (cur.end < cur.start) {
-          setStatus('End date must be on/after Start date.', true);
-          return;
-        }
-        saveRange(cur);
-        setStatus('', false);
+        updateTodayLabel();
+        setViewerHeaderStatus('Refreshing today\'s nomination…', false);
         bumpRefreshes();
       });
     }
+
+    window.setViewerHeaderStatus = setViewerHeaderStatus;
+    window.bumpViewerRefreshes = bumpRefreshes;
   }
 
   window.addEventListener('DOMContentLoaded', init);
 })();
-

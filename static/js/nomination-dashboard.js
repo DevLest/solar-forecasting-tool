@@ -209,43 +209,157 @@
         box.classList.add('hidden');
         return;
       }
-      if (syncControlsEnabled()) {
-        box.classList.remove('hidden');
-      } else {
-        box.classList.add('hidden');
+      box.classList.remove('hidden');
+      if (!syncControlsEnabled()) {
+        setSyncStatus('Sync not configured — open App settings and set Remote base URL + Sync token.', true);
       }
     }
 
-    function triggerRemoteSync(reason, onDone) {
-      if (syncInFlight) { if (typeof onDone === 'function') onDone(false, 'Sync already running.'); return; }
-      if (!syncControlsEnabled()) { if (typeof onDone === 'function') onDone(false, 'Sync is not configured.'); return; }
+    function readLiveStreamUrlForSync() {
+      try {
+        var u = localStorage.getItem(LIVE_STREAM_STORAGE_KEY) || '';
+        return u.trim();
+      } catch (e) {
+        return '';
+      }
+    }
+
+    function pushRemoteSyncJob(reason, liveStreamUrl) {
+      return fetch(API_BASE + '/api/sync/push-remote', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: reason || 'manual', liveStreamUrl: liveStreamUrl || '' })
+      }).then(function(r) {
+        return r.json().then(function(j) {
+          if (!r.ok) throw new Error((j && j.error) ? j.error : (r.statusText || 'Request failed'));
+          return j;
+        });
+      });
+    }
+
+    function waitForRemoteSyncFinish(maxWaitMs) {
+      maxWaitMs = maxWaitMs || 120000;
+      var started = Date.now();
+      return new Promise(function(resolve, reject) {
+        function tick() {
+          pollSyncProgressOnce().then(function(state) {
+            if (!state || !state.last_push_finished_at) {
+              if (Date.now() - started > maxWaitMs) {
+                reject(new Error('Sync timed out. Check your network and remote viewer URL.'));
+                return;
+              }
+              setTimeout(tick, 1000);
+              return;
+            }
+            if (state.last_push_ok) resolve(state);
+            else reject(new Error(state.last_push_error || 'Sync failed.'));
+          });
+        }
+        tick();
+      });
+    }
+
+    function triggerRemoteSync(reason, onDone, options) {
+      options = options || {};
+      if (syncInFlight) {
+        setSyncStatus('Sync already running.', true);
+        if (typeof onDone === 'function') onDone(false, 'Sync already running.');
+        return;
+      }
+      if (!syncControlsEnabled()) {
+        var cfgMsg = 'Sync is not configured. Open App settings and set Remote base URL and Sync token.';
+        setSyncStatus(cfgMsg, true);
+        if (typeof onDone === 'function') onDone(false, cfgMsg);
+        return;
+      }
       syncInFlight = true;
       setSyncStatus('Syncing to online viewer…', false);
       resetSyncProgressUi();
       openSyncProgressModal();
       appendSyncProgressLogLine('Starting sync…');
       startSyncProgressPolling();
-      fetch(API_BASE + '/api/sync/push-remote', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reason: reason || 'manual' })
-      }).then(function(r) {
-        return r.json().then(function(j) {
-          if (!r.ok) throw new Error((j && j.error) ? j.error : (r.statusText || 'Request failed'));
-          return j;
+      var liveUrl = readLiveStreamUrlForSync();
+      pushRemoteSyncJob(reason, liveUrl)
+        .then(function(j) {
+          appendSyncProgressLogLine('Sync job started.');
+          if (options.waitForFinish) {
+            return waitForRemoteSyncFinish().then(function(state) {
+              setSyncStatus('Viewer data synced successfully.', false);
+              appendSyncProgressLogLine('Viewer data synced successfully.');
+              if (typeof onDone === 'function') onDone(true, null, state);
+            });
+          }
+          setSyncStatus('Sync started…', false);
+          if (typeof onDone === 'function') onDone(true, null, j);
+        })
+        .catch(function(err) {
+          var msg = (err && err.message) ? err.message : 'Sync failed.';
+          setSyncStatus(msg, true);
+          appendSyncProgressLogLine('Sync failed: ' + msg);
+          if (typeof onDone === 'function') onDone(false, msg);
+        })
+        .finally(function() {
+          syncInFlight = false;
         });
-      }).then(function(j) {
-        // Async push: show whatever state we currently have.
-        setSyncStatus('Sync started. Last push: ' + (j && j.state && (j.state.last_push_finished_at || j.state.last_push_started_at) ? (j.state.last_push_finished_at || j.state.last_push_started_at) : '—'), false);
-        appendSyncProgressLogLine('Sync job started.');
-        if (typeof onDone === 'function') onDone(true, null, j);
+    }
+
+    function verifyRemoteSyncCredentials() {
+      return fetch(API_BASE + '/api/sync/verify-remote', { method: 'GET' })
+        .then(function(r) { return r.json(); });
+    }
+
+    function syncToViewerManual() {
+      if (isNominationReadOnly()) return;
+      if (!syncControlsEnabled()) {
+        setSyncStatus('Sync is not configured. Open App settings and set Remote base URL and Sync token.', true);
+        return;
+      }
+      var today = todayIsoLocal();
+      var refIso = getForecastRefDateString();
+      if (refIso && refIso !== today) {
+        setSyncStatus('Forecast Ref must be today (' + today + ') before syncing to Viewer. Update Forecast Ref and try again.', true);
+        return;
+      }
+      var btn = document.getElementById('btn-sync-remote');
+      if (btn) {
+        btn.disabled = true;
+        btn.classList.add('opacity-60', 'cursor-wait');
+      }
+      function releaseBtn() {
+        if (btn) {
+          btn.disabled = false;
+          btn.classList.remove('opacity-60', 'cursor-wait');
+        }
+      }
+      setSyncStatus('Checking Viewer connection and sync token…', false);
+      verifyRemoteSyncCredentials().then(function(check) {
+        if (!check || !check.ok) {
+          var msg = (check && check.error)
+            ? check.error
+            : 'Could not verify Viewer sync credentials.';
+          setSyncStatus(msg, true);
+          releaseBtn();
+          return;
+        }
+        setSyncStatus('Saving current nomination for viewer…', false);
+        var snapshot = buildExportSnapshot();
+        snapshot.forecastRefDateIso = today;
+        snapshot.forecastRefDate = formatDateForDisplay(today);
+        saveExportToHistory(snapshot, function(savedOk, saveErr) {
+          if (!savedOk) {
+            releaseBtn();
+            setSyncStatus(saveErr || 'Could not save nomination before sync.', true);
+            return;
+          }
+          triggerRemoteSync('manual_click', function(ok, err) {
+            releaseBtn();
+            if (!ok && err) setSyncStatus(err, true);
+          }, { waitForFinish: true });
+        }, { skipAutoSync: true, useSyncStatus: true });
       }).catch(function(err) {
-        var msg = (err && err.message) ? err.message : 'Sync failed.';
-        setSyncStatus('Sync failed: ' + msg, true);
-        appendSyncProgressLogLine('Sync failed to start: ' + msg);
-        if (typeof onDone === 'function') onDone(false, msg);
-      }).finally(function() {
-        syncInFlight = false;
+        releaseBtn();
+        var msg = (err && err.message) ? err.message : 'Could not verify Viewer sync credentials.';
+        setSyncStatus(msg, true);
       });
     }
 
@@ -406,9 +520,39 @@
       return best;
     }
 
+    var RTD_GATE_CLOSURE_MINUTES = 15;
+
+    /** Minutes since midnight → HH:MM (supports 24:00). */
+    function minutesSinceMidnightToLabel(mins) {
+      if (mins >= 24 * 60) return '24:00';
+      var h = Math.floor(mins / 60);
+      var m = mins % 60;
+      return (h < 10 ? '0' + h : '' + h) + ':' + (m < 10 ? '0' + m : '' + m);
+    }
+
+    /** Round up to the 5-minute grid used for RTD gate closure. */
+    function roundUpToNext5MinuteIntervalForGate(now) {
+      now = now || new Date();
+      var m = now.getMinutes();
+      var s = now.getSeconds();
+      var ms = now.getMilliseconds();
+      var t = now.getHours() * 60 + m + s / 60 + ms / 60000;
+      if (m % 5 === 0 && s === 0 && ms === 0) return t + 5;
+      return Math.ceil(t / 5) * 5;
+    }
+
+    /** Gate closure = round-up + 15 min; first editable interval is at gate closure (inclusive). */
+    function getRtdGateClosureMinutesSinceMidnight(now) {
+      return roundUpToNext5MinuteIntervalForGate(now) + RTD_GATE_CLOSURE_MINUTES;
+    }
+
+    function getRtdFirstEditableMinutesSinceMidnight(now) {
+      return getRtdGateClosureMinutesSinceMidnight(now);
+    }
+
     /**
-     * RTD cell editable: past forecast calendar day = all locked; future forecast day = all editable;
-     * today = editable only while interval end is still in the future (past intervals locked).
+     * RTD cell editable: past forecast day = locked; future forecast day = editable;
+     * today = editable from gate closure onward (round up to next 5 min + 15 min gate).
      */
     function isIntervalRtdEditable(intervalStr, now) {
       now = now || new Date();
@@ -417,9 +561,10 @@
       var today = todayIsoLocal();
       if (refIso < today) return false;
       if (refIso > today) return true;
-      var end = intervalEndLocalDate(refIso, intervalStr);
-      if (!end || isNaN(end.getTime())) return true;
-      return now.getTime() < end.getTime();
+      var intervalMins = intervalLabelToMinutes(intervalStr);
+      if (isNaN(intervalMins)) return true;
+      var firstEditableMins = getRtdFirstEditableMinutesSinceMidnight(now);
+      return intervalMins >= firstEditableMins;
     }
 
     function updateRtdIntervalLocks() {
@@ -432,19 +577,28 @@
       }
       var refIso = getForecastRefDateString();
       var today = todayIsoLocal();
+      var now = new Date();
+      var firstEditableLabel = minutesSinceMidnightToLabel(getRtdFirstEditableMinutesSinceMidnight(now));
       document.querySelectorAll('.interval-data-tbody tr.interval-row').forEach(function(tr) {
         var intervalStr = tr.getAttribute('data-interval') || '';
         var inp = tr.querySelector('.rtd-input');
         if (!inp) return;
-        var editable = isIntervalRtdEditable(intervalStr, new Date());
+        var editable = isIntervalRtdEditable(intervalStr, now);
+        inp.disabled = !editable;
         inp.readOnly = !editable;
         var lockTitle = 'Locked';
         if (!editable) {
-          if (refIso && refIso < today) lockTitle = 'Locked: Forecast Ref is before today';
-          else lockTitle = 'Locked: interval already ended for today’s date';
+          if (refIso && refIso < today) {
+            lockTitle = 'Locked: Forecast Ref is before today';
+          } else if (refIso === today) {
+            lockTitle = 'Locked: gate closure — editable from ' + firstEditableLabel + ' (round up to next 5 min + 15 min)';
+          } else {
+            lockTitle = 'Locked: interval not editable for this forecast date';
+          }
         }
         inp.title = editable ? ('RTD (MW), interval end ' + intervalStr) : lockTitle;
         tr.classList.toggle('interval-row-rtd-locked', !editable);
+        tr.setAttribute('aria-disabled', editable ? 'false' : 'true');
       });
     }
     window.updateRtdIntervalLocks = updateRtdIntervalLocks;
@@ -1302,7 +1456,8 @@
       });
     });
 
-    document.getElementById('percent-value').addEventListener('change', function() {
+    var percentValueEl = document.getElementById('percent-value');
+    if (percentValueEl) percentValueEl.addEventListener('change', function() {
       var p = parseFloat(this.value);
       if (isNaN(p) || p < 1 || p > 200) {
         this.value = 100;
@@ -1311,7 +1466,7 @@
       }
       applyPercentageToRtd();
     });
-    document.getElementById('percent-value').addEventListener('input', function() {
+    if (percentValueEl) percentValueEl.addEventListener('input', function() {
       var p = parseFloat(this.value);
       if (!isNaN(p) && p >= 1 && p <= 200) applyPercentageToRtd();
     });
@@ -1369,18 +1524,9 @@
       var byHour = {};
       for (var h = 1; h <= 24; h++) byHour[h] = [];
       intervals.forEach(function(row) {
-        var interval = (row.interval || '').trim();
-        var parts = interval.split(':');
-        var hour = parseInt(parts[0], 10);
-        var minute = parts.length > 1 ? parseInt(parts[1], 10) : 0;
-        if (hour === 24 && minute === 0) {
-          byHour[24].push(clampMw(Number(row.dayAhead) || 0));
-          return;
-        }
-        if (hour >= 0 && hour <= 23) {
-          var deliveryHour = hour === 0 ? 24 : hour;
-          byHour[deliveryHour].push(clampMw(Number(row.dayAhead) || 0));
-        }
+        var deliveryHour = intervalToDeliveryHour(row.interval);
+        if (isNaN(deliveryHour) || deliveryHour < 1 || deliveryHour > 24) return;
+        byHour[deliveryHour].push(clampMw(Number(row.dayAhead) || 0));
       });
       var out = [];
       for (var h = 1; h <= 24; h++) {
@@ -1415,17 +1561,18 @@
       return map;
     }
 
-    function getDayAheadMwAt(map, clockHour, minuteOfHour) {
-      if (minuteOfHour === 60) {
-        if (clockHour === 23 && map['24,0'] != null) return map['24,0'];
-        return map[clockHour + ',55'] != null ? map[clockHour + ',55'] : (map[clockHour + ',0'] != null ? map[clockHour + ',0'] : 0);
+    /** VRE matrix cell → interval lookup key (delivery hour N = (N-1):05 … N:00). */
+    function vreCellToIntervalKey(deliveryHour, minuteCol) {
+      if (minuteCol === 60) {
+        if (deliveryHour === 24) return '24,0';
+        return deliveryHour + ',0';
       }
-      return map[clockHour + ',' + minuteOfHour] != null ? map[clockHour + ',' + minuteOfHour] : 0;
+      return (deliveryHour - 1) + ',' + minuteCol;
     }
 
-    /** Delivery hour 1–24 → clock hour in interval keys (matches getVreHourlyAverages: hour 0 → delivery 24). */
-    function deliveryHourToClockHour(dh) {
-      return dh === 24 ? 0 : dh;
+    function getDayAheadMwAt(map, deliveryHour, minuteCol) {
+      var key = vreCellToIntervalKey(deliveryHour, minuteCol);
+      return map[key] != null ? map[key] : 0;
     }
 
     function formatMinuteMwForVreGrid(n) {
@@ -1454,11 +1601,10 @@
       var vreRows = getVreHourlyAverages();
       var daMap = getDayAheadLookupForDisplay();
       tbody.innerHTML = vreRows.map(function(r) {
-        var clockH = deliveryHourToClockHour(r.deliveryHour);
         var hourCell = '<td class="vre-col-hour">' + String(r.deliveryHour) + '</td>';
         var vreCell = '<td class="vre-col-vre">' + String(r.vreNom) + '</td>';
         var dataCells = VRE_MINUTE_COLUMNS.map(function(min) {
-          var mw = getDayAheadMwAt(daMap, clockH, min);
+          var mw = getDayAheadMwAt(daMap, r.deliveryHour, min);
           var isZero = mw === 0;
           var cls = 'vre-col-mw' + (isZero ? ' vre-cell-zero' : '');
           return '<td class="' + cls + '">' + formatMinuteMwForVreGrid(mw) + '</td>';
@@ -1518,8 +1664,9 @@
 
       function getMw(hour, minute) {
         if (minute === 60) {
-          if (hour === 23 && rtdLookup['24,0'] != null) return rtdLookup['24,0'];
-          return rtdLookup[hour + ',55'] != null ? rtdLookup[hour + ',55'] : (rtdLookup[hour + ',0'] != null ? rtdLookup[hour + ',0'] : 0);
+          if (hour === 23) return rtdLookup['24,0'] != null ? rtdLookup['24,0'] : 0;
+          var nextHour = hour + 1;
+          return rtdLookup[nextHour + ',0'] != null ? rtdLookup[nextHour + ',0'] : 0;
         }
         return rtdLookup[hour + ',' + minute] != null ? rtdLookup[hour + ',' + minute] : 0;
       }
@@ -1584,7 +1731,8 @@
       return full;
     }
 
-    function saveExportToHistory(snapshot, onDone) {
+    function saveExportToHistory(snapshot, onDone, options) {
+      options = options || {};
       if (!snapshot) snapshot = buildExportSnapshot();
       fetch(API_BASE + '/api/save-export', {
         method: 'POST',
@@ -1608,29 +1756,30 @@
           loadHistory();
         }
         // If remote sync is configured, push after a successful history save.
-        if (res && res.ok && syncControlsEnabled()) {
-          triggerRemoteSync('after_export', function() { if (typeof onDone === 'function') onDone(); });
+        if (res && res.ok && syncControlsEnabled() && !options.skipAutoSync) {
+          triggerRemoteSync('after_export', function() { if (typeof onDone === 'function') onDone(true); });
           return;
         }
-        if (typeof onDone === 'function') onDone();
+        if (typeof onDone === 'function') onDone(!!(res && res.ok));
       }).catch(function(err) {
         var msg = (err && err.message) ? err.message : 'Could not save to history.';
         console.warn('saveExportToHistory failed:', msg);
-        setNominationExportStatus('Export file saved but history sync failed: ' + msg + ' — start the app and use Refresh history.', true);
-        if (typeof onDone === 'function') onDone();
+        if (options.useSyncStatus) setSyncStatus(msg, true);
+        else setNominationExportStatus('Export file saved but history sync failed: ' + msg + ' — start the app and use Refresh history.', true);
+        if (typeof onDone === 'function') onDone(false, msg);
       });
     }
 
     function initSyncUi() {
       fetchSyncConfig().then(function() {
         applySyncControlsVisibility();
+        var btn = document.getElementById('btn-sync-remote');
+        if (btn) {
+          btn.addEventListener('click', function() {
+            syncToViewerManual();
+          });
+        }
         if (syncControlsEnabled()) {
-          var btn = document.getElementById('btn-sync-remote');
-          if (btn) {
-            btn.addEventListener('click', function() {
-              triggerRemoteSync('manual_click');
-            });
-          }
           setSyncStatus('Online viewer sync is configured (' + (syncCfg.remote_url || '') + ').', false);
           startAutoSyncTimer();
         } else {
@@ -1857,12 +2006,51 @@
       });
     }
 
+    function sanitizeExportFilename(name) {
+      return String(name || '')
+        .replace(/[<>:"/\\|?*\x00-\x1f]/g, '_')
+        .replace(/\s+/g, '_')
+        .trim() || 'Solar_Plant';
+    }
+
     function downloadBlobFallback(blob, filename) {
       var a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
+      var url = URL.createObjectURL(blob);
+      a.href = url;
       a.download = filename;
+      a.style.display = 'none';
+      document.body.appendChild(a);
       a.click();
-      URL.revokeObjectURL(a.href);
+      document.body.removeChild(a);
+      setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+    }
+
+    /** Save blob via native picker when supported, otherwise trigger a browser download. */
+    function saveBlobToUser(blob, filename) {
+      if (typeof window.showSaveFilePicker === 'function') {
+        return window.showSaveFilePicker({
+          suggestedName: filename,
+          types: [{ description: 'CSV file', accept: { 'text/csv': ['.csv'] } }]
+        }).then(function(handle) {
+          return handle.createWritable();
+        }).then(function(writable) {
+          return writable.write(blob).then(function() { return writable.close(); });
+        }).then(function() {
+          return { method: 'picker', filename: filename };
+        }).catch(function(err) {
+          if (err && err.name === 'AbortError') {
+            return Promise.reject(new Error('Export cancelled.'));
+          }
+          downloadBlobFallback(blob, filename);
+          return { method: 'download', filename: filename };
+        });
+      }
+      try {
+        downloadBlobFallback(blob, filename);
+        return Promise.resolve({ method: 'download', filename: filename });
+      } catch (err) {
+        return Promise.reject(err);
+      }
     }
 
     /** After a successful export, bump Rev# for the current forecast reference date (snapshot already recorded the previous value). */
@@ -2072,7 +2260,8 @@
       });
     }
 
-    document.getElementById('btn-export').addEventListener('click', function() {
+    var btnExport = document.getElementById('btn-export');
+    if (btnExport) btnExport.addEventListener('click', function() {
       if (isNominationReadOnly()) return;
       var detail = getExportDetailStrings();
       var filename = 'ARECO_' + detail.mm + '_' + detail.dd + '_' + detail.yyyy + '.xml';
@@ -2096,36 +2285,63 @@
         });
     });
 
-    document.getElementById('btn-export-vre-csv').addEventListener('click', function() {
-      if (isNominationReadOnly()) return;
-      var detail = getExportDetailStrings();
-      var dateStr = String(detail.yyyy) + detail.mm + detail.dd;
-      var vrePlantEl = document.getElementById('vre-plant-name');
-      var plant = (vrePlantEl && vrePlantEl.value && vrePlantEl.value.trim()) ? vrePlantEl.value.trim() : 'Solar Plant';
-      var filename = 'VRE_NOM_' + plant + '_' + dateStr + '.csv';
-      var csv = buildVreCsvContent();
-      setNominationExportStatus('Saving VRE CSV to server folder…');
-      saveNominationFileToServer(filename, csv)
-        .then(function(res) {
-          var snapshot = buildExportSnapshot();
-          saveExportToHistory(snapshot, function() {
-            var path = (res && res.path) ? res.path : filename;
-            setNominationExportStatus('Saved: ' + path + ' — history updated.');
-            incrementIntervalRevAfterExport();
-          });
-        })
-        .catch(function(err) {
-          console.warn('Server VRE export failed:', err);
+    var btnExportVreCsv = document.getElementById('btn-export-vre-csv');
+    if (btnExportVreCsv) {
+      btnExportVreCsv.addEventListener('click', function() {
+        if (isNominationReadOnly()) {
+          setNominationExportStatus('Export is disabled in read-only mode.', true);
+          return;
+        }
+        var btn = btnExportVreCsv;
+        btn.disabled = true;
+        btn.classList.add('opacity-60', 'cursor-wait');
+        try {
+          var detail = getExportDetailStrings();
+          var dateStr = String(detail.yyyy) + detail.mm + detail.dd;
+          var vrePlantEl = document.getElementById('vre-plant-name');
+          var plantRaw = (vrePlantEl && vrePlantEl.value && vrePlantEl.value.trim()) ? vrePlantEl.value.trim() : 'Solar Plant';
+          var plant = sanitizeExportFilename(plantRaw);
+          var filename = 'VRE_NOM_' + plant + '_' + dateStr + '.csv';
+          var csv = buildVreCsvContent();
+          if (!csv || !String(csv).trim()) {
+            throw new Error('No VRE data to export. Load or enter Day Ahead values first.');
+          }
           var blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
-          downloadBlobFallback(blob, filename);
-          setNominationExportStatus('Server unavailable — file downloaded in browser. Run the app to save under the automate folder (see App settings).', true);
-          incrementIntervalRevAfterExport();
-        });
-    });
+          setNominationExportStatus('Preparing VRE CSV…');
+          saveBlobToUser(blob, filename)
+            .then(function(result) {
+              var msg = result.method === 'picker'
+                ? 'VRE CSV saved: ' + filename
+                : 'VRE CSV downloaded: ' + filename;
+              setNominationExportStatus(msg);
+              saveNominationFileToServer(filename, csv).catch(function(serverErr) {
+                console.warn('Background server VRE save failed:', serverErr);
+              });
+            })
+            .catch(function(err) {
+              var msg = (err && err.message) ? err.message : 'VRE CSV export failed.';
+              console.warn('VRE CSV export failed:', err);
+              setNominationExportStatus(msg, true);
+            })
+            .finally(function() {
+              btn.disabled = false;
+              btn.classList.remove('opacity-60', 'cursor-wait');
+            });
+        } catch (err) {
+          btn.disabled = false;
+          btn.classList.remove('opacity-60', 'cursor-wait');
+          var msg = (err && err.message) ? err.message : 'VRE CSV export failed.';
+          console.warn('VRE CSV export failed:', err);
+          setNominationExportStatus(msg, true);
+        }
+      });
+    }
 
-    document.getElementById('btn-import').addEventListener('click', function() {
+    var btnImport = document.getElementById('btn-import');
+    if (btnImport) btnImport.addEventListener('click', function() {
       if (isNominationReadOnly()) return;
-      document.getElementById('forecast-file-input').click();
+      var fileInput = document.getElementById('forecast-file-input');
+      if (fileInput) fileInput.click();
     });
 
     var forecastRefDateEl = document.getElementById('forecast-ref-date');
@@ -2209,7 +2425,8 @@
     attachIntervalRowHandlers();
     applyNominationReadonlyUi();
 
-    document.getElementById('forecast-file-input').addEventListener('change', function() {
+    var forecastFileInput = document.getElementById('forecast-file-input');
+    if (forecastFileInput) forecastFileInput.addEventListener('change', function() {
       const file = this.files && this.files[0];
       if (!file) return;
       const isCsv = /\.csv$/i.test(file.name);
@@ -2309,13 +2526,16 @@
         var checkedSet = computeCheckedSetFromRange();
         slotList.innerHTML = '';
         slots.forEach(function(label) {
+          var locked = !isIntervalRtdEditable(label);
           var lab = document.createElement('label');
-          lab.className = 'flex items-center gap-1 cursor-pointer rounded px-0.5 py-0.5 hover:bg-white/5 border border-transparent hover:border-brand-border/50';
+          lab.className = 'flex items-center gap-1 rounded px-0.5 py-0.5 border border-transparent' + (locked ? ' opacity-50 cursor-not-allowed' : ' cursor-pointer hover:bg-white/5 hover:border-brand-border/50');
           var chk = document.createElement('input');
           chk.type = 'checkbox';
           chk.className = 'rounded border-brand-border text-brand-accent shrink-0';
           chk.setAttribute('data-interval', label);
-          chk.checked = !!checkedSet[label];
+          chk.checked = !locked && !!checkedSet[label];
+          chk.disabled = locked;
+          if (locked) chk.title = 'Locked by gate closure rule';
           var span = document.createElement('span');
           span.className = 'font-mono tabular-nums text-brand-text';
           span.textContent = label;
@@ -2329,9 +2549,9 @@
         if (!refHint) return;
         var iso = getForecastRefDateString();
         if (iso) {
-          refHint.textContent = 'RTD edits use forecast date ' + formatDateForDisplay(iso) + ' (' + iso + '). Locked intervals are skipped.';
+          refHint.textContent = 'RTD edits use forecast date ' + formatDateForDisplay(iso) + ' (' + iso + '). Intervals within gate closure (15 min after next 5‑minute interval) are skipped.';
         } else {
-          refHint.textContent = 'Locked intervals (past or ended) are skipped.';
+          refHint.textContent = 'Intervals within gate closure (15 min after next 5‑minute interval) are skipped.';
         }
       }
 
@@ -2598,7 +2818,8 @@
       if (input) input.addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); applyUrl(); } });
     })();
 
-    document.getElementById('btn-weather').addEventListener('click', function() {
+    var btnWeather = document.getElementById('btn-weather');
+    if (btnWeather) btnWeather.addEventListener('click', function() {
       if (isNominationReadOnly()) return;
       var btn = this;
       var originalText = btn.textContent;

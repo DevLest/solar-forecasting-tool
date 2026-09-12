@@ -1,11 +1,27 @@
 (function () {
-  var API_BASE = '';
+  var API_BASE = (typeof window !== 'undefined' && window.location && window.location.origin) ? window.location.origin : '';
   var LIVE_STREAM_STORAGE_KEY = 'areco_live_stream_url';
   var DEFAULT_LIVE_STREAM_URL = 'https://vdo.ninja/?view=2vNAR9X';
 
   var historicalExportsList = [];
   var selectedRecord = null;
   var nominationChart = null;
+
+  function todayIsoLocal() {
+    var d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+
+  function setViewerStatus(msg, isErr) {
+    if (typeof window.setViewerHeaderStatus === 'function') {
+      window.setViewerHeaderStatus(msg, isErr);
+      return;
+    }
+    var el = document.getElementById('viewer-load-status');
+    if (!el) return;
+    el.textContent = msg || '';
+    el.className = 'text-xs min-h-[1.25rem] mt-1 ' + (isErr ? 'text-rose-300/95' : 'text-brand-muted');
+  }
 
   function clampMw(v) {
     v = Number(v);
@@ -37,6 +53,13 @@
     }
   }
 
+  function forecastDateIsoFromRecord(rec) {
+    if (!rec) return '';
+    var iso = rec.forecastRefDateIso || rec.forecastRefDate || '';
+    if (typeof iso === 'string' && /^\d{4}-\d{2}-\d{2}/.test(iso)) return iso.slice(0, 10);
+    return '';
+  }
+
   function intervalToDeliveryHour(intervalStr) {
     var s = (intervalStr || '').trim();
     if (s === '24:00') return 24;
@@ -46,7 +69,7 @@
     var mm = parts.length > 1 ? parseInt(parts[1], 10) : 0;
     if (isNaN(hh) || isNaN(mm)) return NaN;
     if (hh < 0 || hh > 23) return NaN;
-    if (mm === 0) return hh; // e.g. 06:00 belongs to delivery hour 6
+    if (mm === 0) return hh;
     return hh + 1;
   }
 
@@ -138,20 +161,9 @@
     var byHour = {};
     for (var h = 1; h <= 24; h++) byHour[h] = [];
     (intervals || []).forEach(function (row) {
-      var s = (row.interval || '').trim();
-      if (!s) return;
-      var parts = s.split(':');
-      var hour = parseInt(parts[0], 10);
-      var minute = parts.length > 1 ? parseInt(parts[1], 10) : 0;
-      if (isNaN(hour) || isNaN(minute)) return;
-      if (hour === 24 && minute === 0) {
-        byHour[24].push(clampMw(row.dayAhead));
-        return;
-      }
-      if (hour >= 0 && hour <= 23) {
-        var deliveryHour = hour === 0 ? 24 : hour;
-        byHour[deliveryHour].push(clampMw(row.dayAhead));
-      }
+      var deliveryHour = intervalToDeliveryHour(row.interval);
+      if (isNaN(deliveryHour) || deliveryHour < 1 || deliveryHour > 24) return;
+      byHour[deliveryHour].push(clampMw(row.dayAhead));
     });
     var out = [];
     for (var h2 = 1; h2 <= 24; h2++) {
@@ -162,8 +174,12 @@
     return out;
   }
 
-  function deliveryHourToClockHour(dh) {
-    return dh === 24 ? 0 : dh;
+  function vreCellToIntervalKey(deliveryHour, minuteCol) {
+    if (minuteCol === 60) {
+      if (deliveryHour === 24) return '24,0';
+      return String(deliveryHour) + ',0';
+    }
+    return String(deliveryHour - 1) + ',' + String(minuteCol);
   }
 
   function renderVreTableFromRecord(rec) {
@@ -173,16 +189,10 @@
     var vreRows = getVreHourlyAverages(intervals);
     var daMap = getDayAheadLookupForDisplay(intervals);
     tbody.innerHTML = vreRows.map(function (r) {
-      var clockH = deliveryHourToClockHour(r.deliveryHour);
       var hourCell = '<td class="vre-col-hour">' + String(r.deliveryHour) + '</td>';
       var vreCell = '<td class="vre-col-vre">' + String(r.vreNom) + '</td>';
       var dataCells = VRE_MINUTE_COLUMNS.map(function (min) {
-        var keyMin = (min === 60) ? 0 : min;
-        var keyHour = (min === 60) ? (clockH + 1) : clockH;
-        if (keyHour === 24) keyHour = 24;
-        if (keyHour === 25) keyHour = 24;
-        var val = daMap[String(keyHour) + ',' + String(keyMin)];
-        if (val == null && min === 60 && r.deliveryHour === 24) val = daMap['24,0'];
+        var val = daMap[vreCellToIntervalKey(r.deliveryHour, min)];
         val = val != null ? val : 0;
         return '<td class="vre-col-mw">' + String(Math.round(Number(val) * 1000) / 1000) + '</td>';
       }).join('');
@@ -206,7 +216,7 @@
     var last7d = 0, last30d = 0;
     var firstDate = null, lastDate = null;
     records.forEach(function (r) {
-      var iso = r.forecastRefDateIso || r.forecastRefDate;
+      var iso = forecastDateIsoFromRecord(r);
       if (iso) { dates[iso] = true; if (!firstDate || iso < firstDate) firstDate = iso; if (!lastDate || iso > lastDate) lastDate = iso; }
       if (r.rtdPercent != null && !isNaN(Number(r.rtdPercent))) { rtdSum += Number(r.rtdPercent); rtdCount++; }
       var mode = (r.rtdForecastMode || 'custom').toLowerCase();
@@ -238,24 +248,19 @@
     var container = document.getElementById('analytics-cards');
     if (!container) return;
     if (analytics.totalExports === 0) {
-      container.innerHTML = '<p class="col-span-full text-sm text-brand-muted">No data in this range.</p>';
+      container.innerHTML = '<p class="col-span-full text-sm text-brand-muted">No nomination data for today yet.</p>';
       return;
     }
     var cards = [
-      { label: 'Exports', value: analytics.totalExports },
-      { label: 'Unique dates', value: analytics.uniqueDates },
-      { label: 'Date range', value: analytics.dateRange, span: ' lg:col-span-2' },
+      { label: 'Exports today', value: analytics.totalExports },
       { label: 'Avg RTD %', value: analytics.avgRtdPct },
       { label: 'Avg peak MW', value: analytics.avgPeakMw },
       { label: 'Avg day-ahead (MWh)', value: analytics.totalDayAheadMwh },
-      { label: 'Last 7d exports', value: analytics.last7d },
-      { label: 'Last 30d exports', value: analytics.last30d },
       { label: 'Avg intervals', value: analytics.avgIntervals }
     ];
     container.innerHTML = cards.map(function (c) {
       var val = c.value !== undefined && c.value !== null && c.value !== '' ? String(c.value) : '—';
-      var spanClass = c.span || '';
-      return '<div class="bg-brand-dark/60 border border-brand-border rounded-lg px-4 py-3' + spanClass + '"><div class="text-[10px] text-brand-muted uppercase tracking-wider">' + c.label + '</div><div class="text-lg font-bold text-brand-accent mt-1 break-words">' + val + '</div></div>';
+      return '<div class="bg-brand-dark/60 border border-brand-border rounded-lg px-4 py-3"><div class="text-[10px] text-brand-muted uppercase tracking-wider">' + c.label + '</div><div class="text-lg font-bold text-brand-accent mt-1 break-words">' + val + '</div></div>';
     }).join('');
   }
 
@@ -263,7 +268,7 @@
     var tbody = document.getElementById('history-tbody');
     if (!tbody) return;
     if (!records || records.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="6" class="px-4 py-4 text-brand-muted text-center">No history in this range.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="6" class="px-4 py-4 text-brand-muted text-center">No nomination synced for today yet.</td></tr>';
       return;
     }
     var list = records.slice();
@@ -274,7 +279,7 @@
     });
     tbody.innerHTML = list.map(function (rec, idx) {
       var exportedAt = formatHistoryExportedAt(rec.exportedAt || rec.savedAt);
-      var forecastRef = formatDateForDisplay(rec.forecastRefDateIso || rec.forecastRefDate) || '—';
+      var forecastRef = formatDateForDisplay(forecastDateIsoFromRecord(rec)) || '—';
       var intervalCount = (rec.intervals && rec.intervals.length) ? rec.intervals.length : 0;
       var revNum = rec.intervalRev != null ? (parseInt(rec.intervalRev, 10) || 0) : '—';
       var rtdPct = rec.rtdPercent != null ? rec.rtdPercent : '—';
@@ -287,27 +292,67 @@
     });
   }
 
+  function pickTodayNominationRecord(records) {
+    var today = todayIsoLocal();
+    var matches = (records || []).filter(function (rec) {
+      return forecastDateIsoFromRecord(rec) === today;
+    });
+    if (!matches.length) return null;
+    matches.sort(function (a, b) {
+      return (b.exportedAt || b.savedAt || '').localeCompare(a.exportedAt || a.savedAt || '');
+    });
+    return matches[0];
+  }
+
   function applySelectedRecord(rec) {
     selectedRecord = rec;
     updateNominationChartFromRecord(rec);
     renderVreTableFromRecord(rec);
   }
 
+  function highlightTodayHistoryRow(rec) {
+    var tbody = document.getElementById('history-tbody');
+    if (!tbody || !rec) return;
+    document.querySelectorAll('#history-tbody .history-row').forEach(function (r) {
+      r.classList.remove('bg-brand-accent/20', 'ring-1', 'ring-brand-accent');
+    });
+    for (var i = 0; i < tbody.querySelectorAll('.history-row').length; i++) {
+      var row = tbody.querySelector('[data-history-index="' + i + '"]');
+      if (row && row._historyRecord === rec) {
+        row.classList.add('bg-brand-accent/20', 'ring-1', 'ring-brand-accent');
+        break;
+      }
+    }
+  }
+
   function loadHistory() {
+    var today = todayIsoLocal();
     var tbody = document.getElementById('history-tbody');
     if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="px-4 py-4 text-brand-muted text-center">Loading…</td></tr>';
-    fetch(API_BASE + '/api/historical-exports').then(function (r) {
-      if (!r.ok) return r.text().then(function () { return []; });
+    var url = API_BASE + '/api/historical-exports?start=' + encodeURIComponent(today) + '&end=' + encodeURIComponent(today);
+    return fetch(url).then(function (r) {
+      if (!r.ok) return r.text().then(function () { return Promise.reject(new Error('Could not load nomination history (HTTP ' + r.status + ').')); });
       return r.json();
     }).then(function (data) {
       historicalExportsList = Array.isArray(data) ? data : [];
       renderHistoryTable(historicalExportsList);
       renderAnalyticsCards(computeHistoryAnalytics(historicalExportsList));
-      if (historicalExportsList.length) applySelectedRecord(historicalExportsList[0]);
-    }).catch(function () {
+      var todayRec = pickTodayNominationRecord(historicalExportsList);
+      if (todayRec) {
+        applySelectedRecord(todayRec);
+        highlightTodayHistoryRow(todayRec);
+        setViewerStatus('Showing nomination for ' + formatDateForDisplay(today) + ' (synced ' + formatHistoryExportedAt(todayRec.exportedAt || todayRec.savedAt) + ').', false);
+      } else {
+        applySelectedRecord(null);
+        setViewerStatus('No nomination data for today (' + formatDateForDisplay(today) + ') yet. Ask the trader to click Sync to Viewer.', true);
+      }
+    }).catch(function (err) {
       historicalExportsList = [];
       renderHistoryTable([]);
       renderAnalyticsCards(computeHistoryAnalytics([]));
+      applySelectedRecord(null);
+      var msg = (err && err.message) ? err.message : 'Could not load today\'s nomination.';
+      setViewerStatus(msg, true);
     });
   }
 
@@ -325,38 +370,44 @@
       });
     }
     var btnRefreshHistory = document.getElementById('btn-refresh-history');
-    if (btnRefreshHistory) btnRefreshHistory.addEventListener('click', loadHistory);
+    if (btnRefreshHistory) btnRefreshHistory.addEventListener('click', function () { loadHistory(); });
   }
 
   function initLiveStream() {
     var statusEl = document.getElementById('live-stream-status');
-    function setStatus(text) { if (statusEl) statusEl.textContent = text || ''; }
+    function setStreamStatus(text) { if (statusEl) statusEl.textContent = text || ''; }
     function readStoredUrl() {
       try { return localStorage.getItem(LIVE_STREAM_STORAGE_KEY) || ''; } catch (e) { return ''; }
-    }
-    function persistUrl(u) {
-      try { localStorage.setItem(LIVE_STREAM_STORAGE_KEY, u); return true; } catch (e) { return false; }
     }
     function setIframeSrc(u) {
       var iframe = document.getElementById('vdo-ninja-stream');
       if (!iframe) return;
       iframe.src = u || '';
     }
-    var input = document.getElementById('live-stream-url');
-    var saved = readStoredUrl();
-    var url = (saved && saved.trim()) ? saved.trim() : DEFAULT_LIVE_STREAM_URL;
-    if (input) input.value = url;
-    setIframeSrc(url);
-    function applyUrl() {
-      var u = input ? (input.value || '').trim() : '';
-      if (!u) { setStatus(''); return; }
-      persistUrl(u);
-      setIframeSrc(u);
-      setStatus('');
+    function resolveAndShowStream() {
+      return fetch(API_BASE + '/api/viewer-meta').then(function (r) {
+        return r.json().then(function (j) { return { ok: r.ok, j: j }; });
+      }).then(function (res) {
+        var syncedUrl = (res && res.j && res.j.liveStreamUrl) ? String(res.j.liveStreamUrl).trim() : '';
+        var stored = readStoredUrl().trim();
+        var url = syncedUrl || stored || DEFAULT_LIVE_STREAM_URL;
+        setIframeSrc(url);
+        if (syncedUrl) {
+          setStreamStatus('Live plant output (synced URL).');
+        } else if (stored) {
+          setStreamStatus('Live plant output (saved in this browser).');
+        } else {
+          setStreamStatus('Live plant output (default stream).');
+        }
+      }).catch(function () {
+        var stored = readStoredUrl().trim();
+        var url = stored || DEFAULT_LIVE_STREAM_URL;
+        setIframeSrc(url);
+        setStreamStatus(stored ? 'Live plant output (saved in this browser).' : 'Live plant output (default stream).');
+      });
     }
-    var applyBtn = document.getElementById('live-stream-apply');
-    if (applyBtn) applyBtn.addEventListener('click', applyUrl);
-    if (input) input.addEventListener('keydown', function (e) { if (e.key === 'Enter') applyUrl(); });
+    resolveAndShowStream();
+    window.refreshViewerLiveStream = resolveAndShowStream;
   }
 
   function init() {
@@ -365,6 +416,10 @@
     loadHistory();
   }
 
+  window.refreshViewerNominationToday = function () {
+    loadHistory();
+    if (typeof window.refreshViewerLiveStream === 'function') window.refreshViewerLiveStream();
+  };
+
   window.addEventListener('DOMContentLoaded', init);
 })();
-
