@@ -82,8 +82,11 @@ from app.services.sync_service import (
     apply_sync_payload,
     push_sync_payload_to_remote_async,
     read_sync_state,
+    read_viewer_meta,
     sync_config,
+    verify_remote_sync_credentials,
     write_sync_state,
+    write_viewer_meta,
 )
 
 bp = Blueprint("main", __name__)
@@ -169,12 +172,27 @@ def _no_cache(resp: Response) -> Response:
     return resp
 
 
-def _sync_token_ok() -> bool:
+def _sync_token_error() -> str | None:
+    """Return None if the request token is valid; otherwise a specific error message."""
     expected = (os.environ.get("ARECO_SYNC_TOKEN") or "").strip()
-    if not expected:
-        return False
     got = (request.headers.get("X-ARECO-SYNC-TOKEN") or "").strip()
-    return bool(got) and got == expected
+    if not expected:
+        return (
+            "Viewer host has no ARECO_SYNC_TOKEN set. Add the same shared secret on the "
+            "hosted Viewer app (e.g. Render environment variables) and restart that service."
+        )
+    if not got:
+        return "No sync token was sent with the request."
+    if got != expected:
+        return (
+            "Sync token does not match. Use the exact same ARECO_SYNC_TOKEN on the trader "
+            "app and the Viewer host (character-for-character, no extra spaces)."
+        )
+    return None
+
+
+def _sync_token_ok() -> bool:
+    return _sync_token_error() is None
 
 
 @bp.route("/api/sync/config", methods=["GET"])
@@ -189,8 +207,9 @@ def api_sync_config():
 @bp.route("/api/sync/status", methods=["GET"])
 def api_sync_status():
     """Token-protected status endpoint (useful on hosted instance)."""
-    if not _sync_token_ok():
-        return jsonify({"ok": False, "error": "Invalid sync token."}), 403
+    token_err = _sync_token_error()
+    if token_err:
+        return jsonify({"ok": False, "error": token_err}), 403
     return jsonify({"ok": True, "state": read_sync_state()})
 
 
@@ -199,8 +218,9 @@ def api_sync_push():
     """Receive a pushed payload from a local instance (hosted read-only instance)."""
     if request.method == "OPTIONS":
         return "", 204
-    if not _sync_token_ok():
-        return jsonify({"ok": False, "error": "Invalid sync token."}), 403
+    token_err = _sync_token_error()
+    if token_err:
+        return jsonify({"ok": False, "error": token_err}), 403
     data = request.get_json(silent=True) or {}
     try:
         applied = apply_sync_payload(data)
@@ -224,6 +244,15 @@ def api_sync_push():
         return jsonify({"ok": False, "error": str(e)}), 400
 
 
+@bp.route("/api/sync/verify-remote", methods=["GET"])
+def api_sync_verify_remote():
+    """Check that the configured remote Viewer accepts this app's sync token."""
+    try:
+        return jsonify(verify_remote_sync_credentials())
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
 @bp.route("/api/sync/push-remote", methods=["POST", "OPTIONS"])
 def api_sync_push_remote():
     """
@@ -233,12 +262,26 @@ def api_sync_push_remote():
     if request.method == "OPTIONS":
         return "", 204
     # Requires login via enforce_access; roles already governed by request_allowed_for_role.
-    reason = (request.get_json(silent=True) or {}).get("reason") or "manual"
+    data = request.get_json(silent=True) or {}
+    reason = data.get("reason") or "manual"
+    live_stream_url = (data.get("liveStreamUrl") or "").strip()
     try:
+        if live_stream_url:
+            write_viewer_meta({"liveStreamUrl": live_stream_url})
         push_sync_payload_to_remote_async(reason=str(reason))
         return jsonify({"ok": True, "started": True, "state": read_sync_state()})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 400
+
+
+@bp.route("/api/viewer-meta", methods=["GET"])
+def api_viewer_meta():
+    """Read-only viewer settings synced from the trader app (e.g. live stream URL)."""
+    try:
+        meta = read_viewer_meta()
+        return jsonify({"ok": True, **meta})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
 
 
 @bp.route("/assets/<path:filename>")

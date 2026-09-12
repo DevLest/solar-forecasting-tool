@@ -465,10 +465,21 @@ def _lines_after_summary(text: str) -> list[str]:
     return lines
 
 
-def _find_wta_summary_numbers(full_text: str, _lines: list[str], for_arecoss: bool) -> dict[str, float]:
-    """Parse WESM COVER SUMMARY block after ``Net Sale / Purchase`` (ARECO / ARECOSS)."""
+def _money_tokens_from_text_fragment(fragment: str) -> list[float]:
+    """Extract monetary tokens in document order (supports plain and parenthesized amounts)."""
+    out: list[float] = []
+    if not (fragment or "").strip():
+        return out
+    for m in re.finditer(r"\([\d,\.]+\)|[\d]{1,3}(?:,[\d]{3})*\.\d{2}|\d+\.\d{2}", fragment):
+        v = _parse_money_token(m.group(0))
+        if v is not None:
+            out.append(v)
+    return out
+
+
+def _parse_wta_summary_inline_block(text: str) -> dict[str, float]:
+    """Classic single-block layout: all Net Sale / Purchase numbers in one regex match."""
     out: dict[str, float] = {}
-    text = full_text
     m_block = re.search(
         r"Net Sale / Purchase\s+"
         r"([\d,\.]+)\s+"
@@ -480,15 +491,91 @@ def _find_wta_summary_numbers(full_text: str, _lines: list[str], for_arecoss: bo
         text,
         re.DOTALL | re.IGNORECASE,
     )
-    if m_block:
-        g = [m_block.group(i) for i in range(1, 8)]
-        out["vatable_sales"] = float(g[0].replace(",", ""))
-        out["zero_rated_sales"] = float(g[1].replace(",", ""))
-        out["eco_sales"] = float(g[2].replace(",", ""))
-        out["net_or_combo_sales"] = float(g[3].replace(",", ""))
-        out["purchase_in_net_line"] = -float(g[4].replace(",", ""))
-        out["purchase_second_paren"] = -float(g[5].replace(",", ""))
-        out["tail_after_purchases"] = float(g[6].replace(",", ""))
+    if not m_block:
+        return out
+    g = [m_block.group(i) for i in range(1, 8)]
+    out["vatable_sales"] = float(g[0].replace(",", ""))
+    out["zero_rated_sales"] = float(g[1].replace(",", ""))
+    out["eco_sales"] = float(g[2].replace(",", ""))
+    out["net_or_combo_sales"] = float(g[3].replace(",", ""))
+    out["purchase_in_net_line"] = -float(g[4].replace(",", ""))
+    out["purchase_second_paren"] = -float(g[5].replace(",", ""))
+    out["tail_after_purchases"] = float(g[6].replace(",", ""))
+    return out
+
+
+def _parse_wta_summary_multiline(lines: list[str]) -> dict[str, float]:
+    """
+    Multiline WESM cover layouts (common on Final TS-WF WTA PDFs): each amount on its own line
+    after ``Net Sale / Purchase``. Token order matches the inline block:
+    VATable, Zero Rated, Eco-Zone, Net, purchase(s), tail.
+    """
+    out: dict[str, float] = {}
+    header_idx: int | None = None
+    for i, ln in enumerate(lines):
+        if re.search(r"Net Sale\s*/\s*Purchase", ln, re.IGNORECASE):
+            header_idx = i
+            break
+    if header_idx is None:
+        return out
+
+    tokens: list[float] = []
+    header = lines[header_idx]
+    m_tail = re.search(r"Net Sale\s*/\s*Purchase\s*(.+)$", header, re.IGNORECASE)
+    if m_tail and m_tail.group(1).strip():
+        tokens.extend(_money_tokens_from_text_fragment(m_tail.group(1)))
+
+    for ln in lines[header_idx + 1 :]:
+        if re.match(r"^Vat on Energy", ln, re.IGNORECASE):
+            break
+        if re.match(r"^EWT", ln, re.IGNORECASE):
+            break
+        if re.match(r"^Total Amount", ln, re.IGNORECASE):
+            break
+        if not ln.strip():
+            continue
+        before = len(tokens)
+        tokens.extend(_money_tokens_from_text_fragment(ln))
+        if len(tokens) >= 7 and len(tokens) > before:
+            break
+
+    if len(tokens) < 4:
+        return out
+
+    out["vatable_sales"] = tokens[0]
+    out["zero_rated_sales"] = tokens[1]
+    out["eco_sales"] = tokens[2]
+    out["net_or_combo_sales"] = tokens[3]
+
+    if len(tokens) >= 5:
+        t4 = tokens[4]
+        if t4 < 0:
+            out["purchase_in_net_line"] = t4
+        elif t4 == 0 and len(tokens) >= 6 and tokens[5] < 0:
+            out["purchase_in_net_line"] = tokens[5]
+            if len(tokens) >= 7 and tokens[6] < 0:
+                out["purchase_second_paren"] = tokens[6]
+            elif len(tokens) >= 7:
+                out["tail_after_purchases"] = tokens[6]
+        else:
+            out["purchase_in_net_line"] = t4
+
+    if len(tokens) >= 6 and "purchase_second_paren" not in out:
+        t5 = tokens[5]
+        if t5 < 0:
+            if out.get("purchase_in_net_line") is not None and out["purchase_in_net_line"] != t5:
+                out["purchase_second_paren"] = t5
+            elif "purchase_in_net_line" not in out:
+                out["purchase_in_net_line"] = t5
+
+    if len(tokens) >= 7 and "tail_after_purchases" not in out:
+        out["tail_after_purchases"] = tokens[6]
+
+    return out
+
+
+def _parse_wta_ewt_numbers(text: str) -> dict[str, float]:
+    out: dict[str, float] = {}
     m_ewt = re.search(r"EWT,?\s*Php\s+(\(?[\d,\.]+\)?)\s+(\(?[\d,\.]+\)?)", text, re.IGNORECASE)
     if m_ewt:
         e1 = _parse_money_token(m_ewt.group(1))
@@ -498,6 +585,34 @@ def _find_wta_summary_numbers(full_text: str, _lines: list[str], for_arecoss: bo
         if e2 is not None:
             out["ewt_purchases"] = e2
     return out
+
+
+def _merge_wta_summary_dicts(*dicts: dict[str, float]) -> dict[str, float]:
+    """Later dicts fill keys missing from earlier ones (inline first, multiline fills gaps)."""
+    out: dict[str, float] = {}
+    for d in dicts:
+        for k, v in d.items():
+            if k not in out and v is not None:
+                out[k] = v
+    return out
+
+
+def _wta_sales_magnitude(sm: dict[str, float]) -> float:
+    return abs(float(sm.get("vatable_sales") or 0)) + abs(float(sm.get("zero_rated_sales") or 0)) + abs(
+        float(sm.get("eco_sales") or 0)
+    )
+
+
+def _find_wta_summary_numbers(full_text: str, lines: list[str], for_arecoss: bool) -> dict[str, float]:
+    """Parse WESM COVER SUMMARY block after ``Net Sale / Purchase`` (ARECO / ARECOSS)."""
+    inline = _parse_wta_summary_inline_block(full_text)
+    multiline = _parse_wta_summary_multiline(lines)
+    # Prefer whichever layout captured the sales block; multiline wins when inline missed sales.
+    if _wta_sales_magnitude(inline) >= _wta_sales_magnitude(multiline):
+        block = _merge_wta_summary_dicts(inline, multiline)
+    else:
+        block = _merge_wta_summary_dicts(multiline, inline)
+    return _merge_wta_summary_dicts(block, _parse_wta_ewt_numbers(full_text))
 
 
 def parse_wta_cover(
@@ -531,6 +646,8 @@ def parse_wta_cover(
             patch["f"] = zr + eco
         elif zr is not None:
             patch["f"] = zr
+        elif eco is not None:
+            patch["f"] = eco
         pn = sm.get("purchase_in_net_line")
         if pn is not None:
             patch["s"] = pn
@@ -547,12 +664,17 @@ def parse_wta_cover(
             patch["i"] = zr + eco
         elif zr is not None:
             patch["i"] = zr
+        elif eco is not None:
+            patch["i"] = eco
         pn = sm.get("purchase_in_net_line")
         if pn is not None:
             patch["v"] = pn
-        ew = sm.get("ewt_sales")
-        if ew is not None:
-            patch["z"] = ew
+        ew_purch = sm.get("ewt_purchases")
+        ew_sales = sm.get("ewt_sales")
+        if ew_purch is not None and ew_purch != 0:
+            patch["z"] = ew_purch
+        elif ew_sales is not None:
+            patch["z"] = ew_sales
     return kind, patch
 
 

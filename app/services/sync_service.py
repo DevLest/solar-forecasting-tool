@@ -27,6 +27,7 @@ from app.services.nomination_accuracy_store import db_path as nomination_accurac
 
 
 SYNC_STATE_FILE = os.path.join(DATA_DIR, "sync_state.json")
+VIEWER_META_FILE = os.path.join(DATA_DIR, "viewer_meta.json")
 
 
 def _utc_now_iso() -> str:
@@ -56,6 +57,21 @@ def read_sync_state() -> dict[str, Any]:
     if isinstance(state, dict):
         return state
     return {}
+
+
+def read_viewer_meta() -> dict[str, Any]:
+    meta = _read_json_file(VIEWER_META_FILE)
+    if isinstance(meta, dict):
+        return meta
+    return {}
+
+
+def write_viewer_meta(patch: dict[str, Any]) -> dict[str, Any]:
+    cur = read_viewer_meta()
+    cur.update(patch or {})
+    cur["updatedAt"] = _utc_now_iso()
+    _write_json_atomic(VIEWER_META_FILE, cur)
+    return cur
 
 
 def write_sync_state(patch: dict[str, Any]) -> dict[str, Any]:
@@ -108,6 +124,7 @@ def build_sync_payload(*, source_label: str) -> dict[str, Any]:
 
     mapping: list[tuple[str, str]] = [
         ("historical_exports.json", files.historical_exports_json),
+        ("viewer_meta.json", VIEWER_META_FILE),
         ("nomination_accuracy.sqlite3", files.nomination_accuracy_sqlite3),
         ("billing_history.sqlite3", files.billing_history_sqlite3),
     ]
@@ -207,6 +224,7 @@ def apply_sync_payload(payload: dict[str, Any]) -> dict[str, Any]:
 
     allowed = {
         "historical_exports.json": HISTORICAL_EXPORTS_FILE,
+        "viewer_meta.json": VIEWER_META_FILE,
         "nomination_accuracy.sqlite3": os.path.join(DATA_DIR, "nomination_accuracy.sqlite3"),
         "billing_history.sqlite3": os.path.join(DATA_DIR, "billing_history.sqlite3"),
     }
@@ -258,6 +276,66 @@ def sync_config() -> dict[str, Any]:
     }
 
 
+def _parse_http_error_body(raw: bytes) -> str:
+    if not raw:
+        return ""
+    try:
+        data = json.loads(raw.decode("utf-8"))
+        if isinstance(data, dict) and data.get("error"):
+            return str(data["error"])
+    except Exception:
+        pass
+    return raw[:300].decode("utf-8", "ignore")
+
+
+def verify_remote_sync_credentials(*, timeout_s: float = 12.0) -> dict[str, Any]:
+    """Ping the remote Viewer's /api/sync/status using the configured token."""
+    cfg = sync_config()
+    if not cfg["enabled"]:
+        return {
+            "ok": False,
+            "error": "Remote sync is not configured (set ARECO_SYNC_REMOTE_URL and ARECO_SYNC_TOKEN).",
+        }
+    url = str(cfg["remote_url"]) + "/api/sync/status"
+    token = (os.environ.get("ARECO_SYNC_TOKEN") or "").strip()
+    req = urllib.request.Request(
+        url,
+        method="GET",
+        headers={
+            "X-ARECO-SYNC-TOKEN": token,
+            "User-Agent": "areco-sync/1",
+        },
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=float(timeout_s)) as resp:
+            body = resp.read() or b""
+            try:
+                data = json.loads(body.decode("utf-8"))
+            except Exception:
+                data = {"raw": body[:300].decode("utf-8", "ignore")}
+            return {
+                "ok": bool(data.get("ok")) if isinstance(data, dict) else resp.status == 200,
+                "remote_url": cfg["remote_url"],
+                "remote_response": data,
+            }
+    except urllib.error.HTTPError as e:
+        detail = _parse_http_error_body(e.read() if hasattr(e, "read") else b"")
+        if e.code == 403:
+            msg = detail or (
+                "Sync token rejected by the Viewer host. Set the same ARECO_SYNC_TOKEN on "
+                "both the trader app and the hosted Viewer, then restart the Viewer service."
+            )
+        else:
+            msg = detail or f"HTTP {e.code} {e.reason}"
+        return {"ok": False, "error": msg, "remote_url": cfg["remote_url"], "http_status": e.code}
+    except urllib.error.URLError as e:
+        return {
+            "ok": False,
+            "error": f"Could not reach Viewer at {cfg['remote_url']}: {e}",
+            "remote_url": cfg["remote_url"],
+        }
+
+
 def push_sync_payload_to_remote(*, reason: str, timeout_s: float = 25.0) -> dict[str, Any]:
     cfg = sync_config()
     if not cfg["enabled"]:
@@ -307,13 +385,23 @@ def push_sync_payload_to_remote(*, reason: str, timeout_s: float = 25.0) -> dict
                 return {"ok": resp.status >= 200 and resp.status < 300, "raw": resp_body[:500].decode("utf-8", "ignore")}
     except urllib.error.HTTPError as e:
         raw = e.read() if hasattr(e, "read") else b""
+        detail = _parse_http_error_body(raw)
         write_sync_state(
             {
                 "last_push_stage": "error",
                 "last_push_stage_detail": f"Remote error: HTTP {e.code} {e.reason}",
             }
         )
-        raise RuntimeError(f"Remote sync failed: HTTP {e.code} {e.reason} {raw[:300]!r}") from e
+        if e.code == 403:
+            msg = detail or (
+                "Sync token rejected. Use the same ARECO_SYNC_TOKEN on the trader app and "
+                "the hosted Viewer, then restart the Viewer service."
+            )
+            raise RuntimeError(msg) from e
+        raise RuntimeError(
+            f"Remote sync failed: HTTP {e.code} {e.reason}"
+            + (f" — {detail}" if detail else "")
+        ) from e
     except urllib.error.URLError as e:
         write_sync_state(
             {
