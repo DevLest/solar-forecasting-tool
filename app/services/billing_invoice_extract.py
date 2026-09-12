@@ -125,7 +125,7 @@ def _extract_pdf_text(data: bytes) -> tuple[str, bool]:
 def _kind_from_filename(name: str) -> str:
     """Guess invoice kind from file name (IEMOP names vary; content parsing still applies)."""
     n = (name or "").upper()
-    # Final statements use TS-WF-*_MF1.pdf / *_MF.pdf for market fees — classify those before any WTA rule.
+    # Final statements use TS-WF-*_MF1.pdf / *_MF.pdf for market fees - classify those before any WTA rule.
     if "SUPPLEMENTAL" in n:
         return "emf_supplemental"
     if "IEMMS" in n:
@@ -138,7 +138,7 @@ def _kind_from_filename(name: str) -> str:
         return "emf_regular"
     if "EMF" in n or "PS_EMF" in n or "FS_EMF" in n:
         return "emf_regular"
-    # WTA covers are named …_WTA.pdf (TS-WF in the path is not enough — it also appears on MF invoices).
+    # WTA covers are named …_WTA.pdf (TS-WF in the path is not enough - it also appears on MF invoices).
     if "WTA" in n:
         return "wta"
     return "unknown"
@@ -166,7 +166,7 @@ def _refine_emf_kind_from_rate(filename: str, text: str, fk: str) -> str:
 
 def parse_emf_market_fee(text: str) -> dict[str, Any]:
     """
-    Market fee PDFs — classic IEMOP layout or TS-WP / TS-WF Settlement SVC layout.
+    Market fee PDFs - classic IEMOP layout or TS-WP / TS-WF Settlement SVC layout.
     Maps REGULAR -> aa, IEMMS -> ab, SUPPLEMENTAL -> ac (amounts negative = payable).
     """
     t = text
@@ -621,7 +621,7 @@ def parse_wta_cover(
 ) -> tuple[str, dict[str, Any]]:
     """Returns ('areco'|'arecoss', patch dict for Input columns e..ad).
 
-    ``force_branch`` — when set (``areco`` | ``arecoss``), use that branch instead of
+    ``force_branch`` - when set (``areco`` | ``arecoss``), use that branch instead of
     detecting from PDF text (for uploads where the file name does not hint at type).
     """
     t = text
@@ -771,7 +771,7 @@ def extract_invoice_pdf(
         fk = _refine_emf_kind_from_rate(filename, text, fk)
     text_empty = not (text or "").strip()
 
-    # Explicit slot (UI: one file per invoice type — filenames may vary)
+    # Explicit slot (UI: one file per invoice type - filenames may vary)
     if slot in ("wta_areco", "wta_arecoss"):
         fb = "areco" if slot == "wta_areco" else "arecoss"
         branch, patch = parse_wta_cover(text, force_branch=fb)

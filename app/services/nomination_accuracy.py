@@ -1,7 +1,7 @@
-"""Nomination accuracy — replicates ARECO Daily Trading Summary Compliance logic.
+"""Nomination accuracy - replicates ARECO Daily Trading Summary Compliance logic.
 
 MQ: Daily MIRF WESM file, range B13:Y36 (24 rows × DEL/REC pairs → 288 DEL MW).
-Compliance: MPI CSV — Interval End, Market DOT (RTD), Actual Output; sorted by time;
+Compliance: MPI CSV - Interval End, Market DOT (RTD), Actual Output; sorted by time;
   rows mapped to 5‑minute slots (00:05 … 23:55) like Trading Report paste C63:D216.
 
 Backfill: ``RTD -Actual -Day Ahead`` workbook (C–E for times, RTD, Actual) plus optional
@@ -163,7 +163,7 @@ def dominant_day_from_compliance_csv_bytes(content: bytes) -> date | None:
 def compliance_blob_must_match_trade_day(comp_bytes: bytes, expected: date) -> str | None:
     """
     After loading a stored MPI export by trade-day key, verify interval timestamps (RTD/Actual
-    rows) are for that same calendar day — i.e. Market DOT data matches the intended schedule day
+    rows) are for that same calendar day - i.e. Market DOT data matches the intended schedule day
     (typically aligned with ``ARECO_YYYYMMDD`` on the MIRF MQ file, even if downloaded later).
     Returns an error message if verification fails, else ``None``.
     """
@@ -345,7 +345,7 @@ def compute_fpe_and_metrics(
         else:
             fpe.append(abs((g_proj[i] - mq_mw[i]) / h_max))
 
-    # MAPE: SUM(I)/COUNT(C) — template counts all RTD cells (288)
+    # MAPE: SUM(I)/COUNT(C) - template counts all RTD cells (288)
     n_c = N_INTERVALS
     valid_fpe = [x for x in fpe if x is not None]
     mape = sum(valid_fpe) / n_c if n_c else None
@@ -522,7 +522,7 @@ def analyze_rtd_dispatch_workbook(
     RTD ``RTD … Day Ahead`` workbook: RTD and Actual from columns D/E.
 
     MQ (E in FPE): if ``mq_xlsx_bytes`` is set, DEL MW comes from the MIRF Daily MQ workbook
-    (same B13:Y36 logic as MPI+MIRF). Otherwise Day Ahead (column F) is used as MQ — numbers
+    (same B13:Y36 logic as MPI+MIRF). Otherwise Day Ahead (column F) is used as MQ - numbers
     may differ from MIRF DEL.
     """
     rows, _n_rows = parse_rtd_dispatch_rows_for_day(content, trade_date)

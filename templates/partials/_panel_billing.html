@@ -15,7 +15,7 @@
             tabindex="0"
             aria-label="Choose or drop master settlement zip"
           >
-            <p class="text-xs text-brand-muted mb-3"><span class="text-brand-text font-semibold">Drop zip here</span> or browse — <kbd class="px-1.5 py-0.5 rounded border border-brand-border/80 bg-brand-dark font-mono text-[10px] text-brand-muted">Enter</kbd> opens the picker when focused</p>
+            <p class="text-xs text-brand-muted mb-3"><span class="text-brand-text font-semibold">Drop zip here</span> or browse - <kbd class="px-1.5 py-0.5 rounded border border-brand-border/80 bg-brand-dark font-mono text-[10px] text-brand-muted">Enter</kbd> opens the picker when focused</p>
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-start gap-3 relative z-[1] w-full">
               <button type="button" id="billing-btn-master" class="shrink-0 py-3 px-4 rounded-xl border border-brand-border bg-brand-dark hover:bg-brand-border/40 active:scale-[0.98] text-brand-text font-bold uppercase text-xs tracking-wide transition-all text-center focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent/50">
                 Choose zip
@@ -120,8 +120,8 @@
       <dialog id="billing-export-modal" class="backdrop:bg-slate-950/80">
         <div class="modal-panel p-6 max-w-lg w-[min(100vw-2rem,36rem)]">
           <h2 class="text-sm font-bold uppercase tracking-wider text-brand-muted mb-2">Export destination</h2>
-          <p class="text-sm text-brand-muted leading-relaxed mb-3">The server needs a <span class="text-brand-text font-semibold">full Windows path</span> (same as Explorer’s <span class="font-semibold text-brand-text">Copy as path</span>) to the <span class="font-semibold text-brand-text">parent</span> folder. Inside it, the app creates a subfolder named from your uploaded master zip, then <span class="font-mono text-[11px]">ARECO</span> / <span class="font-mono text-[11px]">ARECOSS</span> under that. A browser’s folder dialog <span class="font-semibold text-amber-200/90">cannot</span> fill this field — use <span class="font-semibold text-brand-text">Quick fill</span> below (paths come from the PC running this app) or paste a path yourself.</p>
-          <p class="text-[11px] font-bold uppercase tracking-wider text-brand-muted mb-2">Quick fill — this PC</p>
+          <p class="text-sm text-brand-muted leading-relaxed mb-3">The server needs a <span class="text-brand-text font-semibold">full Windows path</span> (same as Explorer’s <span class="font-semibold text-brand-text">Copy as path</span>) to the <span class="font-semibold text-brand-text">parent</span> folder. Inside it, the app creates a subfolder named from your uploaded master zip, then <span class="font-mono text-[11px]">ARECO</span> / <span class="font-mono text-[11px]">ARECOSS</span> under that. A browser’s folder dialog <span class="font-semibold text-amber-200/90">cannot</span> fill this field - use <span class="font-semibold text-brand-text">Quick fill</span> below (paths come from the PC running this app) or paste a path yourself.</p>
+          <p class="text-[11px] font-bold uppercase tracking-wider text-brand-muted mb-2">Quick fill - this PC</p>
           <div id="billing-modal-shortcuts" class="flex flex-wrap gap-2 mb-4 min-h-[2rem]" aria-live="polite"></div>
           <p id="billing-modal-shortcuts-hint" class="text-[11px] text-brand-muted mb-4 hidden"></p>
           <label for="billing-modal-export-input" class="sr-only">Export folder path</label>

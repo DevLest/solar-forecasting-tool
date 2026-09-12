@@ -1,6 +1,7 @@
 """HTTP routes and JSON API (same contract as legacy ``run_dashboard.py``)."""
 from __future__ import annotations
 
+import hmac
 import io
 import json
 import os
@@ -23,6 +24,7 @@ from app.auth import (
 )
 from app.config import DATA_DIR, ROOT, nomination_export_dir, settlement_zip_passwords_from_env
 from app.services.env_config import ALLOWED_ENV_KEYS, merge_env_updates, read_env_file_dict
+from app.services.live_stream_ocr import watcher as live_stream_watcher
 from app.services.billing_invoice_extract import extract_invoice_pdf, merge_input_patches, merge_period_metas
 from app.services.billing_history_store import (
     compute_display_totals,
@@ -94,7 +96,7 @@ bp = Blueprint("main", __name__)
 
 @bp.before_request
 def enforce_access():
-    if request.endpoint == "main.login":
+    if request.endpoint in ("main.login", "main.assets", "main.service_worker"):
         return None
     # Token-auth sync endpoints (for hosted read-only instance).
     if request.endpoint in ("main.api_sync_push", "main.api_sync_status", "main.api_sync_config"):
@@ -166,9 +168,19 @@ def _no_cache(resp: Response) -> Response:
     resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
     resp.headers["Pragma"] = "no-cache"
     resp.headers["Expires"] = "0"
-    resp.headers["Access-Control-Allow-Origin"] = "*"
-    resp.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS, PATCH, DELETE"
-    resp.headers["Access-Control-Allow-Headers"] = "Content-Type"
+    return resp
+
+
+@bp.after_request
+def _sync_cors(resp: Response) -> Response:
+    # Only the sync endpoints are ever called cross-origin (trader host -> Viewer
+    # host); everything else is same-origin browser traffic and needs no CORS
+    # headers. A blanket "*" on every response (including authenticated pages)
+    # is unnecessary attack surface.
+    if request.path.startswith("/api/sync/"):
+        resp.headers["Access-Control-Allow-Origin"] = "*"
+        resp.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+        resp.headers["Access-Control-Allow-Headers"] = "Content-Type, X-ARECO-SYNC-TOKEN"
     return resp
 
 
@@ -183,7 +195,7 @@ def _sync_token_error() -> str | None:
         )
     if not got:
         return "No sync token was sent with the request."
-    if got != expected:
+    if not hmac.compare_digest(got, expected):
         return (
             "Sync token does not match. Use the exact same ARECO_SYNC_TOKEN on the trader "
             "app and the Viewer host (character-for-character, no extra spaces)."
@@ -287,6 +299,16 @@ def api_viewer_meta():
 @bp.route("/assets/<path:filename>")
 def assets(filename: str):
     return send_from_directory(os.path.join(ROOT, "assets"), filename)
+
+
+@bp.route("/sw.js")
+def service_worker():
+    # Served at the origin root (not /static/sw.js) so its default scope covers
+    # the whole app and it can control every page, not just /static/.
+    resp = send_from_directory(os.path.join(ROOT, "static"), "sw.js")
+    resp.headers["Service-Worker-Allowed"] = "/"
+    resp.headers["Cache-Control"] = "no-cache"
+    return resp
 
 
 @bp.route("/login", methods=["GET", "POST"])
@@ -418,6 +440,12 @@ def api_app_config():
     return jsonify({"ok": True})
 
 
+@bp.route("/api/stream-mw", methods=["GET"])
+def api_stream_mw():
+    live_stream_watcher.ensure_started()
+    return jsonify(live_stream_watcher.get_state())
+
+
 @bp.route("/api/nomination-accuracy/uploaded-dates", methods=["GET"])
 def api_nomination_accuracy_uploaded_dates():
     try:
@@ -495,7 +523,7 @@ def api_nomination_reporting_market_result_csv_days():
 
 @bp.route("/api/nomination-reporting/market-result-csv", methods=["POST", "OPTIONS"])
 def api_nomination_reporting_market_result_csv():
-    """Store MPI Market Result — Energy Schedules CSV by dominant trade day."""
+    """Store MPI Market Result - Energy Schedules CSV by dominant trade day."""
     if request.method == "OPTIONS":
         return "", 204
     f = request.files.get("market_result_csv")
@@ -618,7 +646,7 @@ def api_nomination_accuracy():
         date_warnings = [
             (
                 f"Trade day {lookup_trade_date_iso} is taken from the MIRF MQ filename "
-                f"(ARECO_YYYYMMDD when present — the intended schedule day, even if the file was "
+                f"(ARECO_YYYYMMDD when present - the intended schedule day, even if the file was "
                 f"downloaded later). RTD (Market DOT) and Actual are loaded from the MPI compliance "
                 f"export stored in the database for that same day."
             ),
@@ -704,7 +732,7 @@ def api_nomination_accuracy_rtd_dispatch_backfill():
             mq_xlsx_bytes=raw_mq,
         )
         # Store the MIRF MQ workbook so marketplace charts can show day-ahead MW even when
-        # Market Result — Energy Schedules CSV is not available for that day.
+        # Market Result - Energy Schedules CSV is not available for that day.
         try:
             save_mirf_mq_xlsx_blob(
                 storage_day.isoformat(),

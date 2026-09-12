@@ -20,6 +20,7 @@ import urllib.request
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
+from urllib.parse import urlparse
 
 from app.config import DATA_DIR, HISTORICAL_EXPORTS_FILE
 from app.services.billing_history_store import _DB_PATH as BILLING_DB_PATH
@@ -265,6 +266,27 @@ def _remote_url() -> str:
     return (os.environ.get("ARECO_SYNC_REMOTE_URL") or "").strip().rstrip("/")
 
 
+def _is_insecure_remote(url: str) -> bool:
+    """True if `url` would send the sync token in cleartext over the network."""
+    try:
+        parsed = urlparse(url)
+    except ValueError:
+        return True
+    if parsed.scheme == "https":
+        return False
+    # Only allow plain http for same-machine testing (e.g. a local Viewer on 127.0.0.1).
+    return parsed.hostname not in ("127.0.0.1", "localhost")
+
+
+def _assert_remote_is_secure(url: str) -> None:
+    if _is_insecure_remote(url) and (os.environ.get("ARECO_SYNC_ALLOW_INSECURE") or "").strip() != "1":
+        raise RuntimeError(
+            f"Refusing to sync to a non-HTTPS remote ({url}). The sync token would be sent in "
+            "cleartext. Use an https:// ARECO_SYNC_REMOTE_URL, or set ARECO_SYNC_ALLOW_INSECURE=1 "
+            "for local-only testing against 127.0.0.1/localhost."
+        )
+
+
 def sync_config() -> dict[str, Any]:
     url = _remote_url()
     token = (os.environ.get("ARECO_SYNC_TOKEN") or "").strip()
@@ -273,6 +295,7 @@ def sync_config() -> dict[str, Any]:
         "enabled": enabled,
         "remote_url": url,
         "has_token": bool(token),
+        "insecure": bool(url and _is_insecure_remote(url)),
     }
 
 
@@ -296,6 +319,10 @@ def verify_remote_sync_credentials(*, timeout_s: float = 12.0) -> dict[str, Any]
             "ok": False,
             "error": "Remote sync is not configured (set ARECO_SYNC_REMOTE_URL and ARECO_SYNC_TOKEN).",
         }
+    try:
+        _assert_remote_is_secure(str(cfg["remote_url"]))
+    except RuntimeError as e:
+        return {"ok": False, "error": str(e), "remote_url": cfg["remote_url"]}
     url = str(cfg["remote_url"]) + "/api/sync/status"
     token = (os.environ.get("ARECO_SYNC_TOKEN") or "").strip()
     req = urllib.request.Request(
@@ -340,6 +367,7 @@ def push_sync_payload_to_remote(*, reason: str, timeout_s: float = 25.0) -> dict
     cfg = sync_config()
     if not cfg["enabled"]:
         raise RuntimeError("Remote sync is not configured (set ARECO_SYNC_REMOTE_URL and ARECO_SYNC_TOKEN).")
+    _assert_remote_is_secure(str(cfg["remote_url"]))
     url = str(cfg["remote_url"]) + "/api/sync/push"
     token = (os.environ.get("ARECO_SYNC_TOKEN") or "").strip()
 
@@ -400,7 +428,7 @@ def push_sync_payload_to_remote(*, reason: str, timeout_s: float = 25.0) -> dict
             raise RuntimeError(msg) from e
         raise RuntimeError(
             f"Remote sync failed: HTTP {e.code} {e.reason}"
-            + (f" — {detail}" if detail else "")
+            + (f" - {detail}" if detail else "")
         ) from e
     except urllib.error.URLError as e:
         write_sync_state(
@@ -412,50 +440,114 @@ def push_sync_payload_to_remote(*, reason: str, timeout_s: float = 25.0) -> dict
         raise RuntimeError(f"Remote sync failed: {e}") from e
 
 
+def _push_and_record_state(*, reason: str) -> dict[str, Any] | None:
+    """Run one push, recording start/finish/outcome in sync_state.json.
+
+    Returns the remote's response dict on success, or None on failure (the
+    error is recorded in sync_state.json and re-raised is left to the caller).
+    """
+    started = time.time()
+    write_sync_state(
+        {
+            "last_push_started_at": _utc_now_iso(),
+            "last_push_reason": reason,
+            "last_push_finished_at": None,
+            "last_push_ok": None,
+            "last_push_error": None,
+            "last_push_stage": "starting",
+            "last_push_stage_detail": "Starting…",
+            "last_push_current_file": None,
+        }
+    )
+    try:
+        res = push_sync_payload_to_remote(reason=reason)
+        elapsed_ms = int((time.time() - started) * 1000)
+        write_sync_state(
+            {
+                "last_push_ok": bool(res.get("ok")) if isinstance(res, dict) else True,
+                "last_push_finished_at": _utc_now_iso(),
+                "last_push_elapsed_ms": elapsed_ms,
+                "last_push_response": res if isinstance(res, dict) else {"raw": str(res)},
+                "last_push_error": None,
+                "last_push_stage": "done",
+                "last_push_stage_detail": "Completed.",
+            }
+        )
+        return res if isinstance(res, dict) else {"raw": str(res)}
+    except Exception as e:  # noqa: BLE001
+        elapsed_ms = int((time.time() - started) * 1000)
+        write_sync_state(
+            {
+                "last_push_ok": False,
+                "last_push_finished_at": _utc_now_iso(),
+                "last_push_elapsed_ms": elapsed_ms,
+                "last_push_error": str(e),
+                "last_push_stage": "done",
+                "last_push_stage_detail": "Failed.",
+            }
+        )
+        raise
+
+
 def push_sync_payload_to_remote_async(*, reason: str) -> None:
     """Fire-and-forget background push; records status in sync_state.json."""
 
     def run() -> None:
-        started = time.time()
-        write_sync_state(
-            {
-                "last_push_started_at": _utc_now_iso(),
-                "last_push_reason": reason,
-                "last_push_finished_at": None,
-                "last_push_ok": None,
-                "last_push_error": None,
-                "last_push_stage": "starting",
-                "last_push_stage_detail": "Starting…",
-                "last_push_current_file": None,
-            }
-        )
         try:
-            res = push_sync_payload_to_remote(reason=reason)
-            elapsed_ms = int((time.time() - started) * 1000)
-            write_sync_state(
-                {
-                    "last_push_ok": bool(res.get("ok")) if isinstance(res, dict) else True,
-                    "last_push_finished_at": _utc_now_iso(),
-                    "last_push_elapsed_ms": elapsed_ms,
-                    "last_push_response": res if isinstance(res, dict) else {"raw": str(res)},
-                    "last_push_error": None,
-                    "last_push_stage": "done",
-                    "last_push_stage_detail": "Completed.",
-                }
-            )
-        except Exception as e:  # noqa: BLE001
-            elapsed_ms = int((time.time() - started) * 1000)
-            write_sync_state(
-                {
-                    "last_push_ok": False,
-                    "last_push_finished_at": _utc_now_iso(),
-                    "last_push_elapsed_ms": elapsed_ms,
-                    "last_push_error": str(e),
-                    "last_push_stage": "done",
-                    "last_push_stage_detail": "Failed.",
-                }
-            )
+            _push_and_record_state(reason=reason)
+        except Exception:  # noqa: BLE001 - already recorded in sync_state.json
+            pass
 
     t = threading.Thread(target=run, name="areco-sync-push", daemon=True)
     t.start()
+
+
+def _auto_sync_interval_seconds() -> float:
+    raw = (os.environ.get("ARECO_SYNC_INTERVAL_SECONDS") or "").strip()
+    try:
+        val = float(raw) if raw else 300.0
+    except ValueError:
+        val = 300.0
+    return max(60.0, val)  # never push more than once a minute
+
+
+_auto_sync_lock = threading.Lock()
+_auto_sync_started = False
+
+
+def start_auto_sync_scheduler() -> None:
+    """Start a background thread that pushes to the remote Viewer on a fixed
+    interval for as long as this process is running - independent of any
+    browser tab being open. No-op if sync isn't configured (no remote URL /
+    token) or if disabled via ARECO_SYNC_AUTO=0. Safe to call more than once;
+    only the first call actually starts the thread.
+    """
+    global _auto_sync_started
+
+    if (os.environ.get("ARECO_SYNC_AUTO") or "1").strip() == "0":
+        return
+    if not sync_config()["enabled"]:
+        return
+
+    with _auto_sync_lock:
+        if _auto_sync_started:
+            return
+        _auto_sync_started = True
+
+    interval = _auto_sync_interval_seconds()
+
+    def loop() -> None:
+        # Small startup delay so this doesn't race the app's own boot sequence.
+        time.sleep(min(30.0, interval))
+        backoff = 30.0
+        while True:
+            try:
+                _push_and_record_state(reason="auto_interval")
+                backoff = 30.0
+                time.sleep(interval)
+            except Exception:  # noqa: BLE001 - state already recorded; keep retrying forever
+                time.sleep(backoff)
+                backoff = min(backoff * 2, interval)
+
+    threading.Thread(target=loop, name="areco-auto-sync", daemon=True).start()
 

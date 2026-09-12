@@ -306,7 +306,7 @@ def record_upload(row_id: int, filename: str, detected_kind: str, meta: dict[str
 
 def compute_display_totals(rows: list[dict[str, Any]]) -> dict[str, float]:
     """
-    Sums Input columns across ``rows`` (already filtered) — mirrors Display SUMIFS totals.
+    Sums Input columns across ``rows`` (already filtered) - mirrors Display SUMIFS totals.
     """
     totals: dict[str, float] = {}
     keys = _INPUT_KEYS
@@ -357,11 +357,11 @@ def display_layout(totals: dict[str, float]) -> dict[str, Any]:
         "market_fee_3": g("ac"),
         "total_payable": g("ad"),
     }
-    # Display B16 — components B7,B8,B10,B11,B12,B13,B15 only (not G/L, not Input N unless N matches this sum).
+    # Display B16 - components B7,B8,B10,B11,B12,B13,B15 only (not G/L, not Input N unless N matches this sum).
     total_receivable_from_iemop = (
         g("e") + g("f") + g("h") + g("i") + g("j") + g("k") + g("m")
     )
-    # Display E23 — SUMIFS(AD). Fallback: sum R–AC when stored AD totals to 0 (see docstring).
+    # Display E23 - SUMIFS(AD). Fallback: sum R–AC when stored AD totals to 0 (see docstring).
     ad_roll = g("ad")
     purchase_components_sum = sum(g(k) for k in _PURCHASE_COMPONENT_KEYS)
     total_payable_to_iemop = (

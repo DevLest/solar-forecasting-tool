@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-ARECO Solar Operations — Flask entrypoint (replaces the old stdlib-only static server).
+ARECO Solar Operations - Flask entrypoint (replaces the old stdlib-only static server).
 
   pip install -r requirements.txt
   python run_dashboard.py

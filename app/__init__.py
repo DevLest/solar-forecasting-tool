@@ -1,4 +1,4 @@
-"""ARECO Solar Operations — Flask application factory."""
+"""ARECO Solar Operations - Flask application factory."""
 from __future__ import annotations
 
 import logging
@@ -47,28 +47,40 @@ def create_app() -> Flask:
     from app.routes import bp as main_bp
     from app.services.billing_history_store import init_billing_history_db
     from app.services.nomination_accuracy_store import init_nomination_accuracy_db
+    from app.services.sync_service import start_auto_sync_scheduler
 
     init_nomination_accuracy_db()
     init_billing_history_db()
+    # No-op unless ARECO_SYNC_REMOTE_URL + ARECO_SYNC_TOKEN are set (i.e. this
+    # is the local trader instance, not the hosted read-only Viewer).
+    start_auto_sync_scheduler()
 
     uf = users_file_path()
     if not os.path.isfile(uf):
-        example = os.path.join(ROOT, "users.example.json")
+        # ARECO_USERS_SEED_FILE lets a deployment seed from something other than
+        # users.example.json (which includes admin + nominator accounts) - e.g.
+        # the hosted read-only Viewer seeds from users.viewer.example.json,
+        # which has a spectator-only account, so no admin credentials ever
+        # exist on a public instance.
+        seed_name = (os.environ.get("ARECO_USERS_SEED_FILE") or "users.example.json").strip()
+        example = os.path.join(ROOT, seed_name)
         if os.path.isfile(example):
             try:
                 os.makedirs(os.path.dirname(uf) or ".", exist_ok=True)
                 shutil.copyfile(example, uf)
-                logger.info("Seeded users file from users.example.json -> %s", uf)
+                logger.info("Seeded users file from %s -> %s", seed_name, uf)
             except OSError as e:
                 logger.error(
-                    "Could not copy users.example.json to %s: %s — create data/users.json or fix permissions.",
+                    "Could not copy %s to %s: %s - create data/users.json or fix permissions.",
+                    seed_name,
                     uf,
                     e,
                 )
         else:
             logger.error(
-                "No users file at %s and users.example.json is missing under %s.",
+                "No users file at %s and seed file %s is missing under %s.",
                 uf,
+                seed_name,
                 ROOT,
             )
 

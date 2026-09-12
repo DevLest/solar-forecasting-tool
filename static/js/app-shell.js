@@ -51,6 +51,20 @@
           setSectionExpanded(root, key === activeSec);
         });
       }
+      var panelById = {
+        nomination: panelNom,
+        'nomination-reporting': panelReporting,
+        billing: panelBill,
+        'nomination-accuracy': panelAcc,
+        'billing-history': panelBillHist
+      };
+      var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      function animatePanelIn(panelEl) {
+        if (!panelEl || reduceMotion) return;
+        panelEl.classList.remove('panel-enter');
+        void panelEl.offsetWidth;
+        panelEl.classList.add('panel-enter');
+      }
       function showPanel(id) {
         if (!allowed[id]) id = defaultPanel;
         if (!allowed[id]) id = Object.keys(allowed)[0] || 'nomination';
@@ -65,6 +79,7 @@
         });
         if (subtitleEl) subtitleEl.textContent = titles[id] || titles.nomination;
         syncNavSectionsForPanel(id);
+        animatePanelIn(panelById[id]);
         try { sessionStorage.setItem('areco_app_panel', id); } catch (e) {}
       }
       document.querySelectorAll('[data-nav-section-toggle]').forEach(function(btn) {
@@ -133,4 +148,60 @@
       if (confirmBtn) confirmBtn.addEventListener('click', onConfirm);
       if (cancelBtn) cancelBtn.addEventListener('click', onCancel);
       if (overlay) overlay.addEventListener('click', function(e) { if (e.target === overlay) onCancel(); });
+    })();
+
+    (function mobileMoreSheet() {
+      var moreBtn = document.getElementById('mobile-more-btn');
+      var sheet = document.getElementById('mobile-more-sheet');
+      var backdrop = document.getElementById('mobile-more-backdrop');
+      if (!moreBtn || !sheet || !backdrop) return;
+
+      function openSheet() {
+        sheet.classList.add('is-open');
+        backdrop.classList.add('is-open');
+        moreBtn.setAttribute('aria-expanded', 'true');
+      }
+      function closeSheet() {
+        sheet.classList.remove('is-open');
+        backdrop.classList.remove('is-open');
+        moreBtn.setAttribute('aria-expanded', 'false');
+      }
+      moreBtn.addEventListener('click', function () {
+        if (sheet.classList.contains('is-open')) closeSheet();
+        else openSheet();
+      });
+      document.querySelectorAll('[data-mobile-sheet-close]').forEach(function (el) {
+        el.addEventListener('click', closeSheet);
+      });
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') closeSheet();
+      });
+    })();
+
+    (function pwaShell() {
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function () {
+          navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(function () {});
+        });
+      }
+      var installBtn = document.getElementById('pwa-install-btn');
+      var deferredPrompt = null;
+      window.addEventListener('beforeinstallprompt', function (e) {
+        e.preventDefault();
+        deferredPrompt = e;
+        if (installBtn) installBtn.hidden = false;
+      });
+      if (installBtn) {
+        installBtn.addEventListener('click', function () {
+          if (!deferredPrompt) return;
+          deferredPrompt.prompt();
+          deferredPrompt.userChoice.finally(function () {
+            deferredPrompt = null;
+            installBtn.hidden = true;
+          });
+        });
+      }
+      window.addEventListener('appinstalled', function () {
+        if (installBtn) installBtn.hidden = true;
+      });
     })();

@@ -118,7 +118,7 @@ def resolve_mq_forecast_lookup_date(
     """
     Trade day used to load stored MPI compliance CSV when the MQ file is uploaded alone.
 
-    **Primary:** ``ARECO_YYYYMMDD`` in the MIRF MQ filename — this is the **intended schedule /
+    **Primary:** ``ARECO_YYYYMMDD`` in the MIRF MQ filename - this is the **intended schedule /
     trade day** for DEL and for the MPI export (RTD in Market DOT), even if the workbook is only
     downloadable the next calendar day.
 

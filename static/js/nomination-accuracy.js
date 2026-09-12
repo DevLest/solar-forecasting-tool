@@ -186,7 +186,7 @@
     if (accept.indexOf('.xlsx') >= 0 && name.indexOf('.xlsx') < 0 && name.indexOf('.xlsm') < 0) ok = false;
     if (!ok) {
       if (mqDialog && mqDialog.open && mqModalStatus) {
-        mqModalStatus.textContent = 'Wrong file type — use .xlsx or .xlsm.';
+        mqModalStatus.textContent = 'Wrong file type - use .xlsx or .xlsm.';
       } else if (statusEl) {
         statusEl.textContent = 'Wrong file type for that slot.';
       }

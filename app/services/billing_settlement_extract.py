@@ -2,7 +2,7 @@
 
 **Zip layers (password usage)**
 
-1. **Master zip** (uploaded file from the other app) — **not** encrypted; opened with no password.
+1. **Master zip** (uploaded file from the other app) - **not** encrypted; opened with no password.
 2. **Branch zips** (first files inside the master: names ending in ``_ARECO`` / ``_ARECOSS``) —
    **encrypted**; ``ARECO_SETTLEMENT_ZIP_PASSWORD1`` then ``…_PASSWORD2`` then unencrypted
    (same order as Excel / WinRAR batch).
@@ -15,7 +15,7 @@
    (also accepts ``Energy_SEIN_``).
 
 Reimplements the *intent* of a typical Excel + WinRAR settlement extraction batch (steps 2–3).
-This module does not run VBA, ``.bat``, or WinRAR — only ``zipfile`` + filesystem layout.
+This module does not run VBA, ``.bat``, or WinRAR - only ``zipfile`` + filesystem layout.
 """
 from __future__ import annotations
 
@@ -86,10 +86,10 @@ def _collect_spreadsheets_unwrapping_nested_zips(
 ) -> tuple[list[tuple[str, str]], int]:
     """
     Find workbooks / CSV under ``directory``. If a ``.zip`` is found, extract it (trying
-    ``passwords`` like other layers) and search inside — repeats up to ``max_nested_zip``.
+    ``passwords`` like other layers) and search inside - repeats up to ``max_nested_zip``.
 
     Nested archives are extracted under ``persistent_staging_root`` (the daily zip's work
-    dir) so paths remain valid until the caller moves files out — not a short-lived temp
+    dir) so paths remain valid until the caller moves files out - not a short-lived temp
     dir that is deleted before ``shutil.move``.
 
     Returns ``( [(abs_path, basename), ...], skipped_count )`` for leaf files not consumed.

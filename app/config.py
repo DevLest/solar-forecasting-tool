@@ -19,7 +19,9 @@ PORT = int(os.environ.get("PORT", os.environ.get("ARECO_PORT", "8765")))
 
 KEY_FILE = os.path.join(ROOT, "openai_api_key.txt")
 ACCUWEATHER_KEY_FILE = os.path.join(ROOT, "accuweather_api_key.txt")
-DATA_DIR = os.path.join(ROOT, "data")
+# ARECO_DATA_DIR overrides where synced/generated data lives - e.g. a Render
+# persistent Disk mount path on the hosted Viewer - instead of <project>/data.
+DATA_DIR = os.environ.get("ARECO_DATA_DIR", "").strip() or os.path.join(ROOT, "data")
 CACHE_PREFIX = "weather_forecast_"
 HISTORICAL_EXPORTS_FILE = os.path.join(DATA_DIR, "historical_exports.json")
 MAX_HISTORY_DAYS = 7

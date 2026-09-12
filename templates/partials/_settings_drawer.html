@@ -38,6 +38,24 @@
           <input type="password" id="cfg-ACCUWEATHER_API_KEY" name="ACCUWEATHER_API_KEY" autocomplete="new-password" class="w-full bg-brand-dark border border-brand-border rounded-lg px-3 py-2 text-brand-text focus:ring-1 focus:ring-brand-accent" />
         </div>
         <div class="border-t border-brand-border/60 pt-4">
+          <h3 class="text-[10px] font-bold uppercase tracking-wider text-brand-muted mb-2">Live stream OCR</h3>
+          <p class="text-[10px] text-brand-muted mb-3 leading-relaxed">Runs a headless browser in the background that watches the live plant-output video and reads the on-screen MW value via OCR, shown under the video as "OCR: X.XXX MW". Requires <code class="text-brand-accent/90 font-mono">python -m playwright install chromium</code> to have been run once on the server.</p>
+          <div class="space-y-3">
+            <div>
+              <label for="cfg-ARECO_LIVE_STREAM_URL" class="block text-[10px] uppercase tracking-wider text-brand-muted mb-1">Live stream URL (for OCR)</label>
+              <input type="text" id="cfg-ARECO_LIVE_STREAM_URL" name="ARECO_LIVE_STREAM_URL" autocomplete="off" class="w-full bg-brand-dark border border-brand-border rounded-lg px-3 py-2 text-brand-text focus:ring-1 focus:ring-brand-accent font-mono text-xs" placeholder="https://vdo.ninja/?view=..." />
+              <p class="text-[10px] text-brand-muted mt-1">Separate from the per-browser "Stream URL" on the dashboard - update both when the link expires.</p>
+            </div>
+            <div>
+              <label for="cfg-ARECO_STREAM_OCR_ENABLED" class="block text-[10px] uppercase tracking-wider text-brand-muted mb-1">OCR watcher</label>
+              <select id="cfg-ARECO_STREAM_OCR_ENABLED" name="ARECO_STREAM_OCR_ENABLED" class="w-full bg-brand-dark border border-brand-border rounded-lg px-3 py-2 text-brand-text focus:ring-1 focus:ring-brand-accent [color-scheme:dark]">
+                <option value="0">Disabled</option>
+                <option value="1">Enabled</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="border-t border-brand-border/60 pt-4">
           <h3 class="text-[10px] font-bold uppercase tracking-wider text-brand-muted mb-2">Online viewer sync</h3>
           <p class="text-[10px] text-brand-muted mb-3 leading-relaxed">Set the <strong class="text-brand-text/90 font-semibold">same</strong> sync token on this trader app <em>and</em> on the hosted Viewer app (e.g. Render → Environment → <code class="text-brand-accent/90 font-mono">ARECO_SYNC_TOKEN</code>). Restart the Viewer service after changing it.</p>
           <div class="space-y-3">

@@ -2,17 +2,44 @@
 <html class="h-full" lang="en">
 <head>
   {% include 'components/head_base.html' %}
-  <title>Sign in — ARECO Operations</title>
+  <title>Sign in - ARECO Operations</title>
 </head>
-<body class="bg-brand-dark text-brand-text font-sans antialiased min-h-full flex flex-col items-center justify-center p-6">
-  <div class="w-full max-w-md rounded-2xl border border-brand-border bg-brand-card/90 shadow-2xl p-8 space-y-6">
+<body class="relative bg-brand-dark text-brand-text font-sans antialiased min-h-full flex flex-col items-center justify-center p-6 overflow-hidden">
+  <noscript><style>#splash-screen{display:none!important;}.login-card{opacity:1!important;transform:none!important;}</style></noscript>
+  <div id="splash-screen" class="splash-screen bg-circuit-grid" role="status" aria-live="polite" aria-label="Loading ARECO operations console">
+    <div class="flex flex-col items-center gap-5 px-6 text-center">
+      <div class="splash-rings">
+        <span class="splash-ring" aria-hidden="true"></span>
+        <span class="splash-ring" aria-hidden="true"></span>
+        <span class="splash-ring" aria-hidden="true"></span>
+        <div class="splash-logo-wrap flex h-20 w-20 items-center justify-center rounded-2xl bg-white p-2">
+          <img src="{{ url_for('main.assets', filename='areco-logo.jpg') }}" alt="" width="64" height="64" class="h-full w-full object-contain" decoding="async" />
+        </div>
+      </div>
+      <div>
+        <h1 class="splash-title text-2xl sm:text-3xl font-bold uppercase text-brand-text font-display">ARECO</h1>
+        <p class="splash-subtitle text-xs text-brand-muted uppercase tracking-[0.3em] mt-1">65MW Solar Operations</p>
+      </div>
+      <div class="w-48 sm:w-56 flex flex-col items-center gap-2">
+        <div class="splash-bar w-full"></div>
+        <p class="splash-status splash-status-dots text-[10px] text-brand-accent uppercase tracking-[0.25em] font-display">Initializing systems</p>
+      </div>
+    </div>
+  </div>
+  <div class="pointer-events-none absolute inset-0 bg-circuit-grid opacity-70" aria-hidden="true"></div>
+  <div class="pointer-events-none absolute -top-32 left-1/2 -translate-x-1/2 h-72 w-[36rem] rounded-full bg-brand-accent/10 blur-3xl" aria-hidden="true"></div>
+  <div id="login-card" class="login-card relative w-full max-w-md rounded-2xl border border-brand-border bg-brand-card/90 backdrop-blur-sm shadow-2xl p-8 space-y-6">
+    <div class="absolute inset-x-0 top-0 h-1 rounded-t-2xl bg-gradient-to-r from-transparent via-brand-accent to-transparent" aria-hidden="true"></div>
     <div class="flex items-center gap-3">
-      <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-white p-1 shadow-sm ring-1 ring-white/15">
+      <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-white p-1 shadow-glow ring-1 ring-white/15">
         <img src="{{ url_for('main.assets', filename='areco-logo.jpg') }}" alt="" width="40" height="40" class="h-full w-full object-contain" decoding="async" />
       </div>
       <div>
-        <h1 class="text-lg font-bold uppercase tracking-wider text-brand-accent">ARECO 65 MW Solar</h1>
-        <p class="text-xs text-brand-muted uppercase tracking-widest">Operations sign-in</p>
+        <h1 class="text-lg font-bold uppercase tracking-wider text-brand-text font-display">ARECO 65 MW Solar</h1>
+        <p class="flex items-center gap-1.5 text-xs text-brand-muted uppercase tracking-widest">
+          <span class="status-dot h-1.5 w-1.5 rounded-full bg-brand-accent" aria-hidden="true"></span>
+          Operations sign-in
+        </p>
       </div>
     </div>
     {% if error %}
@@ -38,5 +65,32 @@
       Default accounts live in <code class="text-brand-accent/90 font-mono text-[10px]">data/users.json</code> (seeded from <code class="text-brand-accent/90 font-mono text-[10px]">users.example.json</code> in the project root on first run). Set a strong <code class="font-mono text-[10px]">ARECO_SECRET_KEY</code> in <code class="font-mono text-[10px]">.env</code> for production.
     </p>
   </div>
+  <script>
+    (function () {
+      var splash = document.getElementById('splash-screen');
+      var card = document.getElementById('login-card');
+      if (!splash) return;
+      var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      var minDelay = reduced ? 150 : 1600;
+      var revealed = false;
+      var startedAt = Date.now();
+      function reveal() {
+        if (revealed) return;
+        revealed = true;
+        if (card) card.classList.add('is-visible');
+        splash.classList.add('splash-exit');
+        splash.setAttribute('aria-hidden', 'true');
+        setTimeout(function () { splash.style.display = 'none'; }, reduced ? 250 : 650);
+      }
+      window.addEventListener('load', function () {
+        var wait = Math.max(0, minDelay - (Date.now() - startedAt));
+        setTimeout(reveal, wait);
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(function () {});
+        }
+      });
+      setTimeout(reveal, 4000);
+    })();
+  </script>
 </body>
 </html>

@@ -563,7 +563,7 @@ def calendar_monthly_rollup(year: int, limit_per_year: int = 8000) -> dict[str, 
 def calendar_month_detail(year: int, month: int) -> dict[str, Any]:
     """
     Per trade day in the billing period that **ends** in ``year``-``month`` (26th prior month
-    through 25th of ``month``, inclusive) — same window as ``save_run`` / ``billing_period_*``.
+    through 25th of ``month``, inclusive) - same window as ``save_run`` / ``billing_period_*``.
 
     One saved row per ``compliance_day`` (re-uploads replace the same day).
     """

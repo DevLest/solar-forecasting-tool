@@ -1,0 +1,25 @@
+{
+  "name": "ARECO 65MW Solar Operations",
+  "short_name": "ARECO Ops",
+  "description": "ARECO 65MW Solar nomination, reporting, forecast accuracy, and billing operations console.",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0a0f1d",
+  "theme_color": "#0a0f1d",
+  "icons": [
+    {
+      "src": "/assets/areco-pwa-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/areco-pwa-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

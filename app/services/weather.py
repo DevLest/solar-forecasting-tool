@@ -61,7 +61,7 @@ def gather_multi_source_weather(target_date: str, lat: float = None, lon: float 
     lat, lon = lat if lat is not None else LAT, lon if lon is not None else LON
     tz = "auto"
     chunks = []
-    # 1) Open-Meteo — hourly cloud + radiation (auto timezone from coordinates)
+    # 1) Open-Meteo - hourly cloud + radiation (auto timezone from coordinates)
     try:
         om = _http_get_json(
             f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}"
@@ -73,7 +73,7 @@ def gather_multi_source_weather(target_date: str, lat: float = None, lon: float 
     except Exception as e:
         chunks.append(f"=== Open-Meteo: unavailable ({e}) ===")
 
-    # 2) wttr.in — different backend (edge cache)
+    # 2) wttr.in - different backend (edge cache)
     try:
         w = _http_get_text(
             f"https://wttr.in/{lat},{lon}?format=j1"
@@ -245,7 +245,7 @@ def openai_weather_forecast(target_date: str, weather_digest: str) -> dict:
         '{"hourly_mw": [25 numbers], "summary": "one sentence"}\n'
         f"hourly_mw: exactly 25 values for hours 0–24 local time, estimated AC power in MW. "
         f"NIGHT (~18:00–05:00): near 0. Daytime: shape like solar curve. "
-        f"STRICT: every value MUST be >= 0 and <= {cap}. Never output above {cap} — the plant cannot accept more."
+        f"STRICT: every value MUST be >= 0 and <= {cap}. Never output above {cap} - the plant cannot accept more."
     )
     user = (
         f"Forecast date (local): {target_date}. "
@@ -318,7 +318,7 @@ def get_weather_forecast(target_date: str, force_refresh: bool = False, lat: flo
             cached["from_cache"] = True
             cached["openai_calls_today"] = 0
             cached["message"] = (
-                "Served from daily cache — OpenAI was not called again (1 API use max per day for this date)."
+                "Served from daily cache - OpenAI was not called again (1 API use max per day for this date)."
             )
             return cached
         except (json.JSONDecodeError, OSError):
@@ -354,7 +354,7 @@ def get_weather_forecast(target_date: str, force_refresh: bool = False, lat: flo
         if "error" in result:
             return result
         result["message"] = (
-            "OpenAI failed or no key — used "
+            "OpenAI failed or no key - used "
             + ("AccuWeather" if result.get("source") == "accuweather_fallback" else "Open-Meteo")
             + " fallback (50 MW cap)."
         )

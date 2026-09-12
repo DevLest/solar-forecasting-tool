@@ -62,11 +62,11 @@
         bulkSummaryEl.className = 'text-[11px] text-brand-muted min-h-[1.25rem]';
       } else if (nb > 5) {
         bulkSummaryEl.textContent =
-          nb + ' PDFs selected — at most 5 per import; remove extras before uploading.';
+          nb + ' PDFs selected - at most 5 per import; remove extras before uploading.';
         bulkSummaryEl.className = 'text-[11px] text-amber-400/90 font-medium min-h-[1.25rem]';
       } else {
         bulkSummaryEl.textContent =
-          nb + ' PDF(s) selected — invoice types and billing period are read on import.';
+          nb + ' PDF(s) selected - invoice types and billing period are read on import.';
         bulkSummaryEl.className = 'text-[11px] text-emerald-400/95 font-medium min-h-[1.25rem]';
       }
     }
@@ -150,12 +150,12 @@
     var s = display.sales;
     var p = display.purchases;
     var salesRows = [
-      ['ARECO — VATable sales', s.vatable_g01],
-      ['ARECO — Non-VATable sales', s.non_vatable_g01],
-      ['ARECOSS — VATable sales', s.vatable_l01],
-      ['ARECOSS — Non-VATable sales', s.non_vatable_l01],
-      ['VAT — 06VISTASOL_G01', s.vat_on_g01],
-      ['VAT — 06VISTASOL_L01', s.vat_on_l01],
+      ['ARECO - VATable sales', s.vatable_g01],
+      ['ARECO - Non-VATable sales', s.non_vatable_g01],
+      ['ARECOSS - VATable sales', s.vatable_l01],
+      ['ARECOSS - Non-VATable sales', s.non_vatable_l01],
+      ['VAT - 06VISTASOL_G01', s.vat_on_g01],
+      ['VAT - 06VISTASOL_L01', s.vat_on_l01],
       ['EWT on trading', s.ewt],
     ];
     var tp =
@@ -163,15 +163,15 @@
         ? display.total_payable_to_iemop
         : p.total_payable;
     var purchDetailRows = [
-      ['Purchases — VATable (ARECO)', p.vatable_g01],
-      ['Purchases — Non-VATable (ARECO)', p.non_vatable_g01],
-      ['Purchases — VATable (ARECOSS)', p.vatable_l01],
-      ['Purchases — Non-VATable (ARECOSS)', p.non_vatable_l01],
+      ['Purchases - VATable (ARECO)', p.vatable_g01],
+      ['Purchases - Non-VATable (ARECO)', p.non_vatable_g01],
+      ['Purchases - VATable (ARECOSS)', p.vatable_l01],
+      ['Purchases - Non-VATable (ARECOSS)', p.non_vatable_l01],
       ['VAT on G01 / L01', p.vat_on_g01 + p.vat_on_l01],
       ['EWT (purchases)', p.ewt],
-      ['Market fee — EMF regular', p.market_fee_1],
-      ['Market fee — IEMMS', p.market_fee_2],
-      ['Market fee — supplemental', p.market_fee_3],
+      ['Market fee - EMF regular', p.market_fee_1],
+      ['Market fee - IEMMS', p.market_fee_2],
+      ['Market fee - supplemental', p.market_fee_3],
     ];
     if (displaySales) {
       displaySales.innerHTML = salesRows

@@ -36,7 +36,7 @@ def _parse_dt_interval_end(raw: str) -> datetime | None:
 
 def parse_market_result_energy_schedules(content: bytes) -> list[tuple[datetime, float, float]]:
     """
-    MPI Market Result — Energy Schedules CSV.
+    MPI Market Result - Energy Schedules CSV.
     Returns rows ``(interval_end, mw, lmp)`` (MW = day-ahead / schedule MW, LMP).
     """
     text = content.decode("utf-8-sig", errors="replace")
@@ -253,7 +253,7 @@ def build_marketplace_chart_payload(
     """
     Build JSON-serializable chart data from stored MPI compliance.
 
-    If ``market_bytes`` is set, adds day-ahead MW and LMP from the **Market Result — Energy
+    If ``market_bytes`` is set, adds day-ahead MW and LMP from the **Market Result - Energy
     Schedules** CSV. **Average price (PHP)** is ``mean(LMP for interval-end hours 6..18) / 1000``,
     aligned with the hourly chart. The hourly **Actual MW** series uses **hour-ending (HE)**
     buckets ``((HE-1):00, HE:00]`` (same as Excel’s “hour ending” columns), not naive ``dt.hour``.
@@ -381,7 +381,7 @@ def build_marketplace_chart_payload(
     if partial and mq_5min:
         out["partial_message"] = (
             "MPI compliance is loaded from the database. Day-ahead MW is loaded from MIRF MQ "
-            "(stored from Nomination Accuracy backfill). Upload Market Result — Energy Schedules "
+            "(stored from Nomination Accuracy backfill). Upload Market Result - Energy Schedules "
             "for this trade day to add LMP and hourly average price."
         )
     return out

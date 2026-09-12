@@ -59,6 +59,7 @@ _NOMINATOR_ALLOWED: dict[str, frozenset[str]] = {
     "main.api_sync_config": frozenset({"GET", "HEAD"}),
     "main.api_sync_verify_remote": frozenset({"GET", "HEAD"}),
     "main.api_sync_push_remote": frozenset({"POST", "OPTIONS"}),
+    "main.api_stream_mw": frozenset({"GET", "HEAD"}),
 }
 
 # Spectator: read-only; excludes env/API keys (e.g. app-config).
@@ -84,6 +85,7 @@ _SPECTATOR_ALLOWED_GET: frozenset[str] = frozenset(
         "main.api_billing_user_export_shortcuts",
         "main.api_billing_history_rows",
         "main.api_billing_history_display",
+        "main.api_stream_mw",
     }
 )
 
@@ -110,7 +112,7 @@ def load_user_records() -> dict[str, UserRecord]:
     path = users_file_path()
     if not os.path.isfile(path):
         logger.warning(
-            "No user file at %s — create it (see users.example.json in the project root). Auth will fail until it exists.",
+            "No user file at %s - create it (see users.example.json in the project root). Auth will fail until it exists.",
             path,
         )
         return {}

@@ -410,10 +410,44 @@
     window.refreshViewerLiveStream = resolveAndShowStream;
   }
 
+  // Server-side OCR of the live VDO.Ninja feed (app.services.live_stream_ocr); no-ops
+  // (status: "disabled") until an admin sets ARECO_LIVE_STREAM_URL + ARECO_STREAM_OCR_ENABLED.
+  // Shown in the header, under the RTD Nomination readout, so it's visible from any tab.
+  var STREAM_OCR_STATUS_LABEL = {
+    disabled: '',
+    connecting: 'OCR: connecting to stream…',
+    no_signal: 'OCR: no active broadcast on this link',
+    unreadable: 'OCR: reading frame, no MW value found yet',
+    error: 'OCR: error'
+  };
+  function pollStreamMw() {
+    var row = document.getElementById('navbar-ocr-row');
+    var valueEl = document.getElementById('navbar-ocr-mw');
+    var dotEl = document.getElementById('navbar-ocr-status-dot');
+    fetch('/api/stream-mw').then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+      if (!d || !row) return;
+      if (d.status === 'disabled') {
+        row.classList.add('hidden');
+      } else {
+        row.classList.remove('hidden');
+        row.title = (d.status === 'ok' && typeof d.mw === 'number')
+          ? 'Auto-read from the live plant-output video (OCR)'
+          : (STREAM_OCR_STATUS_LABEL[d.status] || (d.error ? 'OCR: ' + d.error : 'OCR'));
+        if (valueEl) valueEl.textContent = (d.status === 'ok' && typeof d.mw === 'number') ? d.mw.toFixed(3) : '—';
+        if (dotEl) {
+          dotEl.classList.toggle('bg-brand-accent', d.status === 'ok');
+          dotEl.classList.toggle('bg-brand-amber', d.status !== 'ok');
+        }
+      }
+    }).catch(function () {});
+    setTimeout(pollStreamMw, 5000);
+  }
+
   function init() {
     initLiveStream();
     initHistoryClicks();
     loadHistory();
+    pollStreamMw();
   }
 
   window.refreshViewerNominationToday = function () {

@@ -10,9 +10,7 @@
     var weatherLocation = { lat: 10.638755644610793, lon: 123.00417639451439 };
     const DEFAULT_LIVE_STREAM_URL = 'https://vdo.ninja/?view=2vNAR9X';
     const PLANT_MAX_MW = 50;
-    const SYNC_AUTO_INTERVAL_MS = 5 * 60 * 1000; // 5 min (only when configured)
     var syncCfg = null;
-    var syncTimer = null;
     var syncInFlight = false;
     var syncProgressPollTimer = null;
     var syncProgressLastFingerprint = null;
@@ -211,7 +209,7 @@
       }
       box.classList.remove('hidden');
       if (!syncControlsEnabled()) {
-        setSyncStatus('Sync not configured — open App settings and set Remote base URL + Sync token.', true);
+        setSyncStatus('Sync not configured - open App settings and set Remote base URL + Sync token.', true);
       }
     }
 
@@ -361,19 +359,6 @@
         var msg = (err && err.message) ? err.message : 'Could not verify Viewer sync credentials.';
         setSyncStatus(msg, true);
       });
-    }
-
-    function startAutoSyncTimer() {
-      if (syncTimer) return;
-      if (!syncControlsEnabled()) return;
-      syncTimer = setInterval(function() {
-        triggerRemoteSync('auto_interval');
-      }, SYNC_AUTO_INTERVAL_MS);
-    }
-
-    function stopAutoSyncTimer() {
-      if (syncTimer) clearInterval(syncTimer);
-      syncTimer = null;
     }
 
     function isNominationReadOnly() {
@@ -591,7 +576,7 @@
           if (refIso && refIso < today) {
             lockTitle = 'Locked: Forecast Ref is before today';
           } else if (refIso === today) {
-            lockTitle = 'Locked: gate closure — editable from ' + firstEditableLabel + ' (round up to next 5 min + 15 min)';
+            lockTitle = 'Locked: gate closure - editable from ' + firstEditableLabel + ' (round up to next 5 min + 15 min)';
           } else {
             lockTitle = 'Locked: interval not editable for this forecast date';
           }
@@ -822,7 +807,7 @@
         el.classList.add('hidden');
         if (location.hostname !== '127.0.0.1' && location.hostname !== 'localhost') {
           el.classList.remove('hidden');
-          el.textContent = 'Using server at ' + API_BASE + ' — save and history work from this device.';
+          el.textContent = 'Using server at ' + API_BASE + ' - save and history work from this device.';
         }
       }
     }
@@ -1540,7 +1525,7 @@
     /** 5-minute columns within each delivery hour (display matrix only). */
     var VRE_MINUTE_COLUMNS = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60];
 
-    /** Interval map for Day Ahead MW only — same key rules as nomination export lookup. */
+    /** Interval map for Day Ahead MW only - same key rules as nomination export lookup. */
     function getDayAheadLookupForDisplay() {
       var intervals = getIntervalsFromTable().length ? getIntervalsFromTable() : intervalsData;
       var map = {};
@@ -1765,7 +1750,7 @@
         var msg = (err && err.message) ? err.message : 'Could not save to history.';
         console.warn('saveExportToHistory failed:', msg);
         if (options.useSyncStatus) setSyncStatus(msg, true);
-        else setNominationExportStatus('Export file saved but history sync failed: ' + msg + ' — start the app and use Refresh history.', true);
+        else setNominationExportStatus('Export file saved but history sync failed: ' + msg + ' - start the app and use Refresh history.', true);
         if (typeof onDone === 'function') onDone(false, msg);
       });
     }
@@ -1780,10 +1765,9 @@
           });
         }
         if (syncControlsEnabled()) {
+          // Auto-sync now runs server-side (app/services/sync_service.py) on a
+          // fixed interval, independent of this tab staying open.
           setSyncStatus('Online viewer sync is configured (' + (syncCfg.remote_url || '') + ').', false);
-          startAutoSyncTimer();
-        } else {
-          stopAutoSyncTimer();
         }
       });
 
@@ -2231,11 +2215,11 @@
             a.download = 'interval-data.png';
             a.click();
             URL.revokeObjectURL(a.href);
-            setNominationExportStatus('Clipboard not available — saved interval-data.png instead.');
+            setNominationExportStatus('Clipboard not available - saved interval-data.png instead.');
           }
           if (navigator.clipboard && navigator.clipboard.write && typeof ClipboardItem !== 'undefined') {
             navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]).then(function() {
-              setNominationExportStatus('Interval Data image copied to clipboard — paste into chat.');
+              setNominationExportStatus('Interval Data image copied to clipboard - paste into chat.');
             }).catch(function() {
               fallbackDownloadPng();
             });
@@ -2272,7 +2256,7 @@
           var snapshot = buildExportSnapshot();
           saveExportToHistory(snapshot, function() {
             var path = (res && res.path) ? res.path : filename;
-            setNominationExportStatus('Saved: ' + path + ' — history updated.');
+            setNominationExportStatus('Saved: ' + path + ' - history updated.');
             incrementIntervalRevAfterExport();
           });
         })
@@ -2280,7 +2264,7 @@
           console.warn('Server XML export failed:', err);
           var blob = new Blob([xml], { type: 'application/xml;charset=utf-8' });
           downloadBlobFallback(blob, filename);
-          setNominationExportStatus('Server unavailable — file downloaded in browser. Run the app to save under the automate folder (see App settings).', true);
+          setNominationExportStatus('Server unavailable - file downloaded in browser. Run the app to save under the automate folder (see App settings).', true);
           incrementIntervalRevAfterExport();
         });
     });
@@ -2845,7 +2829,7 @@
           }
           weatherData = j.hourly_mw.slice(0, 25).map(clampMw);
           while (weatherData.length < 25) weatherData.push(0);
-          weatherSummaryText = (j.summary || '') + (j.message ? ' — ' + j.message : '') + (j.from_cache ? ' [cached today]' : '');
+          weatherSummaryText = (j.summary || '') + (j.message ? ' - ' + j.message : '') + (j.from_cache ? ' [cached today]' : '');
           weatherDateStr = j.date || d;
           chart.data.datasets[1].data = weatherData.slice();
           chart.update();
@@ -2866,7 +2850,7 @@
       document.getElementById(id).addEventListener('click', function(e) {
         e.preventDefault();
         const t = this.textContent.trim();
-        alert(t + ' — placeholder. Link would open here.');
+        alert(t + ' - placeholder. Link would open here.');
       });
     });
 
@@ -2897,12 +2881,41 @@
         if (ut) ut.textContent = pct.toFixed(1) + '% of ' + PLANT_MAX_MW + 'MW';
       }
     };
-    // Optional: set window.STREAM_MW_API = '/api/stream-mw' (or your OCR backend URL) to poll for stream-derived MW.
+    // Server-side OCR of the live VDO.Ninja feed (app.services.live_stream_ocr); no-ops
+    // (status: "disabled") until ARECO_LIVE_STREAM_URL + ARECO_STREAM_OCR_ENABLED are set.
+    // Shown in the header, under the RTD Nomination readout, so it's visible from any panel.
+    window.STREAM_MW_API = window.STREAM_MW_API || '/api/stream-mw';
+    var STREAM_OCR_STATUS_LABEL = {
+      disabled: 'OCR: not configured (App settings → Live stream OCR)',
+      connecting: 'OCR: connecting to stream…',
+      no_signal: 'OCR: no active broadcast on this link',
+      unreadable: 'OCR: reading frame, no MW value found yet',
+      error: 'OCR: error'
+    };
     (function pollStreamMw() {
       var url = window.STREAM_MW_API || '';
+      var row = document.getElementById('navbar-ocr-row');
+      var valueEl = document.getElementById('navbar-ocr-mw');
+      var dotEl = document.getElementById('navbar-ocr-status-dot');
       if (url) {
         fetch(url).then(function(r) { return r.ok ? r.json() : null; }).then(function(d) {
-          if (d && typeof d.mw === 'number') window.updateStreamMw(d.mw);
+          if (!d) return;
+          if (typeof d.mw === 'number') window.updateStreamMw(d.mw);
+          if (row) {
+            if (d.status === 'disabled') {
+              row.classList.add('hidden');
+            } else {
+              row.classList.remove('hidden');
+              row.title = (d.status === 'ok' && typeof d.mw === 'number')
+                ? 'Auto-read from the live plant-output video (OCR)'
+                : (STREAM_OCR_STATUS_LABEL[d.status] || (d.error ? 'OCR: ' + d.error : 'OCR'));
+              if (valueEl) valueEl.textContent = (d.status === 'ok' && typeof d.mw === 'number') ? d.mw.toFixed(3) : '—';
+              if (dotEl) {
+                dotEl.classList.toggle('bg-brand-accent', d.status === 'ok');
+                dotEl.classList.toggle('bg-brand-amber', d.status !== 'ok');
+              }
+            }
+          }
         }).catch(function() {});
       }
       setTimeout(pollStreamMw, 5000);

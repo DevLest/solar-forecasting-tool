@@ -1,4 +1,4 @@
-# ARECO 65 MW Solar — Operations
+# ARECO 65 MW Solar - Operations
 
 Flask app for WESM nomination (weather, export history, server-side XML/VRE file writes), **nomination reporting** (MPI compliance + market result CSVs, marketplace charts), **nomination accuracy** (MQ workbooks, saved runs, rollups), and **billing** (settlement master zip extraction, invoice PDF parsing into billing history).
 
@@ -49,7 +49,7 @@ The app uses **Flask-Login**. Unauthenticated requests to pages redirect to `/lo
 | **`static/css/`** | Shared styles (`areco-brand.css`, etc.) |
 | **`static/js/`** | `app-shell.js` (nav, modal, settings), `nomination-dashboard.js`, `nomination-reporting.js`, `nomination-accuracy.js`, `billing-settlement.js`, `billing-history.js` |
 | **`assets/`** | Icons and images (served at `/assets/…`) |
-| **`data/`** | Runtime data: `historical_exports.json`, weather cache files, `nomination_accuracy.sqlite3`, `billing_history.sqlite3`, default settlement export folder, `users.json` (see `.gitignore` — most of `data/` is ignored; `users.json` is explicitly un-ignored for optional version control) |
+| **`data/`** | Runtime data: `historical_exports.json`, weather cache files, `nomination_accuracy.sqlite3`, `billing_history.sqlite3`, default settlement export folder, `users.json` (see `.gitignore` - most of `data/` is ignored; `users.json` is explicitly un-ignored for optional version control) |
 | **`automate/`** | Default directory for nomination XML / VRE CSV written by `POST /api/nomination-save-file` |
 
 Legacy **`dashboard.html`** is only a short note if you open it from disk; the live UI is **`/`** and **`/dashboard.html`** (both render `home.html`).
@@ -58,25 +58,25 @@ Legacy **`dashboard.html`** is only a short note if you open it from disk; the l
 
 All routes except **`GET|POST /login`** require an authenticated session (browser cookie). Admin-only JSON routes return `403` for other roles.
 
-**Nomination (core)** — still the backbone of the original tool:
+**Nomination (core)** - still the backbone of the original tool:
 
 - `GET /api/historical-exports`
 - `POST /api/save-export`
-- `POST /api/weather-forecast` — body: `{ "date": "YYYY-MM-DD", "lat", "lon", "force_refresh" }`
-- `POST /api/nomination-save-file` — JSON `{ "filename", "content" }` → writes under `nomination_export_dir()`
-- `GET|POST /api/app-config` — read/write a **whitelist** of env keys for the settings UI (`ALLOWED_ENV_KEYS` in `app/services/env_config.py`)
+- `POST /api/weather-forecast` - body: `{ "date": "YYYY-MM-DD", "lat", "lon", "force_refresh" }`
+- `POST /api/nomination-save-file` - JSON `{ "filename", "content" }` → writes under `nomination_export_dir()`
+- `GET|POST /api/app-config` - read/write a **whitelist** of env keys for the settings UI (`ALLOWED_ENV_KEYS` in `app/services/env_config.py`)
 
 **Nomination reporting & accuracy** (uploads, SQLite-backed runs and CSV blobs): endpoints under `/api/nomination-reporting/…` and `/api/nomination-accuracy/…` (runs list/delete, analytics monthly/month-detail/annual, compliance and market-result CSV storage, marketplace chart payload, RTD backfill, etc.). See `app/routes/__init__.py` for the full list.
 
 **Billing**
 
-- `POST /api/billing/settlement-extract` — master `.zip` + absolute `output_dir` + optional zip passwords
+- `POST /api/billing/settlement-extract` - master `.zip` + absolute `output_dir` + optional zip passwords
 - `GET /api/billing/settlement-config`, `/api/billing/default-export-dir`, `/api/billing/user-export-shortcuts`
-- `GET|POST|PATCH|DELETE /api/billing-history/…` — rows, display totals, PDF upload batch, row patch/delete
+- `GET|POST|PATCH|DELETE /api/billing-history/…` - rows, display totals, PDF upload batch, row patch/delete
 
 **Admin**
 
-- `GET|POST|PATCH|DELETE /api/admin/users/…` — user CRUD (admin only; updates `users.json`)
+- `GET|POST|PATCH|DELETE /api/admin/users/…` - user CRUD (admin only; updates `users.json`)
 
 ## Environment
 
@@ -91,8 +91,33 @@ Copy **`.env.example`** to **`.env`**. The app loads `.env` on startup (`python-
 | **`ARECO_USERS_FILE`** | Optional path to `users.json` |
 | **`ARECO_NOMINATION_EXPORT_DIR`** | Where nomination exports are written (default `automate/` under project root) |
 | **`ARECO_SETTLEMENT_ZIP_PASSWORD1`** / **`ARECO_SETTLEMENT_ZIP_PASSWORD2`** | Optional; settlement extract (inner zip passwords) |
+| **`ARECO_LIVE_STREAM_URL`** / **`ARECO_STREAM_OCR_ENABLED`** | Optional; server-side OCR of the live plant-output video (see below) |
 
 The in-app settings drawer can persist the keys listed in `ALLOWED_ENV_KEYS` into `.env` (admin only).
+
+### Live plant-output stream OCR
+
+The "Live plant output" panel embeds a VDO.Ninja view - a phone/camera pointed at a
+physical plant meter. That video is cross-origin, so the browser can never read its
+pixels itself. `app.services.live_stream_ocr` instead runs a headless Chromium
+(Playwright) in a background thread that opens the same view URL directly, grabs a
+frame from it every few seconds, and OCRs the on-screen "**X.XXX MW**" reading
+(RapidOCR, falling back to Tesseract - same engines as the billing PDF OCR). The
+result is served from `GET /api/stream-mw` and polled by the dashboard/viewer pages,
+shown under the video as `OCR: X.XXX MW`.
+
+One-time setup after `pip install -r requirements.txt`:
+
+```
+python -m playwright install chromium
+```
+
+Then set `ARECO_LIVE_STREAM_URL` (the same kind of `https://vdo.ninja/?view=...` link
+used on the dashboard) and `ARECO_STREAM_OCR_ENABLED=1`, either in `.env` or via
+**App settings → Live stream OCR** (admin only). It's independent of the per-browser
+"Stream URL" field on the dashboard - a VDO.Ninja link expires the same way for both,
+so update whichever ones you're using when it does. Disabled by default; it keeps a
+headless browser open continuously while enabled.
 
 ## Production
 

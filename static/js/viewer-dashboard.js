@@ -26,7 +26,7 @@
 
   function updateTodayLabel() {
     var el = document.getElementById('viewer-today-label');
-    if (el) el.textContent = "Showing today's nomination — " + formatTodayLabel();
+    if (el) el.textContent = "Showing today's nomination - " + formatTodayLabel();
   }
 
   function installFetchFilter() {
