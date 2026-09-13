@@ -57,6 +57,7 @@ from app.services.nomination_accuracy_dates import (
 )
 from app.services.reporting_marketplace import (
     build_marketplace_chart_payload,
+    build_marketplace_xlsx_export,
     dominant_day_from_market_result_bytes,
 )
 from app.services.nomination_accuracy_store import (
@@ -595,6 +596,46 @@ def api_nomination_reporting_marketplace_chart():
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 400
     return jsonify({"ok": True, **payload})
+
+
+@bp.route("/api/nomination-reporting/marketplace-chart/export-xlsx", methods=["GET"])
+def api_nomination_reporting_marketplace_chart_export_xlsx():
+    """Download one trade day's MPI compliance (+ day-ahead) as an .xlsx matching the plant's RTD -Actual -Day Ahead template."""
+    day_raw = (request.args.get("day") or "").strip()
+    if not day_raw:
+        return jsonify({"ok": False, "error": "Query parameter day=YYYY-MM-DD is required."}), 400
+    try:
+        trade_day = date.fromisoformat(day_raw)
+    except ValueError:
+        return jsonify({"ok": False, "error": "day must be YYYY-MM-DD."}), 400
+    comp_b, _ = get_compliance_csv_blob(trade_day.isoformat())
+    mkt_b, _ = get_market_result_csv_blob(trade_day.isoformat())
+    mq_b, _ = get_mirf_mq_xlsx_blob(trade_day.isoformat())
+    if not comp_b:
+        return (
+            jsonify(
+                {
+                    "ok": False,
+                    "error": f"No MPI compliance CSV stored for {trade_day.isoformat()}. Upload it under Reporting first.",
+                }
+            ),
+            400,
+        )
+    try:
+        xlsx_bytes = build_marketplace_xlsx_export(
+            comp_b,
+            trade_day,
+            market_bytes=mkt_b,
+            mirf_mq_xlsx_bytes=mq_b,
+        )
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
+    filename = f"RTD and Actual Dispatch_{trade_day.isoformat()}.xlsx"
+    return Response(
+        xlsx_bytes,
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @bp.route("/api/nomination-accuracy", methods=["POST", "OPTIONS"])

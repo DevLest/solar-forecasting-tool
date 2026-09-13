@@ -506,6 +506,7 @@
   }
 
   var tradeDateEl = document.getElementById('accuracy-trade-date');
+  if (tradeDateEl && window.ArecoCalendarPicker) window.ArecoCalendarPicker.attach(tradeDateEl);
 
   function resetMqFileAfterSuccess() {
     var m = document.getElementById('accuracy-file-mq');
@@ -1811,6 +1812,21 @@
     var cancel = document.getElementById('accuracy-backfill-cancel');
     var submit = document.getElementById('accuracy-backfill-submit');
     var tradeDateEl = document.getElementById('accuracy-backfill-trade-date');
+    var tradeDatePicker = (tradeDateEl && window.ArecoCalendarPicker)
+      ? window.ArecoCalendarPicker.attach(tradeDateEl, {
+          getDayClass: function(iso) {
+            if (isTradeDateUnavailable(iso)) {
+              return 'bg-rose-500/10 text-rose-300/90 hover:bg-rose-500/20 ring-1 ring-rose-500/30';
+            }
+            return null;
+          },
+          getDayTitle: function(iso) {
+            return isTradeDateUnavailable(iso) ? iso + ' – already has a saved run' : iso;
+          },
+          legendHtml:
+            '<span class="inline-flex items-center gap-1"><span class="h-2 w-2 rounded-full bg-rose-400"></span>Already saved</span>'
+        })
+      : null;
     var dateHint = document.getElementById('accuracy-backfill-date-hint');
     var rtdInput = document.getElementById('accuracy-backfill-rtd');
     var mqInput = document.getElementById('accuracy-backfill-mq');
@@ -1824,16 +1840,21 @@
     var backfillSeq = 0;
     var backfillAbort = null;
 
+    function tradeDateRingTarget() {
+      return tradeDatePicker ? tradeDatePicker.buttonEl : tradeDateEl;
+    }
+
     function updateBackfillDateHint() {
       if (!tradeDateEl || !dateHint) return;
       var v = tradeDateEl.value;
+      var ringEl = tradeDateRingTarget();
       if (v && isTradeDateUnavailable(v)) {
         dateHint.textContent =
           'This day already has a saved run. Delete it in Saved runs first, or pick another date.';
-        tradeDateEl.classList.add('ring-2', 'ring-rose-500/40');
+        if (ringEl) ringEl.classList.add('ring-2', 'ring-rose-500/40');
       } else {
         dateHint.textContent = '';
-        tradeDateEl.classList.remove('ring-2', 'ring-rose-500/40');
+        if (ringEl) ringEl.classList.remove('ring-2', 'ring-rose-500/40');
       }
     }
 
@@ -1860,15 +1881,18 @@
     openBtn.addEventListener('click', function() {
       refreshUploadedTradeDates().then(function(datesOk) {
         updateBackfillDateHint();
-        if (datesOk && tradeDateEl) {
-          tradeDateEl.classList.remove('ring-2', 'ring-amber-500/35');
+        if (tradeDatePicker) tradeDatePicker.refresh();
+        if (datesOk) {
+          var ringEl = tradeDateRingTarget();
+          if (ringEl) ringEl.classList.remove('ring-2', 'ring-amber-500/35');
         }
         if (!datesOk && dateHint) {
           var existing = (dateHint.textContent || '').trim();
           var warn =
             'Could not load which days already have saved runs. Duplicate dates may not be highlighted until you refresh the page.';
           dateHint.textContent = existing ? existing + ' ' + warn : warn;
-          if (tradeDateEl) tradeDateEl.classList.add('ring-2', 'ring-amber-500/35');
+          var warnRingEl = tradeDateRingTarget();
+          if (warnRingEl) warnRingEl.classList.add('ring-2', 'ring-amber-500/35');
         }
         if (progressWrap) progressWrap.classList.add('hidden');
         if (progressSummary) progressSummary.textContent = '';

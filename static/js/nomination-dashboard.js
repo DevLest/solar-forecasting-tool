@@ -2711,6 +2711,7 @@
         dateInput.setAttribute('min', todayIso());
         var val = (dateInput.value || '').trim();
         if (val && val < todayIso()) dateInput.value = todayIso();
+        if (window.ArecoCalendarPicker) window.ArecoCalendarPicker.attach(dateInput);
       }
     })();
 

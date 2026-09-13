@@ -177,6 +177,20 @@
   var marketUploading = false;
   var chartDaySelect = document.getElementById('reporting-chart-day');
   var chartRefreshBtn = document.getElementById('reporting-btn-refresh-charts');
+  var exportCsvBtn = document.getElementById('reporting-btn-export-csv');
+  var calDayBtn = document.getElementById('reporting-chart-day-btn');
+  var calDayLabelText = document.getElementById('reporting-chart-day-label-text');
+  var calPopover = document.getElementById('reporting-chart-day-popover');
+  var calGrid = document.getElementById('reporting-cal-grid');
+  var calMonthLabel = document.getElementById('reporting-cal-month-label');
+  var calPrevBtn = document.getElementById('reporting-cal-prev');
+  var calNextBtn = document.getElementById('reporting-cal-next');
+  var complianceDaysSet = new Set();
+  var marketDaysSet = new Set();
+  var selectedDayIso = '';
+  var calYear = new Date().getFullYear();
+  var calMonth = new Date().getMonth();
+  var calPopoverOpen = false;
   var chartSummary = document.getElementById('reporting-chart-summary');
   var chartError = document.getElementById('reporting-chart-error');
   var chartDispatchEl = document.getElementById('reporting-chart-dispatch');
@@ -431,7 +445,7 @@
         ];
         if (!isPartial || hasDayAhead) {
           dispatchDatasets.push({
-            label: isPartial ? 'Day-ahead MW (MIRF MQ)' : 'Day-ahead MW (schedule)',
+            label: j.day_ahead_source === 'mirf_mq' ? 'Day-ahead MW (MIRF MQ)' : 'Day-ahead MW (schedule)',
             data: da,
             borderColor: 'rgb(34, 197, 94)',
             backgroundColor: 'transparent',
@@ -688,49 +702,217 @@
       });
   }
 
-  function refreshChartDaySelect() {
-    return fetch('/api/nomination-reporting/compliance-csv/days')
-      .then(function(r) {
-        return r.json();
-      })
-      .then(function(j) {
-        if (!chartDaySelect || !j || !j.ok || !Array.isArray(j.dates)) return;
-        var prev = chartDaySelect.value;
-        chartDaySelect.innerHTML = '';
-        var opt0 = document.createElement('option');
-        opt0.value = '';
-        opt0.textContent = j.dates.length ? '— Select day —' : '— Upload MPI compliance first —';
-        chartDaySelect.appendChild(opt0);
-        j.dates.forEach(function(d) {
-          var o = document.createElement('option');
-          o.value = d;
-          o.textContent = d;
-          chartDaySelect.appendChild(o);
-        });
-        if (prev && j.dates.indexOf(prev) >= 0) {
-          chartDaySelect.value = prev;
-        } else if (j.dates.length === 1) {
-          chartDaySelect.value = j.dates[0];
-          loadMarketplaceCharts(j.dates[0]);
-        }
-      })
-      .catch(function() {});
+  var CAL_MONTH_NAMES = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+
+  function _pad2(n) {
+    return n < 10 ? '0' + n : '' + n;
   }
 
-  if (chartDaySelect) {
-    chartDaySelect.addEventListener('change', function() {
-      var v = chartDaySelect.value;
-      if (v) loadMarketplaceCharts(v);
-      else destroyReportingCharts();
+  function _isoFromYMD(y, m, d) {
+    return y + '-' + _pad2(m + 1) + '-' + _pad2(d);
+  }
+
+  function _todayIso() {
+    var d = new Date();
+    return _isoFromYMD(d.getFullYear(), d.getMonth(), d.getDate());
+  }
+
+  function _sortedSetArray(set) {
+    var arr = [];
+    set.forEach(function(v) {
+      arr.push(v);
+    });
+    arr.sort();
+    return arr;
+  }
+
+  function updateExportCsvUi() {
+    if (!exportCsvBtn) return;
+    exportCsvBtn.disabled = !(selectedDayIso && complianceDaysSet.has(selectedDayIso));
+  }
+
+  function renderCalendarGrid() {
+    if (!calGrid) return;
+    calGrid.innerHTML = '';
+    if (calMonthLabel) calMonthLabel.textContent = CAL_MONTH_NAMES[calMonth] + ' ' + calYear;
+    var firstOfMonth = new Date(calYear, calMonth, 1);
+    var startWeekday = firstOfMonth.getDay();
+    var daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+    var todayStr = _todayIso();
+    var totalCells = Math.ceil((startWeekday + daysInMonth) / 7) * 7;
+    for (var i = 0; i < totalCells; i++) {
+      var dayNum = i - startWeekday + 1;
+      var cell = document.createElement('button');
+      cell.type = 'button';
+      if (dayNum < 1 || dayNum > daysInMonth) {
+        cell.disabled = true;
+        cell.className = 'h-8 opacity-0 pointer-events-none';
+        calGrid.appendChild(cell);
+        continue;
+      }
+      var iso = _isoFromYMD(calYear, calMonth, dayNum);
+      var hasComp = complianceDaysSet.has(iso);
+      var hasMkt = marketDaysSet.has(iso);
+      var isFuture = iso > todayStr;
+      var isToday = iso === todayStr;
+      var isSelected = iso === selectedDayIso;
+      var status = 'none';
+      var title = iso;
+      if (hasComp && hasMkt) {
+        status = 'ready';
+        title += ' – compliance + market result uploaded';
+      } else if (hasComp) {
+        status = 'partial';
+        title += ' – compliance uploaded (no market result)';
+      } else if (hasMkt) {
+        status = 'market-only';
+        title += ' – market result uploaded (no compliance)';
+      } else if (!isFuture) {
+        status = 'empty';
+        title += ' – no upload';
+      }
+      var cls = 'relative h-8 rounded-md text-xs font-mono flex items-center justify-center transition-colors';
+      if (status === 'ready') {
+        cls += ' bg-emerald-500/15 text-emerald-200 hover:bg-emerald-500/25 ring-1 ring-emerald-400/40';
+      } else if (status === 'partial') {
+        cls += ' bg-amber-500/15 text-amber-200 hover:bg-amber-500/25 ring-1 ring-amber-400/40';
+      } else if (status === 'market-only') {
+        cls += ' bg-sky-500/15 text-sky-200 hover:bg-sky-500/25 ring-1 ring-sky-400/40';
+      } else if (status === 'empty') {
+        cls += ' bg-rose-500/10 text-rose-300/90 hover:bg-rose-500/20 ring-1 ring-rose-500/30';
+      } else {
+        cls += ' text-brand-muted hover:bg-brand-border/30';
+      }
+      if (isSelected) cls += ' ring-2 ring-brand-accent';
+      if (isToday) cls += ' font-bold underline underline-offset-2';
+      cell.className = cls;
+      cell.textContent = String(dayNum);
+      cell.title = title;
+      cell.setAttribute('data-iso', iso);
+      cell.addEventListener('click', function() {
+        selectDay(this.getAttribute('data-iso'));
+      });
+      calGrid.appendChild(cell);
+    }
+  }
+
+  function openCalPopover() {
+    if (!calPopover) return;
+    var sortedComp = _sortedSetArray(complianceDaysSet);
+    var baseIso = selectedDayIso || (sortedComp.length ? sortedComp[sortedComp.length - 1] : _todayIso());
+    var parts = baseIso.split('-');
+    calYear = parseInt(parts[0], 10);
+    calMonth = parseInt(parts[1], 10) - 1;
+    renderCalendarGrid();
+    calPopover.classList.remove('hidden');
+    calPopoverOpen = true;
+    if (calDayBtn) calDayBtn.setAttribute('aria-expanded', 'true');
+  }
+
+  function closeCalPopover() {
+    if (!calPopover) return;
+    calPopover.classList.add('hidden');
+    calPopoverOpen = false;
+    if (calDayBtn) calDayBtn.setAttribute('aria-expanded', 'false');
+  }
+
+  function selectDay(iso) {
+    selectedDayIso = iso || '';
+    if (chartDaySelect) chartDaySelect.value = selectedDayIso;
+    if (calDayLabelText) calDayLabelText.textContent = selectedDayIso || '— Select day —';
+    closeCalPopover();
+    if (selectedDayIso) loadMarketplaceCharts(selectedDayIso);
+    else destroyReportingCharts();
+    updateExportCsvUi();
+  }
+
+  if (calDayBtn) {
+    calDayBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      if (calPopoverOpen) closeCalPopover();
+      else openCalPopover();
     });
   }
+  if (calPrevBtn) {
+    calPrevBtn.addEventListener('click', function() {
+      calMonth -= 1;
+      if (calMonth < 0) {
+        calMonth = 11;
+        calYear -= 1;
+      }
+      renderCalendarGrid();
+    });
+  }
+  if (calNextBtn) {
+    calNextBtn.addEventListener('click', function() {
+      calMonth += 1;
+      if (calMonth > 11) {
+        calMonth = 0;
+        calYear += 1;
+      }
+      renderCalendarGrid();
+    });
+  }
+  document.addEventListener('click', function(e) {
+    if (!calPopoverOpen) return;
+    if (calPopover && (calPopover.contains(e.target) || (calDayBtn && calDayBtn.contains(e.target)))) return;
+    closeCalPopover();
+  });
+  document.addEventListener('keydown', function(e) {
+    if (calPopoverOpen && e.key === 'Escape') closeCalPopover();
+  });
+
+  function refreshChartDaySelect() {
+    return Promise.all([
+      fetch('/api/nomination-reporting/compliance-csv/days')
+        .then(function(r) {
+          return r.json();
+        })
+        .catch(function() {
+          return null;
+        }),
+      fetch('/api/nomination-reporting/market-result-csv/days')
+        .then(function(r) {
+          return r.json();
+        })
+        .catch(function() {
+          return null;
+        })
+    ]).then(function(results) {
+      var compJ = results[0];
+      var mktJ = results[1];
+      complianceDaysSet = new Set(compJ && compJ.ok && Array.isArray(compJ.dates) ? compJ.dates : []);
+      marketDaysSet = new Set(mktJ && mktJ.ok && Array.isArray(mktJ.dates) ? mktJ.dates : []);
+      var sortedComp = _sortedSetArray(complianceDaysSet);
+      if (!selectedDayIso && sortedComp.length === 1) {
+        selectDay(sortedComp[0]);
+      } else {
+        if (calDayLabelText && !selectedDayIso) {
+          calDayLabelText.textContent = sortedComp.length ? '— Select day —' : '— Upload MPI compliance first —';
+        }
+        updateExportCsvUi();
+      }
+      if (calPopoverOpen) renderCalendarGrid();
+    });
+  }
+
   if (chartRefreshBtn) {
     chartRefreshBtn.addEventListener('click', function() {
       refreshStoredDays();
       refreshMarketResultDaysInline();
       refreshChartDaySelect();
-      var v = chartDaySelect && chartDaySelect.value;
-      if (v) loadMarketplaceCharts(v);
+      if (selectedDayIso) loadMarketplaceCharts(selectedDayIso);
+      updateExportCsvUi();
+    });
+  }
+  if (exportCsvBtn) {
+    exportCsvBtn.addEventListener('click', function() {
+      if (!selectedDayIso || !complianceDaysSet.has(selectedDayIso)) return;
+      window.location.href =
+        '/api/nomination-reporting/marketplace-chart/export-xlsx?day=' + encodeURIComponent(selectedDayIso);
     });
   }
 

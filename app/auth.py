@@ -77,6 +77,7 @@ _SPECTATOR_ALLOWED_GET: frozenset[str] = frozenset(
         "main.api_nomination_reporting_marketplace_ready_days",
         "main.api_nomination_reporting_market_result_csv_days",
         "main.api_nomination_reporting_marketplace_chart",
+        "main.api_nomination_reporting_marketplace_chart_export_xlsx",
         "main.api_nomination_accuracy_runs",
         "main.api_nomination_accuracy_analytics_monthly",
         "main.api_nomination_accuracy_analytics_month_detail",
