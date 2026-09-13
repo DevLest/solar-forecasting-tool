@@ -153,10 +153,15 @@ class LiveStreamMwWatcher:
             "updated_at": None,
             "source_url": None,
         }
+        self._last_frame_png: bytes | None = None
 
     def get_state(self) -> dict:
         with self._lock:
             return dict(self._state)
+
+    def get_last_frame_png(self) -> bytes | None:
+        with self._lock:
+            return self._last_frame_png
 
     def _set_state(self, **kwargs) -> None:
         with self._lock:
@@ -254,6 +259,8 @@ class LiveStreamMwWatcher:
             try:
                 _, b64 = data_url.split(",", 1)
                 png_bytes = base64.b64decode(b64)
+                with self._lock:
+                    self._last_frame_png = png_bytes
                 text = _ocr_image_to_text(png_bytes)
                 mw = _parse_mw(text)
             except Exception as e:

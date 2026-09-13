@@ -412,7 +412,7 @@
 
   // Server-side OCR of the live VDO.Ninja feed (app.services.live_stream_ocr); no-ops
   // (status: "disabled") until an admin sets ARECO_LIVE_STREAM_URL + ARECO_STREAM_OCR_ENABLED.
-  // Shown in the header, under the RTD Nomination readout, so it's visible from any tab.
+  // Shown at the top of the Live plant output panel.
   var STREAM_OCR_STATUS_LABEL = {
     disabled: '',
     connecting: 'OCR: connecting to stream…',
@@ -420,25 +420,85 @@
     unreadable: 'OCR: reading frame, no MW value found yet',
     error: 'OCR: error'
   };
-  function pollStreamMw() {
-    var row = document.getElementById('navbar-ocr-row');
-    var valueEl = document.getElementById('navbar-ocr-mw');
-    var dotEl = document.getElementById('navbar-ocr-status-dot');
-    fetch('/api/stream-mw').then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
-      if (!d || !row) return;
-      if (d.status === 'disabled') {
-        row.classList.add('hidden');
-      } else {
-        row.classList.remove('hidden');
-        row.title = (d.status === 'ok' && typeof d.mw === 'number')
-          ? 'Auto-read from the live plant-output video (OCR)'
-          : (STREAM_OCR_STATUS_LABEL[d.status] || (d.error ? 'OCR: ' + d.error : 'OCR'));
-        if (valueEl) valueEl.textContent = (d.status === 'ok' && typeof d.mw === 'number') ? d.mw.toFixed(3) : '—';
-        if (dotEl) {
-          dotEl.classList.toggle('bg-brand-accent', d.status === 'ok');
-          dotEl.classList.toggle('bg-brand-amber', d.status !== 'ok');
-        }
+  var liveOcrLastState = null;
+
+  function initLiveOcrDebugPanel() {
+    var btn = document.getElementById('live-ocr-mw-btn');
+    var panel = document.getElementById('live-ocr-debug');
+    var closeBtn = document.getElementById('live-ocr-debug-close');
+    var frameImg = document.getElementById('live-ocr-debug-frame');
+    var frameEmpty = document.getElementById('live-ocr-debug-frame-empty');
+    var textEl = document.getElementById('live-ocr-debug-text');
+    var metaEl = document.getElementById('live-ocr-debug-meta');
+    if (!btn || !panel) return;
+
+    function ageLabel(iso) {
+      if (!iso) return 'never';
+      var ms = Date.now() - new Date(iso).getTime();
+      if (!isFinite(ms) || ms < 0) return 'just now';
+      var s = Math.round(ms / 1000);
+      return s <= 1 ? 'just now' : s + 's ago';
+    }
+
+    function refreshPanel() {
+      if (panel.classList.contains('hidden')) return;
+      var d = liveOcrLastState;
+      if (textEl) textEl.textContent = (d && d.raw_text) ? d.raw_text : '(no text read)';
+      if (metaEl) {
+        var status = d ? d.status : 'unknown';
+        var statusLabel = STREAM_OCR_STATUS_LABEL[status] || status;
+        var age = ageLabel(d && d.updated_at);
+        var staleWarning = (d && d.updated_at && (Date.now() - new Date(d.updated_at).getTime()) > 20000) ? ' - STALE' : '';
+        metaEl.textContent = statusLabel + ' · updated ' + age + staleWarning + (d && d.error ? ' · ' + d.error : '');
+        metaEl.classList.toggle('text-amber-400', !!staleWarning);
+        metaEl.classList.toggle('text-brand-muted', !staleWarning);
       }
+    }
+    window.__refreshLiveOcrDebugPanel = refreshPanel;
+
+    function loadFrame() {
+      if (!frameImg) return;
+      frameImg.onload = function () {
+        frameImg.classList.remove('hidden');
+        if (frameEmpty) frameEmpty.classList.add('hidden');
+      };
+      frameImg.onerror = function () {
+        frameImg.classList.add('hidden');
+        if (frameEmpty) frameEmpty.classList.remove('hidden');
+      };
+      frameImg.src = '/api/stream-mw/frame?t=' + Date.now();
+    }
+
+    var ageTimer = null;
+    function open() {
+      panel.classList.remove('hidden');
+      refreshPanel();
+      loadFrame();
+      if (!ageTimer) ageTimer = setInterval(refreshPanel, 1000);
+    }
+    function close() {
+      panel.classList.add('hidden');
+      if (ageTimer) { clearInterval(ageTimer); ageTimer = null; }
+    }
+    btn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      if (panel.classList.contains('hidden')) open(); else close();
+    });
+    if (closeBtn) closeBtn.addEventListener('click', function (e) { e.stopPropagation(); close(); });
+    document.addEventListener('click', function (e) {
+      if (!panel.classList.contains('hidden') && !panel.contains(e.target) && e.target !== btn && !btn.contains(e.target)) close();
+    });
+  }
+
+  function pollStreamMw() {
+    var valueEl = document.getElementById('live-ocr-mw');
+    fetch('/api/stream-mw').then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+      if (!d) return;
+      liveOcrLastState = d;
+      if (valueEl) {
+        valueEl.textContent = (d.status === 'ok' && typeof d.mw === 'number') ? (d.mw.toFixed(3) + ' MW') : '— MW';
+      }
+      if (typeof window.__refreshLiveOcrDebugPanel === 'function') window.__refreshLiveOcrDebugPanel();
     }).catch(function () {});
     setTimeout(pollStreamMw, 5000);
   }
@@ -447,6 +507,7 @@
     initLiveStream();
     initHistoryClicks();
     loadHistory();
+    initLiveOcrDebugPanel();
     pollStreamMw();
   }
 

@@ -446,6 +446,17 @@ def api_stream_mw():
     return jsonify(live_stream_watcher.get_state())
 
 
+@bp.route("/api/stream-mw/frame", methods=["GET"])
+def api_stream_mw_frame():
+    live_stream_watcher.ensure_started()
+    png_bytes = live_stream_watcher.get_last_frame_png()
+    if not png_bytes:
+        return jsonify({"error": "No frame captured yet."}), 404
+    resp = Response(png_bytes, mimetype="image/png")
+    resp.headers["Cache-Control"] = "no-store"
+    return resp
+
+
 @bp.route("/api/nomination-accuracy/uploaded-dates", methods=["GET"])
 def api_nomination_accuracy_uploaded_dates():
     try:

@@ -119,6 +119,11 @@ used on the dashboard) and `ARECO_STREAM_OCR_ENABLED=1`, either in `.env` or via
 so update whichever ones you're using when it does. Disabled by default; it keeps a
 headless browser open continuously while enabled.
 
+On the Render Viewer (`render.yaml`), this is enabled by default (build installs
+Chromium and sets `ARECO_STREAM_OCR_ENABLED=1`) but the watcher stays idle until you
+set `ARECO_LIVE_STREAM_URL` by hand in the Render dashboard - the Viewer's
+spectator-only account has no settings UI to set or rotate it there.
+
 ## Production
 
 `requirements.txt` includes **gunicorn**. Example:

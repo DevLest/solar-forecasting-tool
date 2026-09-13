@@ -26,13 +26,21 @@
 #      ARECO_SYNC_REMOTE_URL=<this service's https URL> - that's what turns
 #      the local app into the "pusher". Never set ARECO_SYNC_REMOTE_URL here
 #      on the Viewer; only the local app pushes.
+#   4. To also show the live plant-output OCR reading on this public Viewer
+#      (see app/services/live_stream_ocr.py), set ARECO_LIVE_STREAM_URL below
+#      in the Render dashboard to the same https://vdo.ninja/?view=... link
+#      used locally. There is no settings UI on the Viewer (spectator-only,
+#      by design) to do this or to update it later, so when the VDO.Ninja
+#      link rotates you must update this env var by hand in the Render
+#      dashboard. ARECO_STREAM_OCR_ENABLED is already on below; the watcher
+#      stays idle until ARECO_LIVE_STREAM_URL is also set.
 #
 # Note on requirements.txt: it includes heavy OCR/CV libraries (playwright,
-# opencv, rapidocr, pymupdf) that only the local trader app's invoice/live-
-# stream OCR features use. The Viewer imports the same modules at startup
-# (just doesn't call the OCR code paths), so it pays their import cost. If
-# the build is slow or the instance hits memory limits on Render, the real
-# fix is making those imports lazy in app/routes - ask and I'll do it.
+# opencv, rapidocr, pymupdf) used by the local trader app's invoice OCR and,
+# now, this Viewer's live-stream OCR. buildCommand below also installs
+# Playwright's Chromium browser for that. Running a headless Chromium
+# continuously (while ARECO_LIVE_STREAM_URL is set) adds real memory/CPU
+# load - watch for OOM restarts on the starter plan; upgrade the plan if so.
 
 services:
   - type: web
@@ -41,7 +49,7 @@ services:
     plan: starter # free tier can't attach a persistent Disk and cold-starts after 15 min idle - poor experience for a public viewer
     region: singapore # closest Render region to the plant's coordinates; change if needed
     branch: master
-    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt && python -m playwright install --with-deps chromium
     startCommand: gunicorn --preload --workers 1 --threads 4 --timeout 120 --bind 0.0.0.0:$PORT "app:create_app()"
     healthCheckPath: /login
     autoDeployTrigger: commit
@@ -58,6 +66,10 @@ services:
         value: users.viewer.example.json # spectator-only seed - see setup note above
       - key: ARECO_DATA_DIR
         value: /var/data # matches the disk mountPath below
+      - key: ARECO_STREAM_OCR_ENABLED
+        value: "1" # watcher still stays idle until ARECO_LIVE_STREAM_URL is also set (see setup note above)
+      - key: ARECO_LIVE_STREAM_URL
+        sync: false # set manually in the Render dashboard - the vdo.ninja view link; no in-app UI to set/rotate this on the Viewer
     disk:
       name: areco-viewer-data
       mountPath: /var/data
