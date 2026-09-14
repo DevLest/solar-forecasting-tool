@@ -1298,6 +1298,49 @@
       } catch (e) {}
     }
 
+    /**
+     * Pasting a multi-row Excel column selection into an RTD input fills it and the following
+     * editable/visible RTD inputs (down the column, in the same order Tab moves through them)
+     * with one value per line. A single-value paste is left to the browser's default behavior.
+     */
+    function handleRtdPaste(e) {
+      var clipboard = e.clipboardData || window.clipboardData;
+      if (!clipboard) return;
+      var text = clipboard.getData('text');
+      if (!text) return;
+      var lines = text.split(/\r\n|\r|\n/);
+      if (lines.length && lines[lines.length - 1].trim() === '') lines.pop();
+      var values = lines.map(function(l) {
+        return parseFloat(l.split('\t')[0].replace(/,/g, '').trim());
+      }).filter(function(n) { return !isNaN(n); });
+      if (values.length <= 1) return;
+
+      e.preventDefault();
+      var allInputs = Array.prototype.slice.call(document.querySelectorAll('.interval-data-tbody tr.interval-row .rtd-input'));
+      var startIdx = allInputs.indexOf(this);
+      if (startIdx === -1) return;
+
+      var applied = 0, skipped = 0, vi = 0;
+      for (var i = startIdx; i < allInputs.length && vi < values.length; i++) {
+        var inp = allInputs[i];
+        var tr = inp.closest('tr');
+        if (tr && tr.style.display === 'none') continue;
+        if (inp.disabled || inp.readOnly) { skipped++; continue; }
+        inp.value = clampMw(values[vi]);
+        vi++;
+        applied++;
+      }
+
+      intervalsData = getIntervalsFromTable();
+      saveForecastLocally({ intervals: intervalsData });
+      updateRtdChartSeries();
+      renderVreTable();
+      if (window.updateNavbarTimeAndInterval) window.updateNavbarTimeAndInterval();
+      if (typeof setNominationExportStatus === 'function') {
+        setNominationExportStatus('Pasted ' + applied + ' RTD value(s)' + (skipped ? ', skipped ' + skipped + ' locked interval(s).' : '.'));
+      }
+    }
+
     function attachIntervalRowHandlers() {
       document.querySelectorAll('.interval-data-tbody .interval-row').forEach(function(row) {
         row.addEventListener('click', function() {
@@ -1327,6 +1370,7 @@
             updateRtdChartSeries();
             if (window.updateNavbarTimeAndInterval) window.updateNavbarTimeAndInterval();
           });
+          rtdIn.addEventListener('paste', handleRtdPaste);
         }
       });
       var firstActive = document.querySelector('.interval-data-tbody .interval-row-active');
