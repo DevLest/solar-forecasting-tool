@@ -1,6 +1,6 @@
     <div id="panel-nomination" class="flex-grow p-6 space-y-3 max-w-[1600px] mx-auto w-full" data-nomination-readonly="{{ 'true' if areco_nomination_readonly else 'false' }}">
     <div class="grid grid-cols-12 gap-6 lg:items-stretch">
-      <section id="interval-data-panel" class="col-span-12 lg:col-span-3 bg-brand-card rounded-xl border border-brand-border p-4 shadow-xl overflow-hidden flex flex-col min-h-0 h-[min(90vh,58rem)] max-h-[90vh]">
+      <section id="interval-data-panel" class="col-span-12 lg:col-span-3 bg-brand-card rounded-xl border border-brand-border p-4 shadow-xl overflow-hidden flex flex-col min-h-0 lg:min-h-[min(90vh,58rem)]">
         <div class="flex items-center justify-between gap-2 mb-2">
           <h3 class="text-sm font-semibold text-brand-muted uppercase tracking-wider">Interval Data</h3>
           <div class="flex items-center gap-2 shrink-0">
@@ -74,64 +74,80 @@
       </section>
 
       <!-- Right stack: row 1 = quick controls + live stream & actions; row 2 = nomination chart full width -->
-      <div class="col-span-12 lg:col-span-9 flex flex-col gap-6 min-w-0 lg:h-[min(90vh,58rem)] lg:max-h-[90vh] lg:min-h-0">
+      <div class="col-span-12 lg:col-span-9 flex flex-col gap-6 min-w-0 lg:min-h-[min(90vh,58rem)]">
         <div class="flex flex-col xl:flex-row gap-4 xl:gap-5 items-stretch shrink-0 xl:max-h-[min(48vh,34rem)] min-h-0">
-          <section class="bg-brand-card rounded-xl border border-brand-border p-4 sm:p-5 xl:p-5 shadow-lg flex flex-col xl:flex-1 xl:min-w-0 xl:max-h-full xl:overflow-y-auto xl:justify-between gap-3 xl:gap-4">
-            <div class="flex flex-row flex-wrap lg:flex-nowrap items-stretch gap-2 md:gap-3 w-full min-w-0">
-              <div class="bg-brand-dark border border-brand-border rounded-md px-2 py-1 shrink-0 flex flex-row flex-nowrap items-center gap-1.5 min-w-0 self-center" title="RTD vs Day Ahead %">
-                <span class="text-brand-muted text-[10px] sm:text-xs whitespace-nowrap shrink-0 leading-none">RTD %</span>
-                <div class="flex items-baseline gap-0.5 shrink-0">
-                  <input type="number" id="percent-value" min="1" max="200" step="1" value="100" class="w-10 sm:w-11 bg-transparent text-brand-accent font-bold text-base sm:text-lg border-0 p-0 focus:ring-0 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" title="Apply this % of Day Ahead to all RTD values"/>
-                  <span class="text-brand-muted text-xs font-medium">%</span>
+          <div class="flex flex-col xl:w-[21rem] xl:flex-none xl:max-h-[min(48vh,34rem)] min-h-0">
+            <section class="bg-brand-card rounded-xl border border-brand-border overflow-hidden shadow-lg flex flex-col flex-1 min-h-0">
+              <div class="px-4 py-2 border-b border-brand-border flex items-center justify-between gap-2 shrink-0">
+                <h3 class="text-xs font-bold uppercase tracking-widest text-brand-muted">Nomination Controls</h3>
+              </div>
+              <div class="p-3 sm:p-4 flex flex-col gap-2.5 flex-1 min-h-0 overflow-hidden">
+                <div class="grid grid-cols-2 gap-2">
+                  <div class="bg-brand-dark border border-brand-border rounded-md px-2 py-1 flex flex-row flex-nowrap items-center justify-center gap-1.5 min-w-0" title="RTD vs Day Ahead %">
+                    <span class="text-brand-muted text-[10px] whitespace-nowrap shrink-0 leading-none">RTD %</span>
+                    <div class="flex items-baseline gap-0.5 shrink-0">
+                      <input type="number" id="percent-value" min="1" max="200" step="1" value="100" class="w-9 bg-transparent text-brand-accent font-bold text-base border-0 p-0 focus:ring-0 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" title="Apply this % of Day Ahead to all RTD values"/>
+                      <span class="text-brand-muted text-xs font-medium">%</span>
+                    </div>
+                  </div>
+                  <input type="date" id="forecast-ref-date" class="text-xs font-semibold bg-brand-dark border border-brand-border rounded-md px-2 py-1.5 text-center [color-scheme:dark] min-w-0" value="2026-03-15" title="Forecast date for this nomination. Past dates are not selectable."/>
+                </div>
+                <div class="forecast-mode-seg flex w-full rounded-lg border border-brand-border overflow-hidden bg-brand-dark shadow-sm shrink-0" role="radiogroup" aria-label="Forecast band">
+                  <label class="cursor-pointer border-r border-brand-border last:border-r-0 flex-1 min-w-0 flex" title="Low (P10)">
+                    <input name="forecast" type="radio" value="low" class="sr-only peer"/>
+                    <span class="flex-1 flex items-center justify-center py-2 px-1 text-xs font-bold text-brand-muted text-center transition-colors peer-checked:bg-brand-accent peer-checked:text-brand-dark">P10</span>
+                  </label>
+                  <label class="cursor-pointer border-r border-brand-border last:border-r-0 flex-1 min-w-0 flex" title="Mid (P50)">
+                    <input name="forecast" type="radio" value="mid" class="sr-only peer"/>
+                    <span class="flex-1 flex items-center justify-center py-2 px-1 text-xs font-bold text-brand-muted text-center transition-colors peer-checked:bg-brand-accent peer-checked:text-brand-dark">P50</span>
+                  </label>
+                  <label class="cursor-pointer border-r border-brand-border last:border-r-0 flex-1 min-w-0 flex" title="High (P90)">
+                    <input name="forecast" type="radio" value="high" class="sr-only peer"/>
+                    <span class="flex-1 flex items-center justify-center py-2 px-1 text-xs font-bold text-brand-muted text-center transition-colors peer-checked:bg-brand-accent peer-checked:text-brand-dark">P90</span>
+                  </label>
+                  <label class="cursor-pointer border-r border-brand-border last:border-r-0 flex-1 min-w-0 flex" title="Custom RTD per interval">
+                    <input name="forecast" type="radio" value="custom" class="sr-only peer" checked/>
+                    <span class="flex-1 flex items-center justify-center py-2 px-1 text-xs font-bold text-brand-muted text-center transition-colors peer-checked:bg-brand-accent peer-checked:text-brand-dark">Custom</span>
+                  </label>
+                </div>
+                <div class="border-t border-brand-border/50 pt-2.5 flex flex-col gap-2.5 flex-1 min-h-0">
+                  <div class="grid grid-cols-2 gap-2 shrink-0">
+                    <input type="file" id="forecast-file-input" accept=".csv,.xls,.xlsx" class="hidden"/>
+                    <button type="button" id="btn-import" class="w-full py-2 border border-brand-border rounded-xl bg-brand-dark hover:bg-brand-border/40 text-brand-text font-bold uppercase text-xs tracking-wide transition-all flex items-center justify-center">
+                      <svg class="h-4 w-4 mr-1 text-brand-muted shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/></svg>
+                      IMPORT
+                    </button>
+                    <button type="button" id="btn-export" class="w-full py-2 rounded-xl font-bold uppercase text-xs tracking-wide transition-all bg-brand-accent hover:bg-brand-accent/80 text-brand-dark">EXPORT</button>
+                  </div>
+                  <p id="nomination-export-status" class="text-[11px] min-h-[1rem] text-brand-muted shrink-0" role="status" aria-live="polite"></p>
+                  <div id="sync-controls" class="hidden shrink-0">
+                    <button type="button" id="btn-sync-remote" class="w-full py-2 border border-brand-border rounded-xl bg-brand-dark hover:bg-brand-border/40 text-brand-text font-bold uppercase text-xs tracking-wide transition-all">
+                      Sync to Viewer
+                    </button>
+                    <p id="sync-status" class="text-[10px] min-h-[1rem] text-brand-muted" role="status" aria-live="polite"></p>
+                  </div>
+                  <p id="persist-hint" class="text-[10px] text-amber-400/90 border border-amber-500/30 rounded-lg px-2.5 py-1.5 bg-amber-500/5 hidden shrink-0"></p>
+                  <p id="weather-coords-display" class="hidden" aria-hidden="true"></p>
+                  <button type="button" id="btn-weather" class="w-full py-2 border-2 border-amber-500/50 rounded-xl bg-brand-dark hover:bg-amber-500/10 text-amber-400 font-bold uppercase text-xs tracking-wide transition-all shrink-0">Weather forecast (1×/day)</button>
+                  <p id="weather-summary" class="text-xs text-brand-muted leading-relaxed flex-1 min-h-[1.75rem] overflow-y-auto rounded-lg border border-brand-border/40 bg-brand-dark/40 px-2.5 py-1.5"></p>
                 </div>
               </div>
-              <div class="forecast-mode-seg flex flex-1 min-w-0 w-full lg:min-w-[14rem] rounded-lg border border-brand-border overflow-hidden bg-brand-dark shadow-sm self-center" role="radiogroup" aria-label="Forecast band">
-                <label class="cursor-pointer border-r border-brand-border last:border-r-0 flex-1 min-w-0 flex" title="Low (P10)">
-                  <input name="forecast" type="radio" value="low" class="sr-only peer"/>
-                  <span class="flex-1 flex items-center justify-center py-2.5 sm:py-3 px-1 sm:px-2 text-xs sm:text-sm font-bold text-brand-muted text-center transition-colors peer-checked:bg-brand-accent peer-checked:text-brand-dark">P10</span>
-                </label>
-                <label class="cursor-pointer border-r border-brand-border last:border-r-0 flex-1 min-w-0 flex" title="Mid (P50)">
-                  <input name="forecast" type="radio" value="mid" class="sr-only peer"/>
-                  <span class="flex-1 flex items-center justify-center py-2.5 sm:py-3 px-1 sm:px-2 text-xs sm:text-sm font-bold text-brand-muted text-center transition-colors peer-checked:bg-brand-accent peer-checked:text-brand-dark">P50</span>
-                </label>
-                <label class="cursor-pointer border-r border-brand-border last:border-r-0 flex-1 min-w-0 flex" title="High (P90)">
-                  <input name="forecast" type="radio" value="high" class="sr-only peer"/>
-                  <span class="flex-1 flex items-center justify-center py-2.5 sm:py-3 px-1 sm:px-2 text-xs sm:text-sm font-bold text-brand-muted text-center transition-colors peer-checked:bg-brand-accent peer-checked:text-brand-dark">P90</span>
-                </label>
-                <label class="cursor-pointer border-r border-brand-border last:border-r-0 flex-1 min-w-0 flex" title="Custom RTD per interval">
-                  <input name="forecast" type="radio" value="custom" class="sr-only peer" checked/>
-                  <span class="flex-1 flex items-center justify-center py-2.5 sm:py-3 px-1 sm:px-2 text-xs sm:text-sm font-bold text-brand-muted text-center transition-colors peer-checked:bg-brand-accent peer-checked:text-brand-dark">Custom</span>
-                </label>
-              </div>
-              <div class="flex flex-row flex-nowrap items-center gap-2 shrink-0 min-w-0 w-full lg:w-auto self-center">
-                <span class="text-[10px] sm:text-xs text-brand-muted uppercase tracking-wide whitespace-nowrap shrink-0">Forecast Ref</span>
-                <input type="date" id="forecast-ref-date" class="text-xs sm:text-sm font-semibold bg-brand-dark border border-brand-border rounded-md px-2 py-1.5 text-right [color-scheme:dark] shrink-0 min-w-0" value="2026-03-15" title="Forecast date for this nomination. Past dates are not selectable."/>
-              </div>
-            </div>
-            <div class="border-t border-brand-border/50 pt-4 xl:pt-4 flex flex-col gap-3 xl:gap-3">
-              <div class="grid grid-cols-2 gap-2.5">
-                <input type="file" id="forecast-file-input" accept=".csv,.xls,.xlsx" class="hidden"/>
-                <button type="button" id="btn-import" class="w-full py-2.5 border border-brand-border rounded-xl bg-brand-dark hover:bg-brand-border/40 text-brand-text font-bold uppercase text-sm tracking-wide transition-all flex items-center justify-center">
-                  <svg class="h-5 w-5 mr-1.5 text-brand-muted shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/></svg>
-                  IMPORT
-                </button>
-                <button type="button" id="btn-export" class="w-full py-2.5 rounded-xl font-bold uppercase text-sm tracking-wide transition-all bg-brand-accent hover:bg-brand-accent/80 text-brand-dark">EXPORT</button>
-              </div>
-              <p id="nomination-export-status" class="text-xs min-h-[1.25rem] text-brand-muted" role="status" aria-live="polite"></p>
-              <div id="sync-controls" class="hidden">
-                <button type="button" id="btn-sync-remote" class="w-full py-2.5 border border-brand-border rounded-xl bg-brand-dark hover:bg-brand-border/40 text-brand-text font-bold uppercase text-sm tracking-wide transition-all">
-                  Sync to Viewer
-                </button>
-                <p id="sync-status" class="text-[10px] sm:text-xs min-h-[1.25rem] text-brand-muted" role="status" aria-live="polite"></p>
-              </div>
-              <p id="persist-hint" class="text-[10px] sm:text-xs text-amber-400/90 border border-amber-500/30 rounded-lg px-3 py-2 bg-amber-500/5 hidden"></p>
-              <p id="weather-coords-display" class="hidden" aria-hidden="true"></p>
-              <button type="button" id="btn-weather" class="w-full py-2.5 border-2 border-amber-500/50 rounded-xl bg-brand-dark hover:bg-amber-500/10 text-amber-400 font-bold uppercase text-sm tracking-wide transition-all">Weather forecast (1×/day)</button>
-              <p id="weather-summary" class="text-sm text-brand-muted leading-relaxed min-h-[2.5rem] xl:min-h-[3rem] max-h-[5.5rem] overflow-y-auto rounded-lg border border-brand-border/40 bg-brand-dark/40 px-3 py-2"></p>
-            </div>
-          </section>
+            </section>
+          </div>
 
-          <div class="flex flex-col xl:w-[min(100%,28rem)] xl:flex-shrink-0 xl:max-w-[42%] 2xl:max-w-[38%] xl:max-h-[min(48vh,34rem)] min-h-0">
+          <div class="flex flex-col xl:flex-1 xl:min-w-[16rem] xl:max-h-[min(48vh,34rem)] min-h-[16rem] xl:min-h-0">
+            <div class="bg-brand-card rounded-xl border border-brand-border overflow-hidden shadow-2xl flex flex-col flex-1 min-h-0">
+              <div class="px-4 py-2 border-b border-brand-border flex items-center justify-between gap-2 shrink-0">
+                <h3 class="text-xs font-bold uppercase tracking-widest text-brand-muted">Weather Satellite &middot; Negros Occidental</h3>
+                <a href="https://www.windy.com/-Satellite-satellite?satellite,10.639,123.004,8" target="_blank" rel="noopener" class="shrink-0 text-[10px] uppercase font-semibold text-brand-accent hover:text-brand-accent/80 transition-colors">Full screen</a>
+              </div>
+              <div id="weather-radar-map" class="relative flex-1 min-h-[12rem] bg-brand-dark overflow-hidden">
+                <iframe title="Negros Occidental satellite weather map" src="https://embed.windy.com/embed2.html?lat=10.639&lon=123.004&detailLat=10.639&detailLon=123.004&zoom=8&level=surface&overlay=satellite&product=ecmwf&menu=&message=true&marker=&calendar=now&pressure=&type=map&location=coordinates&detail=&metricWind=default&metricTemp=default&radarRange=-0.5" width="100%" height="100%" loading="lazy" class="absolute inset-0 w-full h-full border-0"></iframe>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex flex-col xl:w-[min(100%,22rem)] xl:flex-shrink-0 xl:max-w-[34%] 2xl:max-w-[30%] xl:max-h-[min(48vh,34rem)] min-h-0">
             <!-- Live plant output stream (VDO.Ninja) - compact height so the nomination chart can grow -->
             <div class="bg-brand-card rounded-xl border border-brand-border overflow-hidden shadow-2xl xl:flex xl:flex-col xl:max-h-full">
               <div class="px-4 py-2 border-b border-brand-border flex justify-between items-center shrink-0 relative">
