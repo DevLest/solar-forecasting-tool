@@ -1,6 +1,6 @@
     <div id="panel-nomination" class="flex-grow p-6 space-y-3 max-w-[1600px] mx-auto w-full" data-nomination-readonly="{{ 'true' if areco_nomination_readonly else 'false' }}">
     <div class="grid grid-cols-12 gap-6 lg:items-stretch">
-      <section id="interval-data-panel" class="col-span-12 lg:col-span-3 bg-brand-card rounded-xl border border-brand-border p-4 shadow-xl overflow-hidden flex flex-col min-h-0 lg:min-h-[min(90vh,58rem)]">
+      <section id="interval-data-panel" class="col-span-12 lg:col-span-3 bg-brand-card rounded-xl border border-brand-border p-4 shadow-xl overflow-hidden flex flex-col min-h-0 lg:max-h-[min(90vh,58rem)]">
         <div class="flex items-center justify-between gap-2 mb-2">
           <h3 class="text-sm font-semibold text-brand-muted uppercase tracking-wider">Interval Data</h3>
           <div class="flex items-center gap-2 shrink-0">
@@ -74,7 +74,7 @@
       </section>
 
       <!-- Right stack: row 1 = quick controls + live stream & actions; row 2 = nomination chart full width -->
-      <div class="col-span-12 lg:col-span-9 flex flex-col gap-6 min-w-0 lg:min-h-[min(90vh,58rem)]">
+      <div id="nomination-right-stack" class="col-span-12 lg:col-span-9 flex flex-col gap-6 min-w-0 lg:min-h-[min(90vh,58rem)]">
         <div class="flex flex-col xl:flex-row gap-4 xl:gap-5 items-stretch shrink-0 xl:max-h-[min(48vh,34rem)] min-h-0">
           <div class="flex flex-col xl:w-[21rem] xl:flex-none xl:max-h-[min(48vh,34rem)] min-h-0">
             <section class="bg-brand-card rounded-xl border border-brand-border overflow-hidden shadow-lg flex flex-col flex-1 min-h-0">
@@ -149,12 +149,14 @@
 
           <div class="flex flex-col xl:w-[min(100%,22rem)] xl:flex-shrink-0 xl:max-w-[34%] 2xl:max-w-[30%] xl:max-h-[min(48vh,34rem)] min-h-0">
             <!-- Live plant output stream (VDO.Ninja) - compact height so the nomination chart can grow -->
-            <div class="bg-brand-card rounded-xl border border-brand-border overflow-hidden shadow-2xl xl:flex xl:flex-col xl:max-h-full">
+            <div class="bg-brand-card rounded-xl border border-brand-border overflow-hidden shadow-2xl xl:flex xl:flex-col xl:flex-1 xl:min-h-0 xl:max-h-full">
               <div class="px-4 py-2 border-b border-brand-border flex justify-between items-center shrink-0 relative">
                 <h3 class="text-xs font-bold uppercase tracking-widest text-brand-muted">Live plant output</h3>
-                <button type="button" id="live-ocr-mw-btn" class="text-sm font-bold font-mono text-brand-accent tabular-nums hover:underline focus:outline-none focus:ring-1 focus:ring-brand-accent rounded" title="Auto-read from the live plant-output video (OCR) - click to inspect">
-                  <span id="live-ocr-mw">— MW</span>
-                </button>
+                <div class="text-right">
+                  <button type="button" id="live-ocr-mw-btn" class="text-sm font-bold font-mono text-brand-accent tabular-nums hover:underline focus:outline-none focus:ring-1 focus:ring-brand-accent rounded" title="Auto-read from the live plant-output video (OCR) - click to inspect">
+                    <span id="live-ocr-mw">— MW</span>
+                  </button>
+                </div>
                 <div id="live-ocr-debug" class="hidden absolute right-0 top-full mt-1 z-20 w-72 max-w-[90vw] rounded-lg border border-brand-border bg-brand-card shadow-2xl p-3 space-y-2 text-left">
                   <div class="flex items-center justify-between gap-2">
                     <span class="text-[10px] uppercase tracking-wider text-brand-muted font-bold">OCR debug</span>
@@ -168,12 +170,11 @@
                 </div>
               </div>
               <div class="px-4 py-2 border-b border-brand-border/50 flex flex-col gap-1.5">
-                <div class="flex flex-row flex-nowrap items-center gap-2 min-w-0">
+                <div class="flex flex-row flex-nowrap items-center gap-2 min-w-0" title="Change when the link expires; saved in this browser until you update it. A blank/black video area usually means the link expired or no one is broadcasting to it right now - get a fresh link and click Apply.">
                   <label for="live-stream-url" class="text-[10px] text-brand-muted uppercase whitespace-nowrap shrink-0">Stream URL</label>
                   <input type="url" id="live-stream-url" placeholder="https://vdo.ninja/?view=..." class="flex-1 min-w-0 bg-brand-dark border border-brand-border rounded px-2 py-1.5 text-xs text-brand-text placeholder:text-brand-muted/60 focus:ring-1 focus:ring-brand-accent focus:border-brand-accent" />
                   <button type="button" id="live-stream-apply" class="shrink-0 px-3 py-1.5 bg-brand-accent text-brand-dark rounded text-xs font-bold uppercase hover:bg-brand-accent/90 transition-colors">Apply</button>
                 </div>
-                <p class="text-[9px] text-brand-muted/80">Change when the link expires; saved in this browser until you update it. A blank/black video area usually means the link expired or no one is broadcasting to it right now - get a fresh link and click Apply.</p>
                 <p id="live-stream-status" class="text-[9px] text-brand-muted/80 min-h-[1.15rem]"></p>
               </div>
               <div class="aspect-video xl:aspect-auto xl:flex-1 xl:min-h-[14rem] xl:max-h-[min(40vh,28rem)] bg-brand-dark relative min-h-[9rem]">

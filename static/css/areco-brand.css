@@ -334,6 +334,12 @@
       position: relative;
       z-index: 0;
     }
+    /* Predicted-value glimpse (next editable RTD cell, before the user types a real value) */
+    .interval-data-table .rtd-input::placeholder {
+      color: rgba(147, 164, 191, 0.65);
+      font-weight: 500;
+      opacity: 1;
+    }
     /* Ops meta: label | control (reference layout) */
     .ops-meta-kv { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); column-gap: 0.75rem; row-gap: 0.5rem; align-items: center; font-size: 0.8125rem; }
     .ops-meta-kv > label { color: #f4f7fb; font-weight: 500; margin: 0; text-align: left; }

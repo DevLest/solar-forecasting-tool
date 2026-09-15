@@ -25,12 +25,14 @@ import os
 import re
 import threading
 import time
+from collections import deque
 from datetime import datetime, timezone
 
 _POLL_INTERVAL_SECS = 5.0
 _VIDEO_WAIT_TIMEOUT_SECS = 20.0
 _RETRY_GOTO_EVERY_SECS = 30.0
 _MAX_PLAUSIBLE_MW = 100.0
+_READING_HISTORY_WINDOW_SECS = 30 * 60  # keep 30 min of readings for short-term trend prediction
 
 _MW_PATTERN_DECIMAL = re.compile(r"(\d{1,4}[.,]\d{1,3})\s*m\s*w", re.IGNORECASE)
 _MW_PATTERN_INTEGER = re.compile(r"(\d{1,4})\s*m\s*w", re.IGNORECASE)
@@ -154,6 +156,7 @@ class LiveStreamMwWatcher:
             "source_url": None,
         }
         self._last_frame_png: bytes | None = None
+        self._recent_readings: deque[tuple[float, float]] = deque()  # (unix_ts, mw), oldest first
 
     def get_state(self) -> dict:
         with self._lock:
@@ -162,6 +165,23 @@ class LiveStreamMwWatcher:
     def get_last_frame_png(self) -> bytes | None:
         with self._lock:
             return self._last_frame_png
+
+    def get_recent_readings(self, window_secs: float | None = None) -> list[tuple[float, float]]:
+        """Recent (unix_ts, mw) OCR readings, oldest first, capped to window_secs (default: full buffer)."""
+        with self._lock:
+            data = list(self._recent_readings)
+        if window_secs is None:
+            return data
+        cutoff = time.time() - window_secs
+        return [p for p in data if p[0] >= cutoff]
+
+    def _record_reading(self, mw: float) -> None:
+        now = time.time()
+        with self._lock:
+            self._recent_readings.append((now, mw))
+            cutoff = now - _READING_HISTORY_WINDOW_SECS
+            while self._recent_readings and self._recent_readings[0][0] < cutoff:
+                self._recent_readings.popleft()
 
     def _set_state(self, **kwargs) -> None:
         with self._lock:
@@ -269,6 +289,7 @@ class LiveStreamMwWatcher:
                 continue
 
             if mw is not None:
+                self._record_reading(mw)
                 self._set_state(ok=True, status="ok", mw=mw, raw_text=text.strip()[:200], error=None, source_url=url)
             else:
                 self._set_state(

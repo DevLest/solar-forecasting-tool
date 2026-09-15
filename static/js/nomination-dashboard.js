@@ -553,6 +553,7 @@
     }
 
     function updateRtdIntervalLocks() {
+      if (typeof window.__reapplyRtdForecastPlaceholder === 'function') window.__reapplyRtdForecastPlaceholder();
       if (isNominationReadOnly()) {
         document.querySelectorAll('.interval-data-tbody tr.interval-row .rtd-input').forEach(function(inp) {
           inp.disabled = true;
@@ -1477,6 +1478,37 @@
       var ro = new ResizeObserver(function() { chart.resize(); });
       ro.observe(section);
       requestAnimationFrame(function() { chart.resize(); });
+    })();
+
+    /**
+     * Interval Data (left sidebar) height should match the right stack's own natural
+     * height (quick controls + weather + live output + chart), not an independent value -
+     * otherwise the sidebar's own content (up to 168 rows under Hour: All) would drive grid
+     * row sizing and balloon the whole row. Cap the sidebar at the right stack's rendered
+     * height so the interior table scrolls instead, with a viewport-based CSS max-height as
+     * a fallback until this runs.
+     */
+    (function syncIntervalPanelHeight() {
+      var panel = document.getElementById('interval-data-panel');
+      var rightStack = document.getElementById('nomination-right-stack');
+      if (!panel || !rightStack) return;
+      var lgMq = window.matchMedia ? window.matchMedia('(min-width: 1024px)') : null;
+      function sync() {
+        if (lgMq && !lgMq.matches) {
+          panel.style.maxHeight = '';
+          return;
+        }
+        var h = rightStack.getBoundingClientRect().height;
+        if (h > 0) panel.style.maxHeight = h + 'px';
+      }
+      if (typeof ResizeObserver !== 'undefined') {
+        var ro = new ResizeObserver(sync);
+        ro.observe(rightStack);
+      } else {
+        window.addEventListener('resize', sync);
+      }
+      if (lgMq && lgMq.addEventListener) lgMq.addEventListener('change', sync);
+      requestAnimationFrame(sync);
     })();
 
     document.querySelectorAll('input[name="forecast"]').forEach(function(radio) {
@@ -3021,4 +3053,86 @@
         }).catch(function() {});
       }
       setTimeout(pollStreamMw, 5000);
+    })();
+
+    // Short-term RTD prediction: blends the live OCR trend with historical RTD at the same
+    // time-of-day (app.services.rtd_forecast, served via /api/rtd-forecast). Surfaced as a text
+    // preview near the Live plant output reading / Nomination Controls, and as an `input
+    // placeholder` (never `.value`) on the next editable RTD cell - a suggestion, not an auto-fill.
+    window.RTD_FORECAST_API = window.RTD_FORECAST_API || '/api/rtd-forecast';
+    var RTD_FORECAST_POLL_MS = 20000;
+    var rtdForecastLastResult = null;
+
+    /** Interval label of the next editable RTD cell right now (mirrors updateRtdIntervalLocks logic). */
+    function getNextEditableIntervalLabel(now) {
+      now = now || new Date();
+      var refIso = getForecastRefDateString();
+      var today = todayIsoLocal();
+      if (refIso && refIso === today) {
+        return minutesSinceMidnightToLabel(getRtdFirstEditableMinutesSinceMidnight(now));
+      }
+      var firstRow = document.querySelector('.interval-data-tbody tr.interval-row');
+      return firstRow ? firstRow.getAttribute('data-interval') : null;
+    }
+
+    /**
+     * Sets .rtd-input placeholder for the row at `label` (a glimpse of the predicted RTD).
+     * Clears a still-default "0" so the placeholder is visible instead of a solid value;
+     * never touches a value the user actually typed, and never edits the focused input.
+     */
+    function applyRtdForecastPlaceholder(label, predictedMw) {
+      if (!label) return;
+      var row = document.querySelector('.interval-data-tbody tr.interval-row[data-interval="' + label + '"]');
+      if (!row) return;
+      var input = row.querySelector('.rtd-input');
+      if (!input) return;
+      var hasPrediction = predictedMw != null && !isNaN(predictedMw);
+      input.placeholder = hasPrediction ? ('~' + Number(predictedMw).toFixed(3)) : '';
+      if (hasPrediction && input.value === '0' && document.activeElement !== input) {
+        input.value = '';
+      }
+    }
+
+    function renderRtdForecastText(data) {
+      var preview = document.getElementById('rtd-forecast-preview');
+      var summary = document.getElementById('rtd-forecast-summary');
+      var basisLabel = {
+        'live+historical': 'live + history',
+        'live_only': 'live trend only',
+        'historical_only': 'history only',
+        'insufficient_data': 'no data'
+      };
+      if (!data || !data.ok || !data.next_interval || data.next_interval.predicted_mw == null) {
+        if (preview) preview.textContent = 'Next-interval prediction: unavailable';
+        if (summary) summary.textContent = '';
+        return;
+      }
+      var ni = data.next_interval;
+      if (preview) {
+        preview.textContent = 'Next (' + ni.interval + '): ~' + ni.predicted_mw.toFixed(3) + ' MW (' + (basisLabel[ni.basis] || ni.basis) + ')';
+      }
+      if (summary) {
+        summary.textContent = data.basis_note ? ('RTD forecast: ' + data.basis_note) : '';
+      }
+    }
+
+    window.__reapplyRtdForecastPlaceholder = function() {
+      if (rtdForecastLastResult && rtdForecastLastResult.ok && rtdForecastLastResult.next_interval) {
+        applyRtdForecastPlaceholder(rtdForecastLastResult.next_interval.interval, rtdForecastLastResult.next_interval.predicted_mw);
+      }
+    };
+
+    (function pollRtdForecast() {
+      var label = getNextEditableIntervalLabel();
+      if (!label) { setTimeout(pollRtdForecast, RTD_FORECAST_POLL_MS); return; }
+      fetch(window.RTD_FORECAST_API + '?next_interval=' + encodeURIComponent(label))
+        .then(function(r) { return r.ok ? r.json() : null; })
+        .then(function(d) {
+          if (!d) return;
+          rtdForecastLastResult = d;
+          renderRtdForecastText(d);
+          if (d.ok && d.next_interval) applyRtdForecastPlaceholder(d.next_interval.interval, d.next_interval.predicted_mw);
+        })
+        .catch(function() {})
+        .then(function() { setTimeout(pollRtdForecast, RTD_FORECAST_POLL_MS); });
     })();

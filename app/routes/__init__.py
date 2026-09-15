@@ -25,6 +25,7 @@ from app.auth import (
 from app.config import DATA_DIR, ROOT, nomination_export_dir, settlement_zip_passwords_from_env
 from app.services.env_config import ALLOWED_ENV_KEYS, merge_env_updates, read_env_file_dict
 from app.services.live_stream_ocr import watcher as live_stream_watcher
+from app.services.rtd_forecast import get_rtd_forecast
 from app.services.billing_invoice_extract import extract_invoice_pdf, merge_input_patches, merge_period_metas
 from app.services.billing_history_store import (
     compute_display_totals,
@@ -456,6 +457,21 @@ def api_stream_mw_frame():
     resp = Response(png_bytes, mimetype="image/png")
     resp.headers["Cache-Control"] = "no-store"
     return resp
+
+
+@bp.route("/api/rtd-forecast", methods=["GET"])
+def api_rtd_forecast():
+    live_stream_watcher.ensure_started()
+    next_interval = (request.args.get("next_interval") or "").strip()
+    if not next_interval:
+        return jsonify({"ok": False, "error": "Missing required query param: next_interval (HH:MM)."}), 400
+    state = live_stream_watcher.get_state()
+    current_mw = state.get("mw") if state.get("status") == "ok" else None
+    readings = live_stream_watcher.get_recent_readings(window_secs=10 * 60)
+    result = get_rtd_forecast(current_mw, readings, next_interval)
+    if "error" in result:
+        return jsonify({"ok": False, "error": result["error"]}), 500
+    return jsonify({"ok": True, "current_ocr_status": state.get("status"), **result})
 
 
 @bp.route("/api/nomination-accuracy/uploaded-dates", methods=["GET"])
