@@ -108,8 +108,10 @@
             <input type="hidden" id="reporting-chart-day" value="" />
             <button type="button" id="reporting-btn-refresh-charts" class="py-2 px-3 rounded-lg border border-brand-border bg-brand-dark hover:bg-brand-border/30 text-xs font-semibold uppercase tracking-wide text-brand-muted">Refresh</button>
             <button type="button" id="reporting-btn-export-csv" disabled class="py-2 px-3 rounded-lg border border-brand-border bg-brand-dark hover:bg-brand-border/30 disabled:opacity-40 disabled:cursor-not-allowed text-xs font-semibold uppercase tracking-wide text-brand-muted">Export XLSX</button>
+            <button type="button" id="reporting-btn-export-folder" title="Choose the folder exports are saved to" class="py-2 px-3 rounded-lg border border-brand-border bg-brand-dark hover:bg-brand-border/30 text-xs font-semibold uppercase tracking-wide text-brand-muted">Save Folder</button>
           </div>
         </div>
+        <p id="reporting-export-status" class="hidden text-xs text-brand-muted leading-relaxed" role="status" aria-live="polite"></p>
         <p id="reporting-chart-partial-banner" class="hidden text-xs text-amber-100/95 rounded-lg border border-amber-500/40 bg-amber-950/30 px-3 py-2 leading-relaxed" role="status"></p>
         <p id="reporting-chart-summary" class="text-sm text-brand-text font-mono hidden" role="status"></p>
         <div class="rounded-lg border border-brand-border/60 bg-brand-dark/20 p-3">
