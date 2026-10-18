@@ -2073,6 +2073,24 @@
         .trim() || 'Solar_Plant';
     }
 
+    /** Plant label from free text or an imported filename: drops extension, VRE_NOM_ prefix and date tokens. */
+    function cleanVrePlantName(raw) {
+      var s = String(raw || '').trim().replace(/\.(csv|xlsx?|xml)$/i, '');
+      s = s.replace(/^(?:VRE[\s_-]*NOM[\s_-]*)+/i, '');
+      s = s
+        .replace(/\d{4}[-_]\d{2}[-_]\d{2}/g, ' ')
+        .replace(/\d{1,2}[-_]\d{1,2}[-_]\d{4}/g, ' ')
+        .replace(/(^|[^\d])\d{8}(?!\d)/g, '$1 ');
+      return s.replace(/[\s_-]+/g, ' ').trim();
+    }
+
+    /** VRE_NOM_{Plant}_{YYYYMMDD}.csv - a plant field that already holds a full VRE filename is not double-prefixed. */
+    function buildVreFilename(plantRaw, dateStr) {
+      var plant = cleanVrePlantName(plantRaw) || 'Solar Plant';
+      plant = sanitizeExportFilename(plant).replace(/_+/g, '_').replace(/^_|_$/g, '') || 'Solar_Plant';
+      return 'VRE_NOM_' + plant + '_' + dateStr + '.csv';
+    }
+
     function downloadBlobFallback(blob, filename) {
       var a = document.createElement('a');
       var url = URL.createObjectURL(blob);
@@ -2359,20 +2377,32 @@
           var detail = getExportDetailStrings();
           var dateStr = String(detail.yyyy) + detail.mm + detail.dd;
           var vrePlantEl = document.getElementById('vre-plant-name');
-          var plantRaw = (vrePlantEl && vrePlantEl.value && vrePlantEl.value.trim()) ? vrePlantEl.value.trim() : 'Solar Plant';
-          var plant = sanitizeExportFilename(plantRaw);
-          var filename = 'VRE_NOM_' + plant + '_' + dateStr + '.csv';
+          var plantRaw = (vrePlantEl && vrePlantEl.value && vrePlantEl.value.trim()) ? vrePlantEl.value.trim() : '';
+          var filename = buildVreFilename(plantRaw, dateStr);
           var csv = buildVreCsvContent();
           if (!csv || !String(csv).trim()) {
             throw new Error('No VRE data to export. Load or enter Day Ahead values first.');
           }
           var blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
           setNominationExportStatus('Preparing VRE CSV…');
-          saveBlobToUser(blob, filename)
+          var exportFolder = window.ArecoExportFolder;
+          var saving = (exportFolder && exportFolder.supported)
+            ? exportFolder.ensure('vre').then(function(dir) {
+                return exportFolder.write(dir, filename, blob).then(function() {
+                  return { method: 'folder', folder: dir.name };
+                });
+              }).catch(function(err) {
+                if (err && err.name === 'AbortError') throw new Error('Export cancelled.');
+                throw err;
+              })
+            : saveBlobToUser(blob, filename);
+          saving
             .then(function(result) {
-              var msg = result.method === 'picker'
-                ? 'VRE CSV saved: ' + filename
-                : 'VRE CSV downloaded: ' + filename;
+              var msg = result.method === 'folder'
+                ? 'VRE CSV saved to folder "' + result.folder + '": ' + filename
+                : result.method === 'picker'
+                  ? 'VRE CSV saved: ' + filename
+                  : 'VRE CSV downloaded: ' + filename;
               setNominationExportStatus(msg);
               saveNominationFileToServer(filename, csv).catch(function(serverErr) {
                 console.warn('Background server VRE save failed:', serverErr);
@@ -2395,6 +2425,22 @@
           setNominationExportStatus(msg, true);
         }
       });
+    }
+
+    var btnVreFolder = document.getElementById('btn-export-vre-folder');
+    if (btnVreFolder) {
+      if (!(window.ArecoExportFolder && window.ArecoExportFolder.supported)) {
+        btnVreFolder.classList.add('hidden');
+      } else {
+        btnVreFolder.addEventListener('click', function() {
+          window.ArecoExportFolder.pick('vre').then(function(dir) {
+            setNominationExportStatus('VRE CSVs will be saved to folder "' + dir.name + '".');
+          }).catch(function(err) {
+            if (err && err.name === 'AbortError') return;
+            setNominationExportStatus('Could not set VRE save folder: ' + ((err && err.message) || err), true);
+          });
+        });
+      }
     }
 
     var btnImport = document.getElementById('btn-import');
@@ -2505,7 +2551,7 @@
           });
           return;
         }
-        var plantNameFromFile = file.name.replace(/\.[^.]*$/, '').trim();
+        var plantNameFromFile = cleanVrePlantName(file.name);
         if (plantNameFromFile) {
           var vrePlantEl = document.getElementById('vre-plant-name');
           if (vrePlantEl) vrePlantEl.value = plantNameFromFile;

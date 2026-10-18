@@ -25,6 +25,9 @@
   {% endif %}
 {% endblock %}
 {% block page_scripts %}
+  {% if 'nomination' in areco_panels or 'nomination-reporting' in areco_panels %}
+  <script src="{{ url_for('static', filename='js/export-folder.js') }}" defer></script>
+  {% endif %}
   {% if 'nomination' in areco_panels %}
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" defer></script>
   <script src="{{ url_for('static', filename='js/nomination-dashboard.js') }}" defer></script>

@@ -908,16 +908,12 @@
       updateExportCsvUi();
     });
   }
-  // Export destination: the first export asks for a folder (File System Access API) and the
-  // handle is kept in IndexedDB so later exports save there without a prompt. Browsers without
-  // the API (Firefox/Safari, non-secure origins) fall back to a normal download.
+  // Export destination: first export asks for a folder, later exports save there (see export-folder.js).
   var exportFolderBtn = document.getElementById('reporting-btn-export-folder');
   var exportStatus = document.getElementById('reporting-export-status');
   var exportBusy = false;
-  var EXPORT_DB = 'areco-reporting';
-  var EXPORT_STORE = 'handles';
-  var EXPORT_KEY = 'export-dir';
-  var canPickFolder = typeof window.showDirectoryPicker === 'function' && !!window.indexedDB;
+  var exportFolder = window.ArecoExportFolder;
+  var canPickFolder = !!(exportFolder && exportFolder.supported);
 
   if (exportFolderBtn && !canPickFolder) exportFolderBtn.classList.add('hidden');
 
@@ -927,67 +923,6 @@
     exportStatus.classList.toggle('hidden', !msg);
     exportStatus.classList.toggle('text-rose-300/95', !!isError);
     exportStatus.classList.toggle('text-brand-muted', !isError);
-  }
-
-  function withExportStore(mode, fn) {
-    return new Promise(function(resolve, reject) {
-      var req = indexedDB.open(EXPORT_DB, 1);
-      req.onupgradeneeded = function() {
-        req.result.createObjectStore(EXPORT_STORE);
-      };
-      req.onerror = function() {
-        reject(req.error);
-      };
-      req.onsuccess = function() {
-        var db = req.result;
-        var tx = db.transaction(EXPORT_STORE, mode);
-        var r = fn(tx.objectStore(EXPORT_STORE));
-        tx.oncomplete = function() {
-          db.close();
-          resolve(r && r.result);
-        };
-        tx.onerror = function() {
-          db.close();
-          reject(tx.error);
-        };
-      };
-    });
-  }
-
-  function loadExportDir() {
-    return withExportStore('readonly', function(s) {
-      return s.get(EXPORT_KEY);
-    }).catch(function() {
-      return null;
-    });
-  }
-
-  function saveExportDir(handle) {
-    return withExportStore('readwrite', function(s) {
-      return s.put(handle, EXPORT_KEY);
-    }).catch(function() {});
-  }
-
-  function pickExportDir() {
-    return window.showDirectoryPicker({ id: 'reporting-export', mode: 'readwrite' }).then(function(handle) {
-      return saveExportDir(handle).then(function() {
-        return handle;
-      });
-    });
-  }
-
-  // Must run inside the click gesture: requestPermission() needs user activation.
-  function ensureExportDir() {
-    return loadExportDir().then(function(handle) {
-      if (!handle) return pickExportDir();
-      var opts = { mode: 'readwrite' };
-      return handle.queryPermission(opts).then(function(p) {
-        if (p === 'granted') return handle;
-        return handle.requestPermission(opts).then(function(p2) {
-          return p2 === 'granted' ? handle : pickExportDir();
-        });
-      });
-    });
   }
 
   function filenameFromResponse(res, fallback) {
@@ -1017,19 +952,6 @@
     );
   }
 
-  function writeToDir(dir, file) {
-    return dir
-      .getFileHandle(file.name, { create: true })
-      .then(function(fh) {
-        return fh.createWritable();
-      })
-      .then(function(w) {
-        return w.write(file.blob).then(function() {
-          return w.close();
-        });
-      });
-  }
-
   function exportViaDownload(day) {
     window.location.href =
       '/api/nomination-reporting/marketplace-chart/export-xlsx?day=' + encodeURIComponent(day);
@@ -1037,7 +959,8 @@
 
   if (exportFolderBtn) {
     exportFolderBtn.addEventListener('click', function() {
-      pickExportDir()
+      exportFolder
+        .pick('reporting')
         .then(function(handle) {
           setExportStatus('Exports will be saved to folder “' + handle.name + '”.');
         })
@@ -1059,14 +982,15 @@
       exportBusy = true;
       exportCsvBtn.disabled = true;
       var dir = null;
-      ensureExportDir()
+      exportFolder
+        .ensure('reporting')
         .then(function(handle) {
           dir = handle;
           setExportStatus('Exporting ' + day + '…');
           return fetchExport(day);
         })
         .then(function(file) {
-          return writeToDir(dir, file).then(function() {
+          return exportFolder.write(dir, file.name, file.blob).then(function() {
             setExportStatus('Saved “' + file.name + '” to folder “' + dir.name + '”.');
           });
         })
