@@ -271,7 +271,7 @@ def _build_payload() -> dict:
     now = (datetime.now(timezone.utc) + timedelta(hours=LOCAL_UTC_OFFSET_HOURS)).replace(tzinfo=None)
     cutoff = now - timedelta(hours=_HISTORY_HOURS)
     recent = [i for i in items if i["time"] >= cutoff]
-    regions = [region_status(items, r, now) for r in ("Visayas", "Luzon", "Mindanao")]
+    regions = [region_status(items, PLANT_REGION, now)]
 
     def ser(d: dict) -> dict:
         return {k: (v.strftime("%Y-%m-%d %H:%M") if isinstance(v, datetime) else v) for k, v in d.items()}
@@ -288,7 +288,8 @@ def _build_payload() -> dict:
         row = {k: i[k] for k in ("time", "region", "text", "kind", "level", "nso")}
         seen[key] = row
         merged.append(row)
-    merged = merged[:60]
+    # Only the plant's grid (inter-grid messages tagged e.g. "Visayas/Luzon" are kept).
+    merged = [r for r in merged if PLANT_REGION in r["region"].split("/")][:60]
 
     now_s = (datetime.now(timezone.utc) + timedelta(hours=LOCAL_UTC_OFFSET_HOURS)).replace(tzinfo=None, microsecond=0)
     baseline = not _first_seen

@@ -1,17 +1,20 @@
 {% from 'components/ui_macros.html' import page_hero %}
 {% from 'components/satellite_card.html' import satellite_card with context %}
-    <div id="panel-weather-models" class="hidden flex-grow p-6 max-w-[1200px] mx-auto w-full space-y-5">
+{% macro wm_info(topic, tip) %}<button type="button" data-wm-help="{{ topic }}" title="{{ tip }}" aria-label="Explain: {{ tip }}" class="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-brand-border text-[9px] font-bold normal-case tracking-normal text-brand-muted hover:text-brand-accent hover:border-brand-accent/60 align-middle">i</button>{% endmacro %}
+    <div id="panel-weather-models" class="hidden flex-grow p-6 max-w-[1200px] mx-auto w-full space-y-5 transition-[margin] duration-200">
       {{ page_hero('Weather models', 'Free NOAA GFS + ECMWF forecasts converted to plant MW, with live Himawari-9 satellite imagery') }}
 
       <section class="rounded-xl border border-brand-border bg-brand-card/80 p-4 sm:p-5 shadow-lg space-y-4" aria-labelledby="wm-forecast-heading">
         <div class="flex flex-wrap items-end justify-between gap-3">
           <div class="min-w-0">
-            <h3 id="wm-forecast-heading" class="text-sm font-semibold text-brand-muted uppercase tracking-wider">Model forecast</h3>
+            <h3 id="wm-forecast-heading" class="text-sm font-semibold text-brand-muted uppercase tracking-wider flex items-center gap-1.5">Model forecast {{ wm_info('runs', 'Which model runs are shown and when they were downloaded') }}</h3>
             <p id="wm-runs" class="text-xs text-brand-muted mt-1 font-mono leading-relaxed">Loading…</p>
           </div>
           <div class="flex flex-wrap items-center gap-2">
             <label for="wm-date" class="text-[10px] font-bold uppercase tracking-wider text-brand-muted">Forecast day</label>
+            {{ wm_info('day', 'Only days fully covered (24 hours) by at least one model are listed') }}
             <select id="wm-date" class="bg-brand-dark border border-brand-border rounded-lg px-2 py-1.5 text-sm font-mono text-brand-text [color-scheme:dark] focus:outline-none focus:ring-2 focus:ring-brand-accent/40 min-w-[11rem]"></select>
+            <button type="button" data-wm-help="overview" class="py-2 px-3 rounded-lg border border-brand-accent/40 bg-brand-accent/10 hover:bg-brand-accent/20 text-xs font-semibold uppercase tracking-wide text-brand-accent">How it works</button>
             {% if areco_role != 'spectator' %}
             <button type="button" id="wm-btn-refresh" class="py-2 px-3 rounded-lg border border-brand-border bg-brand-dark hover:bg-brand-border/30 text-xs font-semibold uppercase tracking-wide text-brand-muted">Download latest runs</button>
             {% endif %}
@@ -25,34 +28,54 @@
           <p id="wm-status" class="text-xs text-brand-muted flex-1 min-w-0 leading-relaxed" role="status" aria-live="polite"></p>
         </div>
 
+        {% set inv0 = areco_inverters() %}
+        <div id="wm-inv" data-total="{{ inv0.total }}" data-available="{{ inv0.available }}" class="rounded-lg border border-brand-border/60 bg-brand-dark/30 px-3 py-2.5 flex flex-wrap items-center gap-x-4 gap-y-2 transition-colors">
+          <label for="wm-inv-input" class="text-[10px] font-bold uppercase tracking-wider text-brand-muted flex items-center gap-1.5">Inverters available {{ wm_info('inverters', 'Reduce this when inverters are offline; all MW figures scale down to match') }}</label>
+          <div class="flex items-center gap-1.5">
+            {% if areco_role != 'spectator' %}<button type="button" data-inv-step="-1" class="h-7 w-7 rounded-md border border-brand-border bg-brand-dark hover:bg-brand-border/30 text-brand-text font-bold" aria-label="One fewer inverter">&minus;</button>{% endif %}
+            <input id="wm-inv-input" type="number" min="0" max="{{ inv0.total }}" step="1" value="{{ inv0.available }}" inputmode="numeric" class="w-20 bg-brand-dark border border-brand-border rounded-lg px-2 py-1 text-sm font-mono text-brand-text text-center focus:outline-none focus:ring-2 focus:ring-brand-accent/40 disabled:opacity-70" {% if areco_role == 'spectator' %}disabled{% endif %} />
+            {% if areco_role != 'spectator' %}<button type="button" data-inv-step="1" class="h-7 w-7 rounded-md border border-brand-border bg-brand-dark hover:bg-brand-border/30 text-brand-text font-bold" aria-label="One more inverter">+</button>{% endif %}
+            <span class="text-xs text-brand-muted font-mono">of <span id="wm-inv-total">{{ inv0.total }}</span></span>
+          </div>
+          <p id="wm-inv-capacity" class="text-xs font-mono text-brand-text">&mdash;</p>
+          {% if areco_role != 'spectator' %}
+          <input id="wm-inv-note" type="text" maxlength="200" placeholder="Reason (optional), e.g. INV 12-14 tripped" class="flex-1 min-w-[12rem] bg-brand-dark border border-brand-border rounded-lg px-2 py-1 text-xs text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-accent/40" />
+          <div class="flex items-center gap-2">
+            <button type="button" id="wm-inv-save" class="hidden py-1.5 px-3 rounded-lg bg-brand-accent/90 hover:bg-brand-accent text-[11px] font-bold uppercase tracking-wide text-brand-dark">Save for everyone</button>
+            <button type="button" id="wm-inv-reset" class="py-1.5 px-3 rounded-lg border border-brand-border bg-brand-dark hover:bg-brand-border/30 text-[11px] font-semibold uppercase tracking-wide text-brand-muted">All online</button>
+          </div>
+          {% endif %}
+          <p id="wm-inv-meta" class="basis-full text-[11px] text-brand-muted"></p>
+        </div>
+
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <div class="rounded-lg border border-brand-border/60 bg-brand-dark/30 px-3 py-2.5">
-            <p class="text-[10px] font-bold uppercase tracking-wider text-brand-muted">Blend energy</p>
+            <p class="text-[10px] font-bold uppercase tracking-wider text-brand-muted flex items-center gap-1.5">Blend energy {{ wm_info('kpi-blend', 'Total MWh for the day from the average of GFS and ECMWF') }}</p>
             <p id="wm-kpi-blend" class="text-xl font-bold text-brand-accent font-mono mt-0.5">—</p>
           </div>
           <div class="rounded-lg border border-brand-border/60 bg-brand-dark/30 px-3 py-2.5">
-            <p class="text-[10px] font-bold uppercase tracking-wider text-brand-muted">Blend peak</p>
+            <p class="text-[10px] font-bold uppercase tracking-wider text-brand-muted flex items-center gap-1.5">Blend peak {{ wm_info('kpi-peak', 'Highest hourly MW in the blend curve') }}</p>
             <p id="wm-kpi-peak" class="text-xl font-bold text-brand-text font-mono mt-0.5">—</p>
           </div>
           <div class="rounded-lg border border-brand-border/60 bg-brand-dark/30 px-3 py-2.5">
-            <p class="text-[10px] font-bold uppercase tracking-wider text-brand-muted">GFS / ECMWF energy</p>
+            <p class="text-[10px] font-bold uppercase tracking-wider text-brand-muted flex items-center gap-1.5">GFS / ECMWF energy {{ wm_info('kpi-models', 'Each model on its own; a big gap means an uncertain day') }}</p>
             <p id="wm-kpi-models" class="text-xl font-bold text-brand-text font-mono mt-0.5">—</p>
           </div>
           <div class="rounded-lg border border-brand-border/60 bg-brand-dark/30 px-3 py-2.5">
-            <p class="text-[10px] font-bold uppercase tracking-wider text-brand-muted">Daytime cloud (avg)</p>
+            <p class="text-[10px] font-bold uppercase tracking-wider text-brand-muted flex items-center gap-1.5">Daytime cloud (avg) {{ wm_info('kpi-cloud', 'Average forecast cloud cover over daylight hours, both models') }}</p>
             <p id="wm-kpi-cloud" class="text-xl font-bold text-brand-text font-mono mt-0.5">—</p>
           </div>
         </div>
         <p id="wm-spread" class="hidden text-xs text-amber-100/95 rounded-lg border border-amber-500/40 bg-amber-950/30 px-3 py-2 leading-relaxed" role="status"></p>
 
         <div class="rounded-lg border border-brand-border/60 bg-brand-dark/20 p-3">
-          <p class="text-[10px] font-bold uppercase tracking-wider text-brand-muted mb-2">Plant output MW (hour-ending, local time)</p>
+          <p class="text-[10px] font-bold uppercase tracking-wider text-brand-muted mb-2 flex items-center gap-1.5">Plant output MW (hour-ending, local time) {{ wm_info('chart-mw', 'How to read the MW chart lines') }}</p>
           <div class="h-72 min-h-[16rem] relative">
             <canvas id="wm-chart-mw" aria-label="Forecast MW by hour for GFS, ECMWF and blend"></canvas>
           </div>
         </div>
         <div class="rounded-lg border border-brand-border/60 bg-brand-dark/20 p-3">
-          <p class="text-[10px] font-bold uppercase tracking-wider text-brand-muted mb-2">Solar irradiance W/m² and cloud cover %</p>
+          <p class="text-[10px] font-bold uppercase tracking-wider text-brand-muted mb-2 flex items-center gap-1.5">Solar irradiance W/m² and cloud cover % {{ wm_info('chart-ghi', 'Sunlight reaching the ground vs a cloudless sky, with cloud bars') }}</p>
           <div class="h-64 min-h-[14rem] relative">
             <canvas id="wm-chart-ghi" aria-label="Irradiance and cloud cover by hour"></canvas>
           </div>
@@ -61,7 +84,8 @@
         <details class="rounded-lg border border-brand-border/60 bg-brand-dark/20">
           <summary class="cursor-pointer select-none px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-brand-muted">Hourly table</summary>
           <div class="px-3 pb-3">
-            <div class="flex justify-end mb-2">
+            <div class="flex items-center justify-end gap-2 mb-2">
+              {{ wm_info('table', 'Hourly numbers behind the charts, and how to copy them') }}
               <button type="button" id="wm-btn-copy" class="py-1.5 px-3 rounded-lg border border-brand-border bg-brand-dark hover:bg-brand-border/30 text-[11px] font-semibold uppercase tracking-wide text-brand-muted">Copy blend MW (24 values)</button>
             </div>
             <div class="overflow-x-auto">
@@ -89,7 +113,136 @@
       <p class="text-[11px] text-brand-muted leading-relaxed">
         Forecast data: <a class="underline hover:text-brand-accent" href="https://www.ecmwf.int/en/forecasts/datasets/open-data" target="_blank" rel="noopener">ECMWF open data</a> (CC BY 4.0) and NOAA GFS.
         Satellite: NASA GIBS / JMA Himawari-9.
+        {{ wm_info('satellite', 'How to use the satellite cloud loop') }}
         MW uses <span id="wm-plant-note" class="font-mono">—</span>.
+        {{ wm_info('mw', 'How sunlight is converted to MW') }}
         Change these with <span class="font-mono">ARECO_PLANT_DC_MWP</span> and <span class="font-mono">ARECO_PV_PERFORMANCE_RATIO</span> in App settings.
       </p>
+
+      <aside id="wm-guide" class="hidden fixed top-0 right-0 z-[90] h-full w-full sm:w-[24rem] bg-brand-card border-l border-brand-border shadow-2xl flex flex-col translate-x-full transition-transform duration-200 ease-out" role="complementary" aria-labelledby="wm-guide-title">
+        <div class="shrink-0 flex items-center justify-between gap-3 px-5 py-4 border-b border-brand-border">
+          <div>
+            <h2 id="wm-guide-title" class="text-sm font-bold uppercase tracking-wider text-brand-text">How weather models work</h2>
+            <p class="text-[11px] text-brand-muted mt-0.5">What each part of this page shows and how to use it</p>
+          </div>
+          <button type="button" id="wm-guide-close" class="rounded-lg px-3 py-1.5 text-xs font-semibold text-brand-muted hover:text-brand-text hover:bg-brand-border/30 shrink-0" aria-label="Close guide">Close</button>
+        </div>
+        <div id="wm-guide-body" class="flex-1 min-h-0 overflow-y-auto px-5 py-4 space-y-3 text-xs text-brand-muted leading-relaxed [&_h4]:text-[11px] [&_h4]:font-bold [&_h4]:uppercase [&_h4]:tracking-wider [&_h4]:text-brand-text [&_h4]:mb-1.5 [&_strong]:text-brand-text [&_ul]:list-disc [&_ul]:pl-4 [&_ul]:space-y-1 [&_p+p]:mt-2 [&_p+ul]:mt-1.5 [&_ul+p]:mt-2">
+
+          <section id="wm-help-overview" class="rounded-lg border border-brand-border/60 bg-brand-dark/30 p-3 transition-colors">
+            <h4>The big picture</h4>
+            <p>Weather agencies run computer simulations of the whole atmosphere several times a day. This page takes two of them for free, reads the forecast at the plant's location, and turns it into an hourly MW curve.</p>
+            <p class="font-mono text-[11px] text-brand-text bg-brand-dark/60 rounded px-2 py-1.5">GFS + ECMWF &rarr; sunlight, cloud, temperature &rarr; PV model &rarr; MW per hour &rarr; Blend</p>
+            <ul>
+              <li><strong>NOAA GFS</strong> (USA): hourly steps, 3 days ahead.</li>
+              <li><strong>ECMWF IFS</strong> (Europe): 3-hourly steps, 2&frac12; days ahead. Usually the more accurate of the two. Its steps are split into hours using the shape of a clear-sky day, so each 3-hour total is kept.</li>
+              <li>Both use a grid of about 28 km &times; 28 km. They show the general weather over the area, not single passing clouds.</li>
+            </ul>
+          </section>
+
+          <section id="wm-help-runs" class="rounded-lg border border-brand-border/60 bg-brand-dark/30 p-3 transition-colors">
+            <h4>Model runs &amp; downloading</h4>
+            <p>The line under <strong>Model forecast</strong> shows each model's <strong>run</strong> time (UTC), when its forecast started, and when this server downloaded it.</p>
+            <ul>
+              <li>New runs come out about every 6 hours. The page downloads fresh data automatically once the saved data is more than 6 hours old.</li>
+              <li><strong>Download latest runs</strong> forces this now. It takes about 3&ndash;5 minutes in the background.</li>
+              <li>If one model fails to download, its last good run stays on screen with <em>"showing previous run"</em>.</li>
+            </ul>
+          </section>
+
+          <section id="wm-help-day" class="rounded-lg border border-brand-border/60 bg-brand-dark/30 p-3 transition-colors">
+            <h4>Forecast day</h4>
+            <p>Lists every local day that at least one model covers for all 24 hours. By default it picks <strong>tomorrow</strong>, the day you usually nominate for. Days further out have only GFS, because ECMWF stops sooner, and are less reliable.</p>
+          </section>
+
+          <section id="wm-help-inverters" class="rounded-lg border border-brand-border/60 bg-brand-dark/30 p-3 transition-colors">
+            <h4>Inverters available</h4>
+            <p>Use this when some inverters are tripped, under maintenance or otherwise offline. Every MW figure on the page (charts, KPIs, table and the copied blend values) is scaled by <strong>available &divide; installed</strong>, and so is the AC limit.</p>
+            <ul>
+              <li>Example: 160 of 167 available &rarr; 95.8% of the plant, so the AC limit drops from 50 MW to about 47.9 MW.</li>
+              <li>Changing the number <strong>previews</strong> the result straight away. Press <strong>Save for everyone</strong> so all users (and later visits) use it. <strong>All online</strong> resets to the full count.</li>
+              <li>This assumes each inverter carries an equal share of the panels. If the offline inverters are larger or smaller than average, adjust the number to match the lost capacity.</li>
+              <li>The installed total is set as <span class="font-mono">ARECO_PLANT_INVERTERS</span> in App settings.</li>
+            </ul>
+          </section>
+
+          <section id="wm-help-kpi-blend" class="rounded-lg border border-brand-border/60 bg-brand-dark/30 p-3 transition-colors">
+            <h4>Blend energy</h4>
+            <p>The day's total expected generation (MWh) from the <strong>blend</strong>: the hour-by-hour average of all models that cover the full day. Averaging two independent models usually beats either one alone, because their errors partly cancel out.</p>
+          </section>
+
+          <section id="wm-help-kpi-peak" class="rounded-lg border border-brand-border/60 bg-brand-dark/30 p-3 transition-colors">
+            <h4>Blend peak</h4>
+            <p>The highest single hour in the blend. If it reaches the AC limit, the plant is expected to <strong>clip</strong> (the inverters hit their maximum) around midday.</p>
+          </section>
+
+          <section id="wm-help-kpi-models" class="rounded-lg border border-brand-border/60 bg-brand-dark/30 p-3 transition-colors">
+            <h4>GFS / ECMWF energy &amp; disagreement warning</h4>
+            <p>Each model's own daily total. Compare them to judge confidence:</p>
+            <ul>
+              <li><strong>Close together:</strong> settled weather; the forecast is more trustworthy.</li>
+              <li><strong>20% or more apart:</strong> an amber warning appears. The weather is hard to predict (storms, fast-changing cloud), so expect larger errors. Consider a more cautious nomination and watch the satellite on the day.</li>
+            </ul>
+          </section>
+
+          <section id="wm-help-kpi-cloud" class="rounded-lg border border-brand-border/60 bg-brand-dark/30 p-3 transition-colors">
+            <h4>Daytime cloud (avg)</h4>
+            <p>Average forecast cloud cover over daylight hours, across both models. It's a quick guide to how cloudy the day looks. Note that thin high cloud can read high here but block only a little sunlight, so trust the irradiance chart for MW.</p>
+          </section>
+
+          <section id="wm-help-chart-mw" class="rounded-lg border border-brand-border/60 bg-brand-dark/30 p-3 transition-colors">
+            <h4>Plant output MW chart</h4>
+            <ul>
+              <li><strong class="!text-emerald-400">Blend</strong>: the recommended curve.</li>
+              <li><strong class="!text-sky-400">GFS</strong> / <strong class="!text-orange-400">ECMWF</strong>: each model's own MW forecast.</li>
+              <li><strong>Clear-sky</strong> (dashed grey): what the plant would make with no clouds. The gap below it is the expected cloud loss.</li>
+              <li><strong class="!text-rose-400">AC limit</strong> (dotted red): the inverter cap. Output can't go above it.</li>
+            </ul>
+            <p>Hours are <strong>hour-ending</strong> in local time, the same as the nomination: <span class="font-mono">13</span> means 12:00&ndash;13:00.</p>
+          </section>
+
+          <section id="wm-help-chart-ghi" class="rounded-lg border border-brand-border/60 bg-brand-dark/30 p-3 transition-colors">
+            <h4>Irradiance &amp; cloud chart</h4>
+            <p><strong>Irradiance (GHI, W/m&sup2;)</strong> is how much sunlight reaches the ground, and it is what drives MW. The dashed line is a cloudless sky. The shaded bars are each model's cloud cover % (right axis).</p>
+            <p>Use it to see <em>why</em> output drops. For example, irradiance falling after 13:00 while cloud bars rise usually means afternoon thunderstorm build-up.</p>
+          </section>
+
+          <section id="wm-help-table" class="rounded-lg border border-brand-border/60 bg-brand-dark/30 p-3 transition-colors">
+            <h4>Hourly table</h4>
+            <p>The numbers behind the charts. <span class="font-mono">G/E</span> columns show GFS / ECMWF side by side. Temperature is the average of both models.</p>
+            <p><strong>Copy blend MW (24 values)</strong> copies hours 01&ndash;24 as one value per line, ready to paste into a nomination or the RTD (MW) column.</p>
+          </section>
+
+          <section id="wm-help-satellite" class="rounded-lg border border-brand-border/60 bg-brand-dark/30 p-3 transition-colors">
+            <h4>Clouds near the plant (satellite)</h4>
+            <p>Live Himawari-9 imagery, updated every 10 minutes and about 30&ndash;60 minutes behind real time. Rings mark 25 km and 50 km from the plant.</p>
+            <ul>
+              <li><strong>Visible:</strong> clearest view of clouds in daytime.</li>
+              <li><strong>Infrared:</strong> works at night; bright white means tall, cold storm clouds.</li>
+              <li><strong>Air mass:</strong> highlights large weather systems.</li>
+            </ul>
+            <p>Press <strong>Play</strong> to see which way clouds are moving and whether they're heading for the plant. This helps with intraday changes the models can't resolve.</p>
+          </section>
+
+          <section id="wm-help-mw" class="rounded-lg border border-brand-border/60 bg-brand-dark/30 p-3 transition-colors">
+            <h4>How sunlight becomes MW</h4>
+            <p class="font-mono text-[11px] text-brand-text bg-brand-dark/60 rounded px-2 py-1.5">MW = DC MWp &times; GHI/1000 &times; PR &times; temp. loss (capped at AC max)</p>
+            <ul>
+              <li><strong>PR (performance ratio)</strong> covers all plant losses: wiring, dirt, inverters, panel angle.</li>
+              <li><strong>Temperature loss:</strong> panels lose about 0.4% of output per &deg;C above 25 &deg;C.</li>
+              <li>The plant settings are shown in the note at the bottom of the page. To change them, use <span class="font-mono">ARECO_PLANT_DC_MWP</span> and <span class="font-mono">ARECO_PV_PERFORMANCE_RATIO</span> in App settings.</li>
+            </ul>
+            <p><strong>Calibration:</strong> <span class="font-mono">python -m app.services.pv_calibration</span> compares the plant's actual output (from uploaded MQ / compliance files) with NASA satellite sunlight and finds the PR that best fits this plant. Add <span class="font-mono">--write</span> to save it.</p>
+          </section>
+
+          <section id="wm-help-tips" class="rounded-lg border border-brand-border/60 bg-brand-dark/30 p-3 transition-colors">
+            <h4>Tips &amp; limits</h4>
+            <ul>
+              <li>Accuracy is best for tomorrow and drops for each day further ahead.</li>
+              <li>Models know <em>how cloudy</em> the area will be, not <em>exactly when</em> a cloud passes. Expect hour-to-hour misses on patchy-cloud days even when the daily total is close.</li>
+              <li>Re-check after the next run (every 6 hours). If the curve shifts a lot between runs, that is another sign of uncertainty.</li>
+            </ul>
+          </section>
+        </div>
+      </aside>
     </div>

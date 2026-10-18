@@ -7,16 +7,16 @@
       <span class="text-xs text-brand-muted">Loading…</span>
     </div>
     <div class="flex flex-1 min-w-0 items-center border-t lg:border-t-0 border-brand-border/60">
-      {# Shown only while there are new advisories (see grid-ticker.js); otherwise hidden. #}
-      <div id="grid-ticker-news" class="hidden flex flex-1 min-w-0 items-center" aria-live="polite">
-        <span id="grid-ticker-label" class="shrink-0 pl-3 pr-1 text-[10px] font-bold uppercase tracking-widest text-brand-accent">New SO advisory</span>
-        <div id="grid-ticker-viewport" class="ticker-viewport relative flex-1 min-w-0 overflow-hidden h-8 flex items-center" tabindex="0" aria-label="New System Operator advisories. Hover or focus to pause scrolling.">
+      {# Running text of recent Visayas advisories; new ones in yellow (see grid-ticker.js). #}
+      <div id="grid-ticker-news" class="flex flex-1 min-w-0 items-center">
+        <span id="grid-ticker-label" class="shrink-0 pl-3 pr-1 text-[10px] font-bold uppercase tracking-widest text-brand-muted">SO advisories</span>
+        <div id="grid-ticker-viewport" class="ticker-viewport relative flex-1 min-w-0 overflow-hidden h-8 flex items-center" tabindex="0" aria-label="System Operator advisories for the Visayas grid. Hover or focus to pause scrolling.">
           <div id="grid-ticker-track" class="ticker-track"></div>
         </div>
       </div>
       <div class="flex items-center gap-1 px-2 shrink-0 ml-auto">
         <button type="button" data-ticker-open="levels" class="rounded-md border border-brand-border/70 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-brand-muted hover:text-brand-text hover:bg-brand-border/30">Alert levels</button>
-        <button type="button" data-ticker-open="list" class="rounded-md border border-brand-border/70 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-brand-muted hover:text-brand-text hover:bg-brand-border/30">All</button>
+        <button type="button" data-ticker-open="list" class="inline-flex items-center gap-1 rounded-md border border-brand-border/70 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-brand-muted hover:text-brand-text hover:bg-brand-border/30">All <span id="grid-ticker-new-count" class="hidden so-new-badge"></span></button>
       </div>
     </div>
   </div>

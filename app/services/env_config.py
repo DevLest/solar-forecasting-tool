@@ -24,6 +24,7 @@ ALLOWED_ENV_KEYS: frozenset[str] = frozenset(
         "ARECO_STREAM_OCR_ENABLED",
         "ARECO_PLANT_DC_MWP",
         "ARECO_PV_PERFORMANCE_RATIO",
+        "ARECO_PLANT_INVERTERS",
     }
 )
 

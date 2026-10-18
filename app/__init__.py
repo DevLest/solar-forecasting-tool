@@ -11,6 +11,7 @@ from flask_login import current_user
 from app.auth import auth_context_dict, login_manager
 from app.services.users_store import users_file_path
 from app.config import DATA_DIR, LAT, LON, ROOT
+from app.services.nwp_forecast import load_inverters
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +44,8 @@ def create_app() -> Flask:
             "areco_nomination_readonly": bool(ctx.get("nomination_read_only")),
             "nomination_trader_options": ctx.get("nomination_trader_options") or [],
             "areco_plant": {"lat": LAT, "lon": LON},
+            # Called from the Weather models template so the saved inverter count renders without JS.
+            "areco_inverters": load_inverters,
         }
 
     from app.routes import bp as main_bp

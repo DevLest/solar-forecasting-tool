@@ -28,6 +28,27 @@
   var HOURS = [];
   for (var h = 1; h <= 24; h++) HOURS.push((h < 10 ? '0' : '') + h);
 
+  var inv = {
+    box: document.getElementById('wm-inv'),
+    input: document.getElementById('wm-inv-input'),
+    total: document.getElementById('wm-inv-total'),
+    capacity: document.getElementById('wm-inv-capacity'),
+    note: document.getElementById('wm-inv-note'),
+    save: document.getElementById('wm-inv-save'),
+    reset: document.getElementById('wm-inv-reset'),
+    meta: document.getElementById('wm-inv-meta')
+  };
+  var invSaved = null;  // {total, available, note, updated_at, updated_by} from the server
+  var invDraft = null;  // available count being previewed (not yet saved)
+  // Start from the count rendered into the page, so the control works before the forecast loads.
+  if (inv.box && inv.box.getAttribute('data-total')) {
+    invSaved = {
+      total: Number(inv.box.getAttribute('data-total')),
+      available: Number(inv.box.getAttribute('data-available')),
+      note: '', updated_at: null, updated_by: null
+    };
+  }
+
   var payload = null;
   var chartMw = null;
   var chartGhi = null;
@@ -79,6 +100,8 @@
           return;
         }
         payload = ref.j;
+        if (payload.inverters) invSaved = payload.inverters;
+        if (invDraft != null && invSaved && invDraft === invSaved.available) invDraft = null;
         render();
         var st = payload.status || {};
         if (st.refreshing) {
@@ -104,6 +127,7 @@
   function render() {
     if (!payload.has_data) {
       if (runsEl) runsEl.textContent = 'No model data downloaded yet.';
+      renderInverters();
       return;
     }
     var plant = payload.plant || {};
@@ -138,11 +162,146 @@
         dateSel.appendChild(o);
       });
     }
+    renderInverters();
     if (!day) return;
 
-    renderKpis(day);
-    renderCharts(day, plant);
-    renderTable(day);
+    var f = invFactor();
+    var scaledPlant = Object.assign({}, plant, { ac_max_mw: plant.ac_max_mw * f });
+    var scaled = scaleDay(day, f);
+    renderKpis(scaled);
+    renderCharts(scaled, scaledPlant);
+    renderTable(scaled);
+  }
+
+  // ---- Inverter availability: MW = full-plant MW x available / installed (AC cap included) ----
+  function invAvailable() {
+    if (invDraft != null) return invDraft;
+    return invSaved ? invSaved.available : null;
+  }
+
+  function invFactor() {
+    var a = invAvailable();
+    return invSaved && invSaved.total && a != null ? a / invSaved.total : 1;
+  }
+
+  function scaleArr(arr, f) {
+    return arr ? arr.map(function (v) { return v == null ? null : Math.round(v * f * 1000) / 1000; }) : arr;
+  }
+
+  function scaleDay(day, f) {
+    if (f === 1) return day;
+    var models = {};
+    Object.keys(day.models || {}).forEach(function (k) {
+      var m = day.models[k];
+      models[k] = Object.assign({}, m, {
+        mw: scaleArr(m.mw, f),
+        energy_mwh: m.energy_mwh == null ? null : m.energy_mwh * f
+      });
+    });
+    return Object.assign({}, day, {
+      models: models,
+      blend_mw: scaleArr(day.blend_mw, f),
+      blend_energy_mwh: day.blend_energy_mwh == null ? null : day.blend_energy_mwh * f,
+      clear_sky_mw: scaleArr(day.clear_sky_mw, f)
+    });
+  }
+
+  function noteDirty() {
+    return !!(inv.note && invSaved && inv.note.value.trim() !== (invSaved.note || ''));
+  }
+
+  function renderInverters() {
+    if (!inv.box || !invSaved) return;
+    var plant = (payload && payload.plant) || {};
+    var a = invAvailable();
+    var f = invFactor();
+    var dirty = invDraft != null;
+    if (inv.total) inv.total.textContent = invSaved.total;
+    if (inv.input) {
+      inv.input.max = invSaved.total;
+      if (document.activeElement !== inv.input) inv.input.value = a;
+    }
+    if (inv.capacity) {
+      inv.capacity.textContent = fmt(f * 100, 1) + '% \u00b7 ' +
+        (plant.dc_mwp ? fmt(plant.dc_mwp * f, 1) + ' MWp DC / ' : '') +
+        (plant.ac_max_mw ? fmt(plant.ac_max_mw * f, 1) + ' MW AC' : '');
+    }
+    var reduced = a < invSaved.total;
+    inv.box.classList.toggle('border-amber-500/60', reduced);
+    inv.box.classList.toggle('bg-amber-950/30', reduced);
+    if (inv.save) inv.save.classList.toggle('hidden', !dirty && !noteDirty());
+    if (inv.note && document.activeElement !== inv.note && !dirty) inv.note.value = invSaved.note || '';
+    if (inv.meta) {
+      var parts = [];
+      if (dirty) {
+        parts.push('Preview only: press Save for everyone to keep ' + a + ' inverters.');
+      } else {
+        var off = invSaved.total - a;
+        if (off > 0) parts.push(off + ' inverter' + (off === 1 ? '' : 's') + ' offline.');
+        if (invSaved.note) parts.push(invSaved.note);
+        if (invSaved.updated_at) {
+          parts.push('Set ' + localLabel(invSaved.updated_at, plant.utc_offset_hours || 8) + ' local' +
+            (invSaved.updated_by ? ' by ' + invSaved.updated_by : '') + '.');
+        }
+      }
+      inv.meta.textContent = parts.join(' ');
+      inv.meta.className = 'basis-full text-[11px] ' + (dirty ? 'text-amber-200' : 'text-brand-muted');
+    }
+  }
+
+  function setDraft(n) {
+    if (!invSaved || isNaN(n)) return;
+    n = Math.max(0, Math.min(invSaved.total, Math.round(n)));
+    invDraft = n === invSaved.available ? null : n;
+    if (payload && payload.has_data) render(); else renderInverters();
+  }
+
+  renderInverters();
+
+  function saveInverters(available) {
+    if (!invSaved) return;
+    if (inv.save) inv.save.disabled = true;
+    fetch('/api/nwp-forecast/inverters', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ available: available, note: inv.note ? inv.note.value : '' })
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        if (!j.ok) { setStatus(j.error || 'Could not save the inverter count.', false); return; }
+        invSaved = j.inverters;
+        invDraft = null;
+        if (payload) payload.inverters = j.inverters;
+        if (inv.note) inv.note.value = invSaved.note || '';
+        if (payload && payload.has_data) render(); else renderInverters();
+      })
+      .catch(function () { setStatus('Network error while saving the inverter count.', false); })
+      .then(function () { if (inv.save) inv.save.disabled = false; });
+  }
+
+  if (inv.input) {
+    inv.input.addEventListener('input', function () {
+      if (inv.input.value !== '') setDraft(Number(inv.input.value));
+    });
+    inv.input.addEventListener('blur', renderInverters);
+    inv.input.addEventListener('keydown', function (ev) {
+      if (ev.key === 'Enter' && inv.save && !inv.save.classList.contains('hidden')) inv.save.click();
+    });
+  }
+  panel.querySelectorAll('[data-inv-step]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var a = invAvailable();
+      if (a != null) setDraft(a + Number(btn.getAttribute('data-inv-step')));
+    });
+  });
+  if (inv.note) inv.note.addEventListener('input', renderInverters);
+  if (inv.save) inv.save.addEventListener('click', function () { saveInverters(invAvailable()); });
+  if (inv.reset) {
+    inv.reset.addEventListener('click', function () {
+      if (!invSaved) return;
+      if (inv.note) inv.note.value = '';
+      saveInverters(invSaved.total);
+    });
   }
 
   function renderKpis(day) {
@@ -287,7 +446,7 @@
 
   if (btnCopy) {
     btnCopy.addEventListener('click', function () {
-      var day = payload && payload.day;
+      var day = payload && payload.day && scaleDay(payload.day, invFactor());
       if (!day || !day.blend_mw) return;
       var text = slice24(day.blend_mw).map(function (v) { return Number(v).toFixed(2); }).join('\n');
       navigator.clipboard.writeText(text).then(function () {
@@ -314,6 +473,44 @@
     });
   }
 
+  // Side guide: "How it works" button and the small (i) buttons open it at the matching section.
+  var guide = document.getElementById('wm-guide');
+  var guideBody = document.getElementById('wm-guide-body');
+  var guideClose = document.getElementById('wm-guide-close');
+  var guideHideTimer = null;
+
+  function openGuide(topic) {
+    if (!guide) return;
+    clearTimeout(guideHideTimer);
+    guide.classList.remove('hidden');
+    panel.classList.add('xl:mr-[25rem]');
+    requestAnimationFrame(function () { guide.classList.remove('translate-x-full'); });
+    var target = topic && document.getElementById('wm-help-' + topic);
+    if (target && guideBody) {
+      guideBody.scrollTo({ top: target.offsetTop - guideBody.offsetTop - 12, behavior: 'smooth' });
+      target.classList.add('border-brand-accent/70', 'bg-brand-accent/10');
+      setTimeout(function () { target.classList.remove('border-brand-accent/70', 'bg-brand-accent/10'); }, 1600);
+    }
+  }
+
+  function closeGuide() {
+    if (!guide || guide.classList.contains('hidden')) return;
+    guide.classList.add('translate-x-full');
+    panel.classList.remove('xl:mr-[25rem]');
+    guideHideTimer = setTimeout(function () { guide.classList.add('hidden'); }, 200);
+  }
+
+  panel.addEventListener('click', function (ev) {
+    var btn = ev.target.closest('[data-wm-help]');
+    if (!btn) return;
+    ev.preventDefault();
+    openGuide(btn.getAttribute('data-wm-help'));
+  });
+  if (guideClose) guideClose.addEventListener('click', closeGuide);
+  document.addEventListener('keydown', function (ev) {
+    if (ev.key === 'Escape') closeGuide();
+  });
+
   function onShown() {
     if (!loaded) {
       loaded = true;
@@ -323,6 +520,7 @@
 
   document.addEventListener('areco:panel-shown', function (ev) {
     if (ev.detail && ev.detail.id === 'weather-models') onShown();
+    else closeGuide();
   });
   if (!panel.classList.contains('hidden')) onShown();
 })();

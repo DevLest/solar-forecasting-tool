@@ -124,6 +124,10 @@
                 <label for="cfg-ARECO_PV_PERFORMANCE_RATIO" class="block text-[10px] uppercase tracking-wider text-brand-muted mb-1">Performance ratio</label>
                 <input type="text" id="cfg-ARECO_PV_PERFORMANCE_RATIO" name="ARECO_PV_PERFORMANCE_RATIO" inputmode="decimal" autocomplete="off" class="w-full bg-brand-dark border border-brand-border rounded-lg px-3 py-2 text-brand-text focus:ring-1 focus:ring-brand-accent" placeholder="0.85" />
               </div>
+              <div>
+                <label for="cfg-ARECO_PLANT_INVERTERS" class="block text-[10px] uppercase tracking-wider text-brand-muted mb-1">Installed inverters</label>
+                <input type="text" id="cfg-ARECO_PLANT_INVERTERS" name="ARECO_PLANT_INVERTERS" inputmode="numeric" autocomplete="off" class="w-full bg-brand-dark border border-brand-border rounded-lg px-3 py-2 text-brand-text focus:ring-1 focus:ring-brand-accent" placeholder="167" />
+              </div>
             </div>
             <p class="text-[10px] text-brand-muted">Used by Weather models to turn irradiance into MW. Recalibrate with <code class="text-brand-accent/90 font-mono">python -m app.services.pv_calibration</code>. Restart the app after changing.</p>
           </div>

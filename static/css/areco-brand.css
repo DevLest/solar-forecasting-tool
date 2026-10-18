@@ -388,12 +388,18 @@
     .ticker-track { display: inline-flex; align-items: center; white-space: nowrap; animation: areco-ticker var(--ticker-duration, 90s) linear infinite; will-change: transform; }
     .ticker-viewport:hover .ticker-track, .ticker-viewport:focus-within .ticker-track { animation-play-state: paused; }
     @keyframes areco-ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
-    .ticker-item { display: inline-flex; align-items: baseline; gap: 0.4rem; padding-right: 2.25rem; font-size: 0.75rem; color: #e2e8f0; }
+    .ticker-item { display: inline-flex; align-items: baseline; gap: 0.4rem; padding-right: 2.25rem; font-size: 0.75rem; color: #ffffff; }
+    .ticker-item.is-new { color: #facc15; font-weight: 600; }
+    .ticker-item .so-new-badge { align-self: center; }
     .ticker-item .t { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: #94a3b8; }
     .ticker-item .g { font-size: 0.625rem; font-weight: 700; letter-spacing: 0.08em; color: #10b981; }
-    .ticker-item[data-level="YELLOW"] { color: #fde68a; }
-    .ticker-item[data-level="RED"] { color: #fecdd3; }
-    .ticker-item[data-level="BLUE"] { color: #bfdbfe; }
+    .so-item { color: #ffffff; }
+    .so-item.is-new { color: #facc15; background: rgba(250, 204, 21, 0.07); box-shadow: inset 3px 0 0 #facc15; }
+    .so-new-badge { display: inline-block; border-radius: 0.25rem; padding: 0 0.3rem; font-size: 0.5625rem; font-weight: 800; letter-spacing: 0.08em; color: #0f172a; background: #facc15; }
+    .so-level-tag { font-size: 0.5625rem; font-weight: 700; letter-spacing: 0.08em; }
+    .so-level-tag[data-level="YELLOW"] { color: #fbbf24; }
+    .so-level-tag[data-level="RED"] { color: #fb7185; }
+    .so-level-tag[data-level="BLUE"] { color: #60a5fa; }
     .ticker-item[data-kind="outage_unplanned"] .g::after { content: " · UNPLANNED"; color: #fca5a5; }
     @media (prefers-reduced-motion: reduce) {
       .ticker-track { animation: none; }

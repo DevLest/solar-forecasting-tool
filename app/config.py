@@ -38,6 +38,8 @@ PLANT_MAX_MW = 50.0
 # ``python -m app.services.pv_calibration``.
 PLANT_DC_MWP = float(os.environ.get("ARECO_PLANT_DC_MWP", "65") or 65)
 PV_PERFORMANCE_RATIO = float(os.environ.get("ARECO_PV_PERFORMANCE_RATIO", "0.85") or 0.85)
+# Installed inverters. The Weather models panel scales DC and AC capacity by available / installed.
+PLANT_INVERTERS = int(os.environ.get("ARECO_PLANT_INVERTERS", "167") or 167)
 LOCAL_UTC_OFFSET_HOURS = 8  # Philippines, no DST
 DEFAULT_LAT = 10.63782595665277
 DEFAULT_LON = 123.00456203862562

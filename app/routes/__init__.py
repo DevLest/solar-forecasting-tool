@@ -82,7 +82,7 @@ from app.services.nomination_accuracy_store import (
 )
 from app.services.users_store import ROLES, create_user, delete_user, list_users_public, update_user
 from app.services.weather import get_weather_forecast
-from app.services.nwp_forecast import get_forecast_payload, refresh_async
+from app.services.nwp_forecast import get_forecast_payload, refresh_async, save_inverters
 from app.services.so_advisories import get_advisories
 from app.services.sync_service import (
     apply_sync_payload,
@@ -1336,6 +1336,20 @@ def api_nwp_forecast_refresh():
         return "", 204
     started = refresh_async()
     return jsonify({"ok": True, "started": started, "message": "Refresh started." if started else "Already refreshing."})
+
+
+@bp.route("/api/nwp-forecast/inverters", methods=["POST", "OPTIONS"])
+def api_nwp_forecast_inverters():
+    """Save how many inverters are available (JSON ``{"available": int, "note": str}``)."""
+    if request.method == "OPTIONS":
+        return "", 204
+    body = request.get_json(silent=True) or {}
+    try:
+        available = int(body.get("available"))
+        saved = save_inverters(available, str(body.get("note") or ""), getattr(current_user, "username", None))
+    except (TypeError, ValueError) as e:
+        return jsonify({"ok": False, "error": str(e) or "Invalid inverter count"}), 400
+    return jsonify({"ok": True, "inverters": saved})
 
 
 @bp.route("/api/so-advisories", methods=["GET"])

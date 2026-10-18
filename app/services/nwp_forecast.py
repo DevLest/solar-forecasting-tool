@@ -29,12 +29,14 @@ from app.config import (
     LOCAL_UTC_OFFSET_HOURS,
     LON,
     PLANT_DC_MWP,
+    PLANT_INVERTERS,
     PLANT_MAX_MW,
     PV_PERFORMANCE_RATIO,
 )
 
 NWP_DIR = os.path.join(DATA_DIR, "nwp")
 LATEST_FILE = os.path.join(NWP_DIR, "latest.json")
+INVERTERS_FILE = os.path.join(NWP_DIR, "inverters.json")
 NWP_MAX_AGE_HOURS = 6
 GFS_MAX_FH = 72
 ECMWF_MAX_STEP = 60
@@ -379,6 +381,44 @@ def _is_stale(latest: dict | None) -> bool:
 
 
 # ---------------------------------------------------------------------------
+# Inverter availability (shared plant state; MW is scaled by available / installed in the UI)
+# ---------------------------------------------------------------------------
+
+def load_inverters() -> dict:
+    try:
+        with open(INVERTERS_FILE, encoding="utf-8") as f:
+            saved = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        saved = {}
+    available = saved.get("available")
+    if not isinstance(available, int) or not 0 <= available <= PLANT_INVERTERS:
+        available = PLANT_INVERTERS
+    return {
+        "total": PLANT_INVERTERS,
+        "available": available,
+        "note": saved.get("note") or "",
+        "updated_at": saved.get("updated_at"),
+        "updated_by": saved.get("updated_by"),
+    }
+
+
+def save_inverters(available: int, note: str = "", updated_by: str | None = None) -> dict:
+    if not 0 <= available <= PLANT_INVERTERS:
+        raise ValueError(f"Available inverters must be between 0 and {PLANT_INVERTERS}")
+    os.makedirs(NWP_DIR, exist_ok=True)
+    tmp = INVERTERS_FILE + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump({
+            "available": available,
+            "note": note.strip()[:200],
+            "updated_at": _iso(datetime.now(timezone.utc)),
+            "updated_by": updated_by,
+        }, f)
+    os.replace(tmp, INVERTERS_FILE)
+    return load_inverters()
+
+
+# ---------------------------------------------------------------------------
 # Daily view (local time, hour-ending index 0..24 like the nomination curve)
 # ---------------------------------------------------------------------------
 
@@ -471,7 +511,7 @@ def get_forecast_payload(target_date: str | None = None, auto_refresh: bool = Tr
         "last_error": _state["last_error"],
     }
     if not latest:
-        return {"ok": True, "has_data": False, "status": status}
+        return {"ok": True, "has_data": False, "status": status, "inverters": load_inverters()}
     dates = available_dates(latest)
     if not target_date or target_date not in dates:
         tomorrow = (datetime.now(timezone.utc) + timedelta(hours=LOCAL_UTC_OFFSET_HOURS + 24)).date().isoformat()
@@ -488,6 +528,7 @@ def get_forecast_payload(target_date: str | None = None, auto_refresh: bool = Tr
             "ac_max_mw": PLANT_MAX_MW,
             "utc_offset_hours": LOCAL_UTC_OFFSET_HOURS,
         },
+        "inverters": load_inverters(),
         "dates": dates,
         "day": daily_view(target_date, latest) if target_date else None,
         "attribution": "Forecast data: ECMWF (CC BY 4.0) and NOAA GFS. Satellite: NASA GIBS / JMA Himawari.",

@@ -61,6 +61,7 @@ _NOMINATOR_ALLOWED: dict[str, frozenset[str]] = {
     "main.api_weather_forecast": frozenset({"POST", "OPTIONS"}),
     "main.api_nwp_forecast": frozenset({"GET", "HEAD"}),
     "main.api_nwp_forecast_refresh": frozenset({"POST", "OPTIONS"}),
+    "main.api_nwp_forecast_inverters": frozenset({"POST", "OPTIONS"}),
     "main.api_so_advisories": frozenset({"GET", "HEAD"}),
     "main.api_sync_config": frozenset({"GET", "HEAD"}),
     "main.api_sync_verify_remote": frozenset({"GET", "HEAD"}),

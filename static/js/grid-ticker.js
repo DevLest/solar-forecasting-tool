@@ -12,10 +12,10 @@
   var fetchedEl = document.getElementById('grid-ticker-fetched');
 
   var REFRESH_MS = 15000;       // browser poll; server asks IEMOP at most every 30 s
-  var SHOW_MS = 60000;          // how long a new advisory stays up
-  var GROUP_MS = 5 * 60000;     // advisories first seen within 5 min of the newest are shown together
-  var MIN_PASSES = 2;           // a group stays up long enough to scroll past twice
+  var TICKER_HOURS = 12;        // the running text shows advisories from the last 12 hours
+  var TICKER_MAX = 20;
   var SPEED_PX_PER_S = 70;
+  var NEW_MS = 60 * 60000;      // in the "All" list, advisories first seen in the last hour are marked new
   var SHORT = { Luzon: 'LUZ', Visayas: 'VIS', Mindanao: 'MIN' };
   var LEVEL_TEXT = {
     NORMAL: 'Normal: supply and reserves sufficient.',
@@ -26,10 +26,10 @@
   var lastSignature = '';
   var items = [];
   var clockOffsetMs = 0;
-  var shownKey = '';
-  var passMs = 0;
-  var newsEl = document.getElementById('grid-ticker-news');
+  var tickerKey = '';
   var labelEl = document.getElementById('grid-ticker-label');
+  var newCountEl = document.getElementById('grid-ticker-new-count');
+  var listNewKey = '';
 
   function el(tag, cls, text) {
     var n = document.createElement(tag);
@@ -56,8 +56,8 @@
   }
 
   function itemNode(it) {
-    var n = el('span', 'ticker-item');
-    if (it.level && it.level !== 'NORMAL') n.setAttribute('data-level', it.level);
+    var n = el('span', 'ticker-item' + (isNew(it) ? ' is-new' : ''));
+    if (isNew(it)) n.appendChild(el('span', 'so-new-badge', 'NEW'));
     n.setAttribute('data-kind', it.kind || '');
     n.appendChild(el('span', 't', (it.time || '').slice(11)));
     n.appendChild(el('span', 'g', (it.region || '').split('/').map(function (r) { return SHORT[r] || r; }).join('/')));
@@ -65,82 +65,86 @@
     return n;
   }
 
-  // ---- "New advisories" strip --------------------------------------------------------
-  // An advisory is new from the moment the server first saw it (first_seen), because IEMOP
-  // publishes in batches long after the advisory time. Rules:
-  //  - nothing first seen in the past minute (and no group still showing) -> strip hidden
-  //  - one new advisory -> show just that one for SHOW_MS
-  //  - several first seen within GROUP_MS of the newest -> show them all, scrolling, for
-  //    max(SHOW_MS, MIN_PASSES full passes) so each one is readable, then hide again
+  // ---- Running text ---------------------------------------------------------------------
+  // Always scrolls the plant grid's advisories from the last TICKER_HOURS (newest first): white,
+  // or yellow with a NEW badge while new. "New" is judged by when the server first saw the
+  // advisory (first_seen), because IEMOP publishes in batches long after the advisory time.
   function serverNow() { return Date.now() + clockOffsetMs; }
   function seenMs(it) { return it.first_seen ? new Date(it.first_seen + '+08:00').getTime() : NaN; }
+  function timeMs(it) { return it.time ? new Date(it.time.replace(' ', 'T') + ':00+08:00').getTime() : NaN; }
 
-  function currentGroup() {
-    var seen = items.filter(function (it) { return !isNaN(seenMs(it)); });
-    if (!seen.length) return null;
-    var newest = Math.max.apply(null, seen.map(seenMs));
-    var group = seen.filter(function (it) { return seenMs(it) >= newest - GROUP_MS; });
-    group.sort(function (x, y) { return (y.time || '').localeCompare(x.time || ''); });
-    return { newest: newest, items: group, key: group.map(function (i) { return i.first_seen + i.text; }).join('|') };
+  function tickerItems() {
+    var cutoff = serverNow() - TICKER_HOURS * 3600000;
+    return items.filter(function (it) { return timeMs(it) >= cutoff || isNew(it); }).slice(0, TICKER_MAX);
   }
 
-  function renderGroup(group) {
+  function updateStrip() {
+    var list = tickerItems();
+    var newCount = list.filter(isNew).length;
+    var key = list.map(function (it) { return it.time + it.text + (isNew(it) ? '*' : ''); }).join('|');
+    if (key === tickerKey) return; // unchanged: keep the animation running smoothly
+    tickerKey = key;
+
+    labelEl.textContent = newCount ? (newCount === 1 ? 'New SO advisory' : newCount + ' new SO advisories') : 'SO advisories';
+    labelEl.className = 'shrink-0 pl-3 pr-1 text-[10px] font-bold uppercase tracking-widest ' +
+      (newCount ? 'text-yellow-400' : 'text-brand-muted');
     track.textContent = '';
-    labelEl.textContent = group.items.length === 1 ? 'New SO advisory' : group.items.length + ' new SO advisories';
-    var single = group.items.length === 1;
-    group.items.forEach(function (it) { track.appendChild(itemNode(it)); });
     track.style.animation = 'none';
-    passMs = 0;
+    if (!list.length) {
+      track.appendChild(el('span', 'ticker-item', 'No Visayas advisories in the last ' + TICKER_HOURS + ' hours.'));
+      return;
+    }
+    list.forEach(function (it) { track.appendChild(itemNode(it)); });
     requestAnimationFrame(function () {
       var width = track.scrollWidth;
-      // A single advisory that fits stays still; anything wider (or a group) scrolls in a loop.
-      if (single && width <= viewport.clientWidth) return;
-      group.items.forEach(function (it) { track.appendChild(itemNode(it)); }); // 2nd copy for a seamless loop
-      passMs = Math.max(8000, width / SPEED_PX_PER_S * 1000);
+      if (width <= viewport.clientWidth) return; // fits: no need to scroll
+      list.forEach(function (it) { track.appendChild(itemNode(it)); }); // 2nd copy for a seamless loop
+      var passMs = Math.max(8000, width / SPEED_PX_PER_S * 1000);
       track.style.setProperty('--ticker-duration', passMs / 1000 + 's');
       track.style.animation = '';
     });
   }
 
-  function updateStrip() {
-    var group = currentGroup();
-    var visible = false;
-    if (group) {
-      if (group.key !== shownKey) {
-        // Only start showing a group that is actually fresh (e.g. not one that expired before a reload).
-        if (serverNow() - group.newest <= SHOW_MS) {
-          shownKey = group.key;
-          renderGroup(group);
-          visible = true;
-        }
-      } else {
-        var showFor = group.items.length === 1 ? SHOW_MS : Math.max(SHOW_MS, MIN_PASSES * passMs);
-        visible = serverNow() < group.newest + showFor;
-      }
-    }
-    newsEl.classList.toggle('hidden', !visible);
+  function isNew(it) {
+    var t = seenMs(it);
+    return !isNaN(t) && serverNow() - t <= NEW_MS;
   }
 
+  // All advisories in white; ones first seen within NEW_MS in yellow with a NEW badge.
   function renderList(items) {
     listEl.textContent = '';
+    var newCount = 0;
     if (!items.length) {
-      listEl.appendChild(el('li', 'py-2 text-brand-muted', 'No advisories loaded.'));
-      return;
+      listEl.appendChild(el('li', 'py-2 text-brand-muted', 'No Visayas advisories in the last 36 hours.'));
     }
     items.forEach(function (it) {
-      var li = el('li', 'py-2 flex gap-3');
+      var fresh = isNew(it);
+      if (fresh) newCount++;
+      var li = el('li', 'so-item py-2 px-2 -mx-2 rounded flex gap-3' + (fresh ? ' is-new' : ''));
       var meta = el('div', 'shrink-0 w-24 text-brand-muted font-mono');
       meta.appendChild(el('div', '', (it.time || '').slice(5)));
       meta.appendChild(el('div', 'text-[10px] font-bold tracking-wider text-brand-accent', (it.region || '').toUpperCase()));
-      var body = el('div', 'min-w-0 text-brand-text leading-relaxed', it.text);
+      if (fresh) meta.appendChild(el('span', 'so-new-badge mt-0.5', 'NEW'));
       if (it.level && it.level !== 'NORMAL') {
-        body.className += it.level === 'RED' ? ' text-rose-200' : it.level === 'YELLOW' ? ' text-amber-200' : ' text-blue-200';
+        var tag = el('div', 'so-level-tag', it.level + (it.kind === 'alert_lifted' ? ' LIFTED' : ' ALERT'));
+        tag.setAttribute('data-level', it.level);
+        meta.appendChild(tag);
       }
       if (it.kind === 'outage_unplanned') meta.appendChild(el('div', 'text-[10px] text-rose-300', 'UNPLANNED'));
       li.appendChild(meta);
-      li.appendChild(body);
+      li.appendChild(el('div', 'min-w-0 leading-relaxed', it.text));
       listEl.appendChild(li);
     });
+    if (newCountEl) {
+      newCountEl.textContent = newCount ? newCount + ' new' : '';
+      newCountEl.classList.toggle('hidden', !newCount);
+    }
+    listNewKey = listKey();
+  }
+
+  // Re-render when an item's "new" state changes (it ages out after NEW_MS).
+  function listKey() {
+    return items.map(function (it) { return isNew(it) ? 1 : 0; }).join('');
   }
 
   function render(data) {
@@ -204,5 +208,8 @@
 
   load();
   setInterval(function () { if (!document.hidden) load(); }, REFRESH_MS);
-  setInterval(updateStrip, 1000); // hide on time even between polls
+  setInterval(function () {
+    updateStrip(); // re-colour advisories as they stop being new, even between polls
+    if (listKey() !== listNewKey) renderList(items);
+  }, 1000);
 })();
