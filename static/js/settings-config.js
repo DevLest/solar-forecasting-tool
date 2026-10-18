@@ -98,7 +98,7 @@
         })
         .then(function (res) {
           if (res && res.ok) {
-            setStatus('Saved. Restart the app if you changed the port.', false);
+            setStatus('Saved. Restart the app if you changed the port or plant MW settings.', false);
             loadConfig();
           } else {
             setStatus('Save failed.', true);

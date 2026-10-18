@@ -15,6 +15,14 @@
   {% if 'billing-history' in areco_panels %}
   {% include 'partials/_panel_billing_history.html' %}
   {% endif %}
+  {% if 'weather-models' in areco_panels %}
+  {% include 'partials/_panel_weather_models.html' %}
+  {% endif %}
+{% endblock %}
+{% block head_extra %}
+  {% if 'weather-models' in areco_panels %}
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+  {% endif %}
 {% endblock %}
 {% block page_scripts %}
   {% if 'nomination' in areco_panels %}
@@ -32,5 +40,10 @@
   {% endif %}
   {% if 'billing-history' in areco_panels %}
   <script src="{{ url_for('static', filename='js/billing-history.js') }}" defer></script>
+  {% endif %}
+  {% if 'weather-models' in areco_panels %}
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" defer></script>
+  <script src="{{ url_for('static', filename='js/satellite-map.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/weather-models.js') }}" defer></script>
   {% endif %}
 {% endblock %}

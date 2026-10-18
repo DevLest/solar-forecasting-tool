@@ -1,0 +1,95 @@
+{% from 'components/ui_macros.html' import page_hero %}
+{% from 'components/satellite_card.html' import satellite_card with context %}
+    <div id="panel-weather-models" class="hidden flex-grow p-6 max-w-[1200px] mx-auto w-full space-y-5">
+      {{ page_hero('Weather models', 'Free NOAA GFS + ECMWF forecasts converted to plant MW, with live Himawari-9 satellite imagery') }}
+
+      <section class="rounded-xl border border-brand-border bg-brand-card/80 p-4 sm:p-5 shadow-lg space-y-4" aria-labelledby="wm-forecast-heading">
+        <div class="flex flex-wrap items-end justify-between gap-3">
+          <div class="min-w-0">
+            <h3 id="wm-forecast-heading" class="text-sm font-semibold text-brand-muted uppercase tracking-wider">Model forecast</h3>
+            <p id="wm-runs" class="text-xs text-brand-muted mt-1 font-mono leading-relaxed">Loading…</p>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <label for="wm-date" class="text-[10px] font-bold uppercase tracking-wider text-brand-muted">Forecast day</label>
+            <select id="wm-date" class="bg-brand-dark border border-brand-border rounded-lg px-2 py-1.5 text-sm font-mono text-brand-text [color-scheme:dark] focus:outline-none focus:ring-2 focus:ring-brand-accent/40 min-w-[11rem]"></select>
+            {% if areco_role != 'spectator' %}
+            <button type="button" id="wm-btn-refresh" class="py-2 px-3 rounded-lg border border-brand-border bg-brand-dark hover:bg-brand-border/30 text-xs font-semibold uppercase tracking-wide text-brand-muted">Download latest runs</button>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="flex items-start gap-2 min-h-[1.35rem]">
+          <span id="wm-spinner" class="hidden shrink-0 mt-0.5 inline-flex" aria-hidden="true">
+            <svg class="h-4 w-4 animate-spin text-brand-accent" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+          </span>
+          <p id="wm-status" class="text-xs text-brand-muted flex-1 min-w-0 leading-relaxed" role="status" aria-live="polite"></p>
+        </div>
+
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <div class="rounded-lg border border-brand-border/60 bg-brand-dark/30 px-3 py-2.5">
+            <p class="text-[10px] font-bold uppercase tracking-wider text-brand-muted">Blend energy</p>
+            <p id="wm-kpi-blend" class="text-xl font-bold text-brand-accent font-mono mt-0.5">—</p>
+          </div>
+          <div class="rounded-lg border border-brand-border/60 bg-brand-dark/30 px-3 py-2.5">
+            <p class="text-[10px] font-bold uppercase tracking-wider text-brand-muted">Blend peak</p>
+            <p id="wm-kpi-peak" class="text-xl font-bold text-brand-text font-mono mt-0.5">—</p>
+          </div>
+          <div class="rounded-lg border border-brand-border/60 bg-brand-dark/30 px-3 py-2.5">
+            <p class="text-[10px] font-bold uppercase tracking-wider text-brand-muted">GFS / ECMWF energy</p>
+            <p id="wm-kpi-models" class="text-xl font-bold text-brand-text font-mono mt-0.5">—</p>
+          </div>
+          <div class="rounded-lg border border-brand-border/60 bg-brand-dark/30 px-3 py-2.5">
+            <p class="text-[10px] font-bold uppercase tracking-wider text-brand-muted">Daytime cloud (avg)</p>
+            <p id="wm-kpi-cloud" class="text-xl font-bold text-brand-text font-mono mt-0.5">—</p>
+          </div>
+        </div>
+        <p id="wm-spread" class="hidden text-xs text-amber-100/95 rounded-lg border border-amber-500/40 bg-amber-950/30 px-3 py-2 leading-relaxed" role="status"></p>
+
+        <div class="rounded-lg border border-brand-border/60 bg-brand-dark/20 p-3">
+          <p class="text-[10px] font-bold uppercase tracking-wider text-brand-muted mb-2">Plant output MW (hour-ending, local time)</p>
+          <div class="h-72 min-h-[16rem] relative">
+            <canvas id="wm-chart-mw" aria-label="Forecast MW by hour for GFS, ECMWF and blend"></canvas>
+          </div>
+        </div>
+        <div class="rounded-lg border border-brand-border/60 bg-brand-dark/20 p-3">
+          <p class="text-[10px] font-bold uppercase tracking-wider text-brand-muted mb-2">Solar irradiance W/m² and cloud cover %</p>
+          <div class="h-64 min-h-[14rem] relative">
+            <canvas id="wm-chart-ghi" aria-label="Irradiance and cloud cover by hour"></canvas>
+          </div>
+        </div>
+
+        <details class="rounded-lg border border-brand-border/60 bg-brand-dark/20">
+          <summary class="cursor-pointer select-none px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-brand-muted">Hourly table</summary>
+          <div class="px-3 pb-3">
+            <div class="flex justify-end mb-2">
+              <button type="button" id="wm-btn-copy" class="py-1.5 px-3 rounded-lg border border-brand-border bg-brand-dark hover:bg-brand-border/30 text-[11px] font-semibold uppercase tracking-wide text-brand-muted">Copy blend MW (24 values)</button>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-xs font-mono">
+                <thead class="text-brand-muted">
+                  <tr class="border-b border-brand-border/60">
+                    <th class="text-left py-1.5 pr-3">Hour</th>
+                    <th class="text-right py-1.5 px-2">Blend MW</th>
+                    <th class="text-right py-1.5 px-2">GFS MW</th>
+                    <th class="text-right py-1.5 px-2">ECMWF MW</th>
+                    <th class="text-right py-1.5 px-2">GHI G/E</th>
+                    <th class="text-right py-1.5 px-2">Cloud G/E</th>
+                    <th class="text-right py-1.5 pl-2">Temp °C</th>
+                  </tr>
+                </thead>
+                <tbody id="wm-table-body" class="text-brand-text"></tbody>
+              </table>
+            </div>
+          </div>
+        </details>
+      </section>
+
+      {{ satellite_card(height='h-[28rem]') }}
+
+      <p class="text-[11px] text-brand-muted leading-relaxed">
+        Forecast data: <a class="underline hover:text-brand-accent" href="https://www.ecmwf.int/en/forecasts/datasets/open-data" target="_blank" rel="noopener">ECMWF open data</a> (CC BY 4.0) and NOAA GFS.
+        Satellite: NASA GIBS / JMA Himawari-9.
+        MW uses <span id="wm-plant-note" class="font-mono">—</span>.
+        Change these with <span class="font-mono">ARECO_PLANT_DC_MWP</span> and <span class="font-mono">ARECO_PV_PERFORMANCE_RATIO</span> in App settings.
+      </p>
+    </div>

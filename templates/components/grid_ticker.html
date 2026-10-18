@@ -1,0 +1,55 @@
+{# Grid alert status + scrolling NGCP System Operator advisories (data: /api/so-advisories). #}
+{% if current_user.is_authenticated %}
+<div id="grid-ticker" class="shrink-0 relative z-40 border-b border-brand-border bg-brand-card/90">
+  <div class="flex flex-col lg:flex-row lg:items-stretch">
+    <div id="grid-ticker-status" class="flex items-center gap-1.5 px-3 py-1.5 overflow-x-auto shrink-0 lg:border-r border-brand-border" aria-live="polite" aria-label="Grid alert status">
+      <span class="text-[10px] font-bold uppercase tracking-widest text-brand-muted mr-1">Grid</span>
+      <span class="text-xs text-brand-muted">Loading…</span>
+    </div>
+    <div class="flex flex-1 min-w-0 items-center border-t lg:border-t-0 border-brand-border/60">
+      {# Shown only while there are new advisories (see grid-ticker.js); otherwise hidden. #}
+      <div id="grid-ticker-news" class="hidden flex flex-1 min-w-0 items-center" aria-live="polite">
+        <span id="grid-ticker-label" class="shrink-0 pl-3 pr-1 text-[10px] font-bold uppercase tracking-widest text-brand-accent">New SO advisory</span>
+        <div id="grid-ticker-viewport" class="ticker-viewport relative flex-1 min-w-0 overflow-hidden h-8 flex items-center" tabindex="0" aria-label="New System Operator advisories. Hover or focus to pause scrolling.">
+          <div id="grid-ticker-track" class="ticker-track"></div>
+        </div>
+      </div>
+      <div class="flex items-center gap-1 px-2 shrink-0 ml-auto">
+        <button type="button" data-ticker-open="levels" class="rounded-md border border-brand-border/70 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-brand-muted hover:text-brand-text hover:bg-brand-border/30">Alert levels</button>
+        <button type="button" data-ticker-open="list" class="rounded-md border border-brand-border/70 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-brand-muted hover:text-brand-text hover:bg-brand-border/30">All</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="grid-ticker-pop" class="hidden absolute right-2 top-full mt-1 w-[min(38rem,calc(100vw-1rem))] max-h-[70vh] overflow-y-auto rounded-xl border border-brand-border bg-brand-card shadow-2xl p-4" role="dialog" aria-label="Grid advisories">
+    <div class="flex items-start justify-between gap-3 mb-3">
+      <h2 id="grid-ticker-pop-title" class="text-sm font-bold uppercase tracking-wider text-brand-accent">Grid alert levels</h2>
+      <button type="button" id="grid-ticker-pop-close" class="text-brand-muted hover:text-brand-text text-lg leading-none px-1" aria-label="Close">×</button>
+    </div>
+
+    <div data-ticker-section="levels" class="space-y-3 text-xs leading-relaxed">
+      <p class="text-brand-muted">Declared by NGCP as System Operator, separately for the Luzon, Visayas and Mindanao grids. ARECO is on the <span class="text-brand-text font-semibold">Visayas</span> grid.</p>
+      <div class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-3 items-start">
+        <span class="level-swatch mt-0.5" data-level="NORMAL"></span>
+        <div><p class="font-semibold text-brand-text">Normal (white)</p><p class="text-brand-muted">Supply is enough for all demand and the required reserves are available. No interruptions expected.</p></div>
+        <span class="level-swatch mt-0.5" data-level="BLUE"></span>
+        <div><p class="font-semibold text-blue-200">Blue alert</p><p class="text-brand-muted">Precaution: a typhoon or other calamity is expected within about 24 hours and may damage power plants or transmission lines.</p></div>
+        <span class="level-swatch mt-0.5" data-level="YELLOW"></span>
+        <div><p class="font-semibold text-amber-200">Yellow alert</p><p class="text-brand-muted">The operating margin (spare capacity of running plants) is below the grid's contingency requirement. Supply still meets demand, so no brownouts, but another plant tripping could push the grid to red.</p></div>
+        <span class="level-swatch mt-0.5" data-level="RED"></span>
+        <div><p class="font-semibold text-rose-200">Red alert</p><p class="text-brand-muted">Supply is not enough to meet demand plus the grid's regulating requirement. Manual load dropping (rotating brownouts) by distribution utilities may follow.</p></div>
+      </div>
+      <p class="text-brand-muted border-t border-brand-border/60 pt-3">How the status here is set: a notice like "Visayas Grid is on YELLOW Alert for the interval hours 1800H-2000H" shows as <span class="text-brand-text">today</span> before the window and <span class="text-brand-text">now</span> (pulsing) during it, until the window ends or a "lifted" notice arrives. Otherwise the latest NSO grid update's "System Condition" is used.</p>
+    </div>
+
+    <div data-ticker-section="list" class="hidden">
+      <ul id="grid-ticker-list" class="divide-y divide-brand-border/40 text-xs"></ul>
+    </div>
+
+    <p class="mt-3 pt-3 border-t border-brand-border/60 text-[11px] text-brand-muted">
+      Source: NGCP System Operator advisories via the <a id="grid-ticker-source" class="underline hover:text-brand-accent" href="#" target="_blank" rel="noopener">IEMOP real-time market dashboard</a>.
+      Checked every 30 seconds; IEMOP itself publishes in batches, often 30–60 minutes after the advisory time. <span id="grid-ticker-fetched"></span>
+    </p>
+  </div>
+</div>
+{% endif %}

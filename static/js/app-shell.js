@@ -4,7 +4,7 @@
       if (auth && auth.panels && auth.panels.length) {
         auth.panels.forEach(function (p) { allowed[p] = 1; });
       } else {
-        ['nomination', 'nomination-reporting', 'nomination-accuracy', 'billing', 'billing-history'].forEach(function (p) {
+        ['nomination', 'nomination-reporting', 'nomination-accuracy', 'weather-models', 'billing', 'billing-history'].forEach(function (p) {
           allowed[p] = 1;
         });
       }
@@ -15,18 +15,21 @@
       var panelBill = document.getElementById('panel-billing');
       var panelAcc = document.getElementById('panel-nomination-accuracy');
       var panelBillHist = document.getElementById('panel-billing-history');
+      var panelWeather = document.getElementById('panel-weather-models');
       var subtitleEl = document.getElementById('app-subtitle');
       var titles = {
         nomination: 'Nomination Dashboard',
         'nomination-reporting': 'Reporting',
         billing: 'Billing & Settlement',
         'nomination-accuracy': 'Forecast Percentage Error',
-        'billing-history': 'Billing History'
+        'billing-history': 'Billing History',
+        'weather-models': 'Weather Models'
       };
       var panelToSection = {
         nomination: 'nomination',
         'nomination-reporting': 'nomination',
         'nomination-accuracy': 'nomination',
+        'weather-models': 'nomination',
         billing: 'billing',
         'billing-history': 'billing'
       };
@@ -73,6 +76,7 @@
         if (panelBill) panelBill.classList.toggle('hidden', id !== 'billing');
         if (panelAcc) panelAcc.classList.toggle('hidden', id !== 'nomination-accuracy');
         if (panelBillHist) panelBillHist.classList.toggle('hidden', id !== 'billing-history');
+        if (panelWeather) panelWeather.classList.toggle('hidden', id !== 'weather-models');
         document.querySelectorAll('[data-nav-panel]').forEach(function(btn) {
           var active = btn.getAttribute('data-nav-panel') === id;
           btn.setAttribute('aria-current', active ? 'page' : 'false');
@@ -81,6 +85,7 @@
         syncNavSectionsForPanel(id);
         animatePanelIn(panelById[id]);
         try { sessionStorage.setItem('areco_app_panel', id); } catch (e) {}
+        document.dispatchEvent(new CustomEvent('areco:panel-shown', { detail: { id: id } }));
       }
       document.querySelectorAll('[data-nav-section-toggle]').forEach(function(btn) {
         btn.addEventListener('click', function() {

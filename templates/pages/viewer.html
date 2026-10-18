@@ -1,5 +1,9 @@
 {% extends 'layouts/viewer.html' %}
 
+{% block head_extra %}
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+{% endblock %}
+
 {% block main_inner %}
   <div class="p-4 sm:p-6 max-w-[1700px] mx-auto w-full space-y-6">
     <section class="rounded-xl border border-brand-border bg-brand-card/70 p-4 sm:p-5 shadow-lg">
@@ -34,6 +38,9 @@
         <button type="button" class="viewer-tab-btn px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wide border border-transparent text-brand-muted hover:text-brand-text hover:bg-brand-border/25" data-viewer-tab="billing-history" role="tab" aria-selected="false">
           Billing History
         </button>
+        <button type="button" class="viewer-tab-btn px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wide border border-transparent text-brand-muted hover:text-brand-text hover:bg-brand-border/25" data-viewer-tab="weather-models" role="tab" aria-selected="false">
+          Weather Models
+        </button>
       </div>
     </section>
 
@@ -53,6 +60,10 @@
     <div id="viewer-tab-billing-history" class="hidden" data-viewer-tabpanel="billing-history" role="tabpanel" aria-label="Billing history tab">
       {% include 'partials/_panel_billing_history.html' %}
     </div>
+
+    <div id="viewer-tab-weather-models" class="hidden" data-viewer-tabpanel="weather-models" role="tabpanel" aria-label="Weather models tab">
+      {% include 'partials/_panel_weather_models.html' %}
+    </div>
   </div>
 {% endblock %}
 
@@ -64,4 +75,7 @@
   <script src="{{ url_for('static', filename='js/nomination-reporting.js') }}" defer></script>
   <script src="{{ url_for('static', filename='js/nomination-accuracy.js') }}" defer></script>
   <script src="{{ url_for('static', filename='js/billing-history.js') }}" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" defer></script>
+  <script src="{{ url_for('static', filename='js/satellite-map.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/weather-models.js') }}" defer></script>
 {% endblock %}

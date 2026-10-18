@@ -7,7 +7,7 @@
     var intervalRevByDateMemory = null;
     const LIVE_STREAM_STORAGE_KEY = 'areco_live_stream_url';
     const WEATHER_LOCATION_KEY = 'areco_weather_location';
-    var weatherLocation = { lat: 10.638755644610793, lon: 123.00417639451439 };
+    var weatherLocation = { lat: 10.63782595665277, lon: 123.00456203862562 };
     const DEFAULT_LIVE_STREAM_URL = 'https://vdo.ninja/?view=2vNAR9X';
     const PLANT_MAX_MW = 50;
     var syncCfg = null;

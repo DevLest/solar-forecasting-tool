@@ -1,0 +1,29 @@
+{# Himawari-9 cloud loop around the plant. Needs Leaflet + static/js/satellite-map.js on the page.
+   Import: {% from 'components/satellite_card.html' import satellite_card %} #}
+{% macro satellite_card(title='Clouds near the plant', subtitle=None, zoom=8, height='h-[24rem]', rings=True) %}
+<section class="bg-brand-card rounded-xl border border-brand-border p-4 sm:p-5 shadow-lg space-y-3" data-satellite-card
+  data-lat="{{ areco_plant.lat }}" data-lon="{{ areco_plant.lon }}" data-zoom="{{ zoom }}" data-rings="{{ 'true' if rings else 'false' }}">
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <div class="min-w-0">
+      <h3 class="text-sm font-semibold text-brand-muted uppercase tracking-wider">{{ title }}</h3>
+      <p class="text-xs text-brand-muted mt-1">{{ subtitle or 'Himawari-9 satellite, new frame every 10 minutes (about 30–60 minutes behind real time). Rings at 25 km and 50 km.' }}</p>
+    </div>
+    <div class="flex flex-wrap items-center gap-2">
+      <label class="text-[10px] font-bold uppercase tracking-wider text-brand-muted">
+        <span class="sr-only">Satellite layer</span>
+        <select data-sat-layer class="bg-brand-dark border border-brand-border rounded-lg px-2 py-1.5 text-sm normal-case tracking-normal font-normal text-brand-text [color-scheme:dark] focus:outline-none focus:ring-2 focus:ring-brand-accent/40">
+          <option value="vis">Visible (daytime clouds)</option>
+          <option value="ir">Infrared (day &amp; night)</option>
+          <option value="airmass">Air mass (storms)</option>
+        </select>
+      </label>
+    </div>
+  </div>
+  <div data-sat-map class="{{ height }} min-h-[18rem] w-full rounded-lg border border-brand-border/60 bg-brand-dark z-0"></div>
+  <div class="flex flex-wrap items-center gap-3">
+    <button type="button" data-sat-play class="py-1.5 px-3 rounded-lg border border-brand-border bg-brand-dark hover:bg-brand-border/30 text-[11px] font-semibold uppercase tracking-wide text-brand-muted w-20">Play</button>
+    <input type="range" data-sat-slider min="0" max="0" value="0" class="flex-1 min-w-[10rem] accent-emerald-500" aria-label="Satellite frame time" />
+    <p data-sat-time class="text-xs font-mono text-brand-text min-w-[15rem] text-right">—</p>
+  </div>
+</section>
+{% endmacro %}

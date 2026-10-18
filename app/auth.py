@@ -25,6 +25,7 @@ PANEL_NOMINATION_REPORTING = "nomination-reporting"
 PANEL_NOMINATION_ACCURACY = "nomination-accuracy"
 PANEL_BILLING = "billing"
 PANEL_BILLING_HISTORY = "billing-history"
+PANEL_WEATHER_MODELS = "weather-models"
 
 PANELS_BY_ROLE: dict[str, frozenset[str]] = {
     ROLE_ADMIN: frozenset(
@@ -32,16 +33,18 @@ PANELS_BY_ROLE: dict[str, frozenset[str]] = {
             PANEL_NOMINATION,
             PANEL_NOMINATION_REPORTING,
             PANEL_NOMINATION_ACCURACY,
+            PANEL_WEATHER_MODELS,
             PANEL_BILLING,
             PANEL_BILLING_HISTORY,
         }
     ),
-    ROLE_NOMINATOR: frozenset({PANEL_NOMINATION}),
+    ROLE_NOMINATOR: frozenset({PANEL_NOMINATION, PANEL_WEATHER_MODELS}),
     ROLE_SPECTATOR: frozenset(
         {
             PANEL_NOMINATION,
             PANEL_NOMINATION_REPORTING,
             PANEL_NOMINATION_ACCURACY,
+            PANEL_WEATHER_MODELS,
             PANEL_BILLING_HISTORY,
         }
     ),
@@ -56,6 +59,9 @@ _NOMINATOR_ALLOWED: dict[str, frozenset[str]] = {
     "main.api_save_export": frozenset({"POST", "OPTIONS"}),
     "main.api_nomination_save_file": frozenset({"POST", "OPTIONS"}),
     "main.api_weather_forecast": frozenset({"POST", "OPTIONS"}),
+    "main.api_nwp_forecast": frozenset({"GET", "HEAD"}),
+    "main.api_nwp_forecast_refresh": frozenset({"POST", "OPTIONS"}),
+    "main.api_so_advisories": frozenset({"GET", "HEAD"}),
     "main.api_sync_config": frozenset({"GET", "HEAD"}),
     "main.api_sync_verify_remote": frozenset({"GET", "HEAD"}),
     "main.api_sync_push_remote": frozenset({"POST", "OPTIONS"}),
@@ -72,6 +78,8 @@ _SPECTATOR_ALLOWED_GET: frozenset[str] = frozenset(
         "main.api_historical_exports",
         "main.api_viewer_meta",
         "main.api_sync_config",
+        "main.api_nwp_forecast",
+        "main.api_so_advisories",
         "main.api_nomination_accuracy_uploaded_dates",
         "main.api_nomination_reporting_compliance_csv_days",
         "main.api_nomination_reporting_marketplace_ready_days",

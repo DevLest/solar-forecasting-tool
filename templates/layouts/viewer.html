@@ -7,6 +7,7 @@
 </head>
 <body class="bg-brand-dark text-brand-text font-sans antialiased h-full min-h-screen max-h-screen flex flex-col overflow-hidden">
   {% include 'components/app_header.html' %}
+  {% include 'components/grid_ticker.html' %}
   <main id="app-main" class="flex-1 min-h-0 w-full overflow-y-auto overflow-x-hidden">
     {% block main_inner %}{% endblock %}
   </main>
@@ -25,6 +26,9 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
   <script src="{{ url_for('static', filename='js/calendar-picker.js') }}" defer></script>
+  {% if current_user.is_authenticated %}
+  <script src="{{ url_for('static', filename='js/grid-ticker.js') }}" defer></script>
+  {% endif %}
   {% block page_scripts %}{% endblock %}
 </body>
 </html>

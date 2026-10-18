@@ -26,9 +26,9 @@ The app uses **Flask-Login**. Unauthenticated requests to pages redirect to `/lo
 
 | Role | Panels / access |
 |------|------------------|
-| **admin** | Nomination, Reporting, Accuracy, Billing (settlement extract), Billing history; App settings (env keys + user CRUD); all APIs |
-| **nominator** | Nomination only: weather, historical exports, save export, write nomination files under `automate/` (or `ARECO_NOMINATION_EXPORT_DIR`) |
-| **spectator** | Read-only Reporting, Accuracy analytics, Billing history views (no uploads that mutate data, no env editor) |
+| **admin** | Nomination, Reporting, Accuracy, Weather models, Billing (settlement extract), Billing history; App settings (env keys + user CRUD); all APIs |
+| **nominator** | Nomination + Weather models: weather, historical exports, save export, write nomination files under `automate/` (or `ARECO_NOMINATION_EXPORT_DIR`) |
+| **spectator** | Read-only Reporting, Accuracy analytics, Weather models, Billing history views (no uploads that mutate data, no env editor) |
 
 **Users file:** `data/users.json` by default (override with `ARECO_USERS_FILE`). On first run, if that file is missing, the app copies **`users.example.json`** from the project root into `data/users.json`. Replace password hashes before production (see `.env.example`).
 
@@ -66,6 +66,23 @@ All routes except **`GET|POST /login`** require an authenticated session (browse
 - `POST /api/nomination-save-file` - JSON `{ "filename", "content" }` → writes under `nomination_export_dir()`
 - `GET|POST /api/app-config` - read/write a **whitelist** of env keys for the settings UI (`ALLOWED_ENV_KEYS` in `app/services/env_config.py`)
 
+**Weather models** (free NOAA GFS + ECMWF open data, `app/services/nwp_forecast.py`):
+
+- `GET /api/nwp-forecast?date=YYYY-MM-DD` — hourly irradiance, cloud, temperature and MW per model plus a blend (25 hour-ending slots, local time; default date is tomorrow). Starts a background download when the saved data is older than 6 h.
+- `POST /api/nwp-forecast/refresh` — start a background download now (admin, nominator)
+- Manual / scheduled run: `python -m app.services.nwp_forecast` (about 3–5 minutes; GFS ~70 small requests, ECMWF ~35 MB). Output: `data/nwp/latest.json`.
+- MW model: `ARECO_PLANT_DC_MWP` × GHI/1000 × `ARECO_PV_PERFORMANCE_RATIO` × temperature loss, capped at 50 MW AC.
+- Calibrate the ratio from actual output (saved accuracy runs + MPI compliance CSVs vs NASA POWER irradiance): `python -m app.services.pv_calibration` (report) or `--write` (save to `.env`). Rerun as more months are uploaded.
+- Satellite loop: NASA GIBS Himawari-9 tiles loaded directly by the browser (no key).
+- Attribution required when showing the data: ECMWF (CC BY 4.0); NOAA GFS is public domain.
+
+**Grid status & SO advisories** (`app/services/so_advisories.py`, ticker under the header on every page):
+
+- `GET /api/so-advisories` — NGCP System Operator advisories from IEMOP's public real-time market dashboard (Power BI, "SO Advisories" page), cached 2 minutes server-side, plus a status per grid (Visayas = plant grid, Luzon, Mindanao): `NORMAL` / `BLUE` / `YELLOW` / `RED` with state `active`, `upcoming`, `lifted`, `advisory` or `normal`.
+- Status rules: an "on YELLOW/RED/BLUE Alert for the interval hours HHMMH-HHMMH" notice counts until its window ends or a "lifted" notice follows; otherwise the latest "GRID UPDATE … System Condition" of the day.
+- The Power BI query endpoint is the one the public viewer uses (undocumented). If IEMOP changes the report, the ticker shows the last good data with an error note instead of breaking the page.
+- Satellite "Clouds near the plant" card (`components/satellite_card.html` + `static/js/satellite-map.js`) is on the nomination dashboard, the viewer and Weather models.
+
 **Nomination reporting & accuracy** (uploads, SQLite-backed runs and CSV blobs): endpoints under `/api/nomination-reporting/…` and `/api/nomination-accuracy/…` (runs list/delete, analytics monthly/month-detail/annual, compliance and market-result CSV storage, marketplace chart payload, RTD backfill, etc.). See `app/routes/__init__.py` for the full list.
 
 **Billing**
@@ -86,6 +103,8 @@ Copy **`.env.example`** to **`.env`**. The app loads `.env` on startup (`python-
 |----------|--------|
 | **`OPENAI_API_KEY`** | Primary weather; or one-line **`openai_api_key.txt`** in the project root (gitignored) |
 | **`ACCUWEATHER_API_KEY`** | Optional fallback; or **`accuweather_api_key.txt`** |
+| **`ARECO_PLANT_DC_MWP`** | Weather models: plant DC size in MWp (default **65**) |
+| **`ARECO_PV_PERFORMANCE_RATIO`** | Weather models: overall system losses (default **0.85**); tune against actual output |
 | **`ARECO_PORT`** | Local dev port when `PORT` is unset (default **8765**). On PaaS, **`PORT`** is used |
 | **`ARECO_SECRET_KEY`** | Flask session signing |
 | **`ARECO_USERS_FILE`** | Optional path to `users.json` |

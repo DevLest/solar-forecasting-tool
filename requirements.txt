@@ -15,3 +15,6 @@ rapidocr-onnxruntime>=1.2.0,<1.3
 # VDO.Ninja view. After `pip install -r requirements.txt`, also run once:
 #   python -m playwright install chromium
 playwright>=1.40,<2
+# Free NWP forecast (GFS + ECMWF open data GRIB decoding) in app.services.nwp_forecast
+eccodes>=2.37,<3
+ecmwf-opendata>=0.3,<1

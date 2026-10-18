@@ -82,6 +82,8 @@ from app.services.nomination_accuracy_store import (
 )
 from app.services.users_store import ROLES, create_user, delete_user, list_users_public, update_user
 from app.services.weather import get_weather_forecast
+from app.services.nwp_forecast import get_forecast_payload, refresh_async
+from app.services.so_advisories import get_advisories
 from app.services.sync_service import (
     apply_sync_payload,
     push_sync_payload_to_remote_async,
@@ -1317,3 +1319,28 @@ def api_weather_forecast():
     result = get_weather_forecast(target, force_refresh=force, lat=lat, lon=lon)
     status = 200 if "error" not in result else 502
     return jsonify(result), status
+
+
+@bp.route("/api/nwp-forecast", methods=["GET"])
+def api_nwp_forecast():
+    """Free GFS + ECMWF forecast for one local date (``?date=YYYY-MM-DD``; default tomorrow)."""
+    target = (request.args.get("date") or "").strip() or None
+    resp = jsonify(get_forecast_payload(target))
+    resp.headers["Cache-Control"] = "no-store"
+    return resp
+
+
+@bp.route("/api/nwp-forecast/refresh", methods=["POST", "OPTIONS"])
+def api_nwp_forecast_refresh():
+    if request.method == "OPTIONS":
+        return "", 204
+    started = refresh_async()
+    return jsonify({"ok": True, "started": started, "message": "Refresh started." if started else "Already refreshing."})
+
+
+@bp.route("/api/so-advisories", methods=["GET"])
+def api_so_advisories():
+    """NGCP System Operator advisories (via IEMOP public dashboard) + per-grid alert status."""
+    resp = jsonify(get_advisories())
+    resp.headers["Cache-Control"] = "no-store"
+    return resp

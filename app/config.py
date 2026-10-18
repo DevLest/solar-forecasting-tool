@@ -32,8 +32,15 @@ NOMINATION_HISTORY_PAST_DAYS = 3
 NOMINATION_HISTORY_FUTURE_DAYS = 8
 
 PLANT_MAX_MW = 50.0
-DEFAULT_LAT = 10.638755644610793
-DEFAULT_LON = 123.00417639451439
+# Free NWP forecast (app.services.nwp_forecast). Plant: 65 MWp DC / 50 MW AC, 167 inverters.
+# ARECO_PV_PERFORMANCE_RATIO excludes temperature loss (modelled separately), so it sits above the
+# site PR: 0.975 x ~0.90 average temperature factor ~= the 87.6% site PR. Recalibrate with
+# ``python -m app.services.pv_calibration``.
+PLANT_DC_MWP = float(os.environ.get("ARECO_PLANT_DC_MWP", "65") or 65)
+PV_PERFORMANCE_RATIO = float(os.environ.get("ARECO_PV_PERFORMANCE_RATIO", "0.85") or 0.85)
+LOCAL_UTC_OFFSET_HOURS = 8  # Philippines, no DST
+DEFAULT_LAT = 10.63782595665277
+DEFAULT_LON = 123.00456203862562
 LAT, LON = DEFAULT_LAT, DEFAULT_LON
 
 

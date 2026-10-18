@@ -26,6 +26,7 @@
 
     // Charts often need a resize event after becoming visible.
     try { window.dispatchEvent(new Event('resize')); } catch (e2) {}
+    document.dispatchEvent(new CustomEvent('areco:panel-shown', { detail: { id: tabId } }));
   }
 
   function loadTab() {
@@ -44,7 +45,7 @@
     });
 
     // Ensure sidebar-panel containers aren't stuck hidden from their original layout.
-    ['panel-nomination-reporting', 'panel-nomination-accuracy', 'panel-billing-history'].forEach(function (id) {
+    ['panel-nomination-reporting', 'panel-nomination-accuracy', 'panel-billing-history', 'panel-weather-models'].forEach(function (id) {
       var el = document.getElementById(id);
       if (el) el.classList.remove('hidden');
     });

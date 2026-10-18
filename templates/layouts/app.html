@@ -7,6 +7,7 @@
 </head>
 <body class="bg-brand-dark text-brand-text font-sans antialiased h-full min-h-screen max-h-screen flex flex-col overflow-hidden">
   {% include 'components/app_header.html' %}
+  {% include 'components/grid_ticker.html' %}
   {# Grid: sidebar + main share one row on md so the rail stretches full height (flex+h-full is unreliable). #}
   <div class="flex-1 min-h-0 w-full overflow-hidden grid grid-cols-1 grid-rows-[auto_minmax(0,1fr)] md:grid-cols-[16rem_minmax(0,1fr)] md:grid-rows-1">
     {% include 'components/app_sidebar.html' %}
@@ -37,6 +38,9 @@
   <script src="{{ url_for('static', filename='js/settings-config.js') }}" defer></script>
   {% if areco_auth.can_edit_settings %}
   <script src="{{ url_for('static', filename='js/admin-users.js') }}" defer></script>
+  {% endif %}
+  {% if current_user.is_authenticated %}
+  <script src="{{ url_for('static', filename='js/grid-ticker.js') }}" defer></script>
   {% endif %}
   {% block page_scripts %}{% endblock %}
 </body>

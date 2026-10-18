@@ -367,3 +367,35 @@
       background: #10b981;
       box-shadow: 0 0 8px rgba(16, 185, 129, 0.9);
     }
+    /* Grid alert chips + SO advisories ticker (components/grid_ticker.html) */
+    .alert-chip { display: inline-flex; align-items: center; gap: 0.4rem; white-space: nowrap; border: 1px solid #475569; border-radius: 9999px; padding: 0.15rem 0.6rem; font-size: 0.6875rem; font-weight: 600; color: #e2e8f0; background: rgba(148, 163, 184, 0.08); }
+    .alert-chip .dot { width: 0.5rem; height: 0.5rem; border-radius: 9999px; background: #f8fafc; flex-shrink: 0; }
+    .alert-chip .grid-name { text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.625rem; color: #94a3b8; }
+    .alert-chip.is-plant { box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.35); }
+    .alert-chip[data-level="BLUE"] { border-color: rgba(96, 165, 250, 0.6); background: rgba(59, 130, 246, 0.14); color: #bfdbfe; }
+    .alert-chip[data-level="BLUE"] .dot { background: #60a5fa; }
+    .alert-chip[data-level="YELLOW"] { border-color: rgba(251, 191, 36, 0.7); background: rgba(251, 191, 36, 0.14); color: #fde68a; }
+    .alert-chip[data-level="YELLOW"] .dot { background: #fbbf24; }
+    .alert-chip[data-level="RED"] { border-color: rgba(244, 63, 94, 0.8); background: rgba(244, 63, 94, 0.18); color: #fecdd3; }
+    .alert-chip[data-level="RED"] .dot { background: #f43f5e; }
+    .alert-chip[data-state="active"] .dot { animation: areco-alert-pulse 1.4s ease-in-out infinite; }
+    @keyframes areco-alert-pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.35; transform: scale(1.35); } }
+    .level-swatch { display: inline-block; width: 0.75rem; height: 0.75rem; border-radius: 9999px; border: 1px solid #475569; background: #f8fafc; }
+    .level-swatch[data-level="BLUE"] { background: #60a5fa; border-color: #60a5fa; }
+    .level-swatch[data-level="YELLOW"] { background: #fbbf24; border-color: #fbbf24; }
+    .level-swatch[data-level="RED"] { background: #f43f5e; border-color: #f43f5e; }
+    .ticker-viewport { -webkit-mask-image: linear-gradient(90deg, transparent, #000 1.5rem, #000 calc(100% - 1.5rem), transparent); mask-image: linear-gradient(90deg, transparent, #000 1.5rem, #000 calc(100% - 1.5rem), transparent); }
+    .ticker-track { display: inline-flex; align-items: center; white-space: nowrap; animation: areco-ticker var(--ticker-duration, 90s) linear infinite; will-change: transform; }
+    .ticker-viewport:hover .ticker-track, .ticker-viewport:focus-within .ticker-track { animation-play-state: paused; }
+    @keyframes areco-ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+    .ticker-item { display: inline-flex; align-items: baseline; gap: 0.4rem; padding-right: 2.25rem; font-size: 0.75rem; color: #e2e8f0; }
+    .ticker-item .t { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: #94a3b8; }
+    .ticker-item .g { font-size: 0.625rem; font-weight: 700; letter-spacing: 0.08em; color: #10b981; }
+    .ticker-item[data-level="YELLOW"] { color: #fde68a; }
+    .ticker-item[data-level="RED"] { color: #fecdd3; }
+    .ticker-item[data-level="BLUE"] { color: #bfdbfe; }
+    .ticker-item[data-kind="outage_unplanned"] .g::after { content: " · UNPLANNED"; color: #fca5a5; }
+    @media (prefers-reduced-motion: reduce) {
+      .ticker-track { animation: none; }
+      .alert-chip[data-state="active"] .dot { animation: none; }
+    }

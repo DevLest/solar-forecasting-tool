@@ -22,6 +22,8 @@ ALLOWED_ENV_KEYS: frozenset[str] = frozenset(
         "ACCUWEATHER_API_KEY",
         "ARECO_LIVE_STREAM_URL",
         "ARECO_STREAM_OCR_ENABLED",
+        "ARECO_PLANT_DC_MWP",
+        "ARECO_PV_PERFORMANCE_RATIO",
     }
 )
 

@@ -10,7 +10,7 @@ from flask_login import current_user
 
 from app.auth import auth_context_dict, login_manager
 from app.services.users_store import users_file_path
-from app.config import DATA_DIR, ROOT
+from app.config import DATA_DIR, LAT, LON, ROOT
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +42,7 @@ def create_app() -> Flask:
             "areco_role": ctx["role"],
             "areco_nomination_readonly": bool(ctx.get("nomination_read_only")),
             "nomination_trader_options": ctx.get("nomination_trader_options") or [],
+            "areco_plant": {"lat": LAT, "lon": LON},
         }
 
     from app.routes import bp as main_bp

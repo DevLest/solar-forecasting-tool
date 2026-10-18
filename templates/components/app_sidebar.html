@@ -13,7 +13,7 @@
   </div>
 
   <nav class="flex flex-col gap-2 w-full min-w-0 flex-1 min-h-0" aria-label="App sections">
-    {% if 'nomination' in areco_panels or 'nomination-reporting' in areco_panels or 'nomination-accuracy' in areco_panels %}
+    {% if 'nomination' in areco_panels or 'nomination-reporting' in areco_panels or 'nomination-accuracy' in areco_panels or 'weather-models' in areco_panels %}
     {# Nomination: dashboard, reporting, forecast accuracy #}
     <div class="flex flex-col min-w-0 rounded-xl border border-brand-border/60 bg-brand-card/40 shadow-sm overflow-hidden" data-nav-section="nomination">
       <button
@@ -43,6 +43,9 @@
         {% endif %}
         {% if 'nomination-accuracy' in areco_panels %}
         {{ nav_tile('nomination-accuracy', 'Forecast % error', sub=True) }}
+        {% endif %}
+        {% if 'weather-models' in areco_panels %}
+        {{ nav_tile('weather-models', 'Weather models', sub=True) }}
         {% endif %}
       </div>
     </div>
