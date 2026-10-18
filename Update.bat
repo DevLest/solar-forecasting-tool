@@ -89,6 +89,28 @@ if "%DID_STASH%"=="1" (
     echo.
 )
 
+:: Git's automatic cleanup after a pull can hit locked files on Windows (antivirus,
+:: OneDrive) and asks "Deletion of directory ... failed. Should I try again? (y/n)".
+:: Turn it off for this copy so future updates never stop on that question.
+git config gc.auto 0 >nul 2>nul
+git config maintenance.auto false >nul 2>nul
+
+:: Kept in a separate script so this file rarely changes (cmd re-reads a running
+:: .bat from disk, so editing the lines above the pull would break mid-update)
+echo Installing any new software the update needs...
+call "%~dp0tools\install_requirements.bat"
+if errorlevel 2 (
+    echo.
+) else if errorlevel 1 (
+    echo.
+    echo [PROBLEM] The app was updated, but some software it needs could not be installed.
+    echo Please check your internet connection and run Update.bat again.
+    echo If it keeps failing, please contact support.
+    echo.
+    pause
+    exit /b 1
+)
+
 echo ============================================
 echo   Update complete!
 echo   You can now run ARECO65.bat as usual.

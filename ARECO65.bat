@@ -7,21 +7,12 @@ set "PY_EMBED_URL=https://www.python.org/ftp/python/3.12.9/python-3.12.9-embed-a
 set "PY_EMBED_DIR=%~dp0.python"
 set "PY_EMBED_ZIP=%~dp0py_embed.zip"
 
-:: Prefer system Python
-where python >nul 2>nul
-if %errorlevel% equ 0 (
-  python -c "import sys; sys.exit(0 if sys.version_info >= (3, 7) else 1)" 2>nul
-  if %errorlevel% equ 0 goto run
-)
-where py >nul 2>nul
-if %errorlevel% equ 0 (
-  py -3 -c "import sys; sys.exit(0 if sys.version_info >= (3, 7) else 1)" 2>nul
-  if %errorlevel% equ 0 (
-    py -3 -m pip install -q -r "%~dp0requirements.txt" 2>nul
-    py -3 "%~dp0run_dashboard.py"
-    goto end
-  )
-)
+:: Prefer system Python, then the py launcher
+set "ARECO_PY="
+set "ARECO_EMBED=0"
+python -c "import sys; sys.exit(0 if sys.version_info >= (3, 7) else 1)" >nul 2>nul && set "ARECO_PY=python"
+if not defined ARECO_PY py -3 -c "import sys; sys.exit(0 if sys.version_info >= (3, 7) else 1)" >nul 2>nul && set "ARECO_PY=py -3"
+if defined ARECO_PY goto run
 
 :: Use local portable Python if already present
 if exist "%PY_EMBED_DIR%\python.exe" goto run_embed
@@ -57,14 +48,19 @@ echo Then run this script again or run:  python run_dashboard.py
 pause
 exit /b 1
 
-:run
-python -m pip install -q -r "%~dp0requirements.txt" 2>nul
-python "%~dp0run_dashboard.py"
-goto end
-
 :run_embed
-"%PY_EMBED_DIR%\python.exe" -m pip install -q -r "%~dp0requirements.txt" 2>nul
-"%PY_EMBED_DIR%\python.exe" "%~dp0run_dashboard.py"
+set ARECO_PY="%PY_EMBED_DIR%\python.exe"
+set "ARECO_EMBED=1"
+
+:run
+call "%~dp0tools\install_requirements.bat" /quiet
+if errorlevel 1 (
+  echo.
+  echo [WARNING] Some required packages could not be installed - check your internet
+  echo connection. Starting anyway; some features may not work.
+  echo.
+)
+%ARECO_PY% "%~dp0run_dashboard.py"
 goto end
 
 :end
