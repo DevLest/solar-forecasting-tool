@@ -47,6 +47,14 @@ if "%QUIET%"=="1" exit /b 0
 echo   Python packages are up to date.
 echo.
 
+:: The Weather models panel needs the GRIB decoder; pip can succeed while its native library fails to load
+%ARECO_PY% -c "import eccodes, ecmwf.opendata" >nul 2>nul
+if errorlevel 1 (
+  echo [WARNING] The weather model decoder ^(eccodes^) is installed but could not load.
+  echo   The Weather models panel will not show data until this is fixed. Please contact support.
+  echo.
+)
+
 :: Headless browser for the live plant-output stream OCR (quick no-op once installed)
 echo   Checking the browser used for live stream reading...
 %ARECO_PY% -m playwright install chromium
